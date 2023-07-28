@@ -15,7 +15,9 @@ ZMP3 Music Player App is a simple music player application developed using Flutt
 
 ## Screenshots
 
+![image](https://github.com/LamPPKK/Zing/assets/50864894/000b872f-bf2e-4718-a16b-260bd651e061)
 
+![image](https://github.com/LamPPKK/Zing/assets/50864894/9ef69481-6896-4db1-bd50-bc2cd4acb36a)
 
 ## Installation
 
