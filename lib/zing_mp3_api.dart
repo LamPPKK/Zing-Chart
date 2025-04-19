@@ -48,36 +48,45 @@ class ZingMP3API {
     }
   }
 
-  static Future<(List<Song>, List<Artist>)> search(String q) async {
+  static Future<Map<String, List<dynamic>>> search(String q, {String? type}) async {
+    String url = searchUrl + q;
+    if (type != null) {
+      url += '&type=$type';
+    }
     try {
-      final response = await http.get(Uri.parse(searchUrl + q));
-      if (response.statusCode == 200) {
-        List<Song>? songs;
-        List<Artist>? artists;
-        final jsonData = jsonDecode(response.body);
-        final data = jsonData['data'] as List<dynamic>;
-
-        if (data.isEmpty) return (<Song>[], <Artist>[]);
-
-        if (data.length > 1) {
-          final songsData = data[0]['song'] as List<dynamic>;
-          songs = songsData.map((song) => Song.fromJson(song)).toList();
-        }
-
-        if (data.length == 2) {
-          final artistsData = data[1]['artist'] as List<dynamic>;
-
-          artists =
-              artistsData.map((artist) => Artist.fromJson(artist)).toList();
-        }
-
-        return (
-          songs ?? [],
-          artists ?? [],
-        );
-      } else {
-        throw Exception('Failed to load Search');
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) {
+        print('Failed to load Search: ${response.statusCode}');
+        return {'songs': [], 'artists': []};
       }
+
+      final jsonData = jsonDecode(response.body);
+      final data = jsonData['data'];
+
+      List<Song> songs = [];
+      List<Artist> artists = [];
+
+      if (data is List) {
+        if (data.isNotEmpty) {
+          if (data.length > 1) {
+            final songsData = data[0]['song'] as List<dynamic>?;
+            final artistsData = data[1]['artist'] as List<dynamic>?;
+
+            songs = songsData?.map((song) => Song.fromJson(song)).toList() ?? [];
+            artists = artistsData?.map((artist) => Artist.fromJson(artist)).toList() ?? [];
+          } else if (type == 'song') {
+            final songsData = data[0]['song'] as List<dynamic>?;
+            songs = songsData?.map((song) => Song.fromJson(song)).toList() ?? [];
+          } else if (type == 'artist') {
+            final artistsData = data[0]['artist'] as List<dynamic>?;
+            artists = artistsData?.map((artist) => Artist.fromJson(artist)).toList() ?? [];
+          }
+        }
+      } else {
+        print('Unexpected API response format: $data');
+      }
+
+      return {'songs': songs, 'artists': artists};
     } catch (e) {
       throw Exception('Failed to Search: $e');
     }

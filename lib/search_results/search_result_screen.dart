@@ -21,7 +21,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
   final List<Song> songs = [];
   final List<Artist> artists = [];
 
-  void search(String? searchQuery) async {
+  void search(String? searchQuery, {String? searchType}) async {
     try {
       if (searchQuery == null || searchQuery.trim().isEmpty) {
         return;
@@ -33,7 +33,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           isLoading = true;
         });
         await Future.delayed(const Duration(seconds: 1));
-        final (searchedSongs, searchedArtists) = await ZingMP3API.search(searchQuery);
+        final (searchedSongs, searchedArtists) = await ZingMP3API.search(searchQuery, type: searchType);
 
         setState(() {
           isLoading = false;
@@ -49,60 +49,70 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
   @override
   Widget build(BuildContext context) {
     // Set the status bar color to match the app bar color
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      statusBarColor: Colors.deepPurple, // Set your desired color here
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(statusBarColor: Colors.grey[800]),
+    );
 
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(60),
-        child: SearchResultAppBar(
-          onChanged: search,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: Colors.grey[900],
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(100),
+          child: SearchResultAppBar(
+            onChanged: (query, type) => search(query, searchType: type),
+          ),
         ),
-      ),
-      body: Builder(
-        builder: (context) {
-          if (isLoading) {
-            return Center(
-              child: CircularProgressIndicator(
-                color: Colors.deepPurpleAccent,
-              ),
-            );
-          }
+        body: Builder(
+          builder: (context) {
+            if (isLoading) {
+              return Center(
+                child: CircularProgressIndicator(
+                  color: Colors.deepPurpleAccent,
+                ),
+              );
+            }
 
-          return DefaultTabController(
-            length: 2,
-            child: Column(
-              children: [
-                Container(
-                  color: Colors.deepPurple,
-                  child: TabBar(
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    labelColor: Colors.black,
-                    unselectedLabelColor: Colors.white,
-                    tabs: [
-                      Tab(text: "Song"),
-                      Tab(text: "Artist"),
-                    ],
-                  ),
+            if (songs.isEmpty && artists.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      "No results found",
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: Colors.grey[400],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return Column(
+              children: <Widget>[
+                TabBar(
+                  indicatorColor: Colors.deepPurpleAccent,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.grey[500],
+                  tabs: [
+                    Tab(text: "Songs"),
+                    Tab(text: "Artists"),
+                  ],
+                  indicatorSize: TabBarIndicatorSize.label,
+                  labelPadding: EdgeInsets.symmetric(horizontal: 20),
                 ),
                 Expanded(
-                  child: TabBarView(
-                    children: [
-                      SearchSongsResult(
-                        isViewAll: false,
-                        songs: songs,
-                      ),
-                      SearchArtistsResult(
-                        isViewAll: false,
-                        artists: artists,
-                      ),
-                    ],
+                  child: TabBarView(children: [
+                    SearchSongsResult(songs: songs),
+                    SearchArtistsResult(artists: artists),
                   ),
-                )
+                ),
               ],
-            ),
-          );
+            );
+          },
         },
       ),
     );

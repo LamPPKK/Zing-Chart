@@ -10,68 +10,19 @@ class SearchSongsResult extends StatelessWidget {
     this.isViewAll = true,
   }) : super(key: key);
 
-  final List<Song> songs;
-  final bool isViewAll;
-
-  int _getLengthSongs() {
-    if (isViewAll || songs.length < 10) return songs.length;
-    return 10;
-  }
+  final List<Song> songs;  
 
   @override
   Widget build(BuildContext context) {
-    final bodyText1 = Theme.of(context).textTheme.bodyText1;
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (!isViewAll)
-          Padding(
-            padding: const EdgeInsets.only(top: 16, bottom: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    FocusScope.of(context).unfocus();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SearchSongsResultScreen(
-                          songs: songs,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Row(
-                    children: [
-                      Text(
-                        'View All',
-                        style: bodyText1!.copyWith(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        color: Colors.grey,
-                        size: 14,
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-              ],
-            ),
-          ),
         Flexible(
           child: ListView.builder(
-            shrinkWrap: !isViewAll,
+            shrinkWrap: true,
             primary: false,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _getLengthSongs(),
+            padding: const EdgeInsets.all(16),
+            itemCount: songs.length,
             itemBuilder: (context, index) {
               final song = songs[index];
               return ListTile(
@@ -79,7 +30,7 @@ class SearchSongsResult extends StatelessWidget {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(8),
                     image: DecorationImage(
                       image: NetworkImage(song.thumbnail),
                       fit: BoxFit.cover,
@@ -87,12 +38,12 @@ class SearchSongsResult extends StatelessWidget {
                   ),
                 ),
                 title: Text(
-                  song.name,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  song.name,                  
                 ),
                 subtitle: Text(
                   song.artistsNames,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  style: TextStyle(color: Colors.grey[600]),
+                
                 ),
                 onTap: () {
                   FocusScope.of(context).unfocus();

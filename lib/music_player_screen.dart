@@ -14,7 +14,10 @@ class MusicPlayerScreen extends StatefulWidget {
 }
 
 class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
+  // Assuming you have a playlist and know the index of the current song
+  List<Song> playlist = []; // Replace with your actual playlist
   AudioPlayer audioPlayer = AudioPlayer();
+  int currentSongIndex = 0; // Index of the currently playing song
   String songUrl = '';
   bool isPlaying = false; // Set the default state to false
 
@@ -22,8 +25,16 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
   String get songArtist => widget.song.artistsNames;
   String get albumCoverUrl => widget.song.thumbnail;
 
+  // In a real app, you would receive the playlist and the initial song index.
+  // For this example, we'll create a dummy playlist and set the index.
   @override
   void initState() {
+    // Dummy playlist (replace with your actual playlist)
+    playlist = [
+      widget.song,
+      widget.song,
+    ];
+    currentSongIndex = playlist.indexOf(widget.song);
     _loadSongSrc();
     super.initState();
   }
@@ -73,6 +84,33 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
   String getRemainingTime(Duration currentPosition, Duration totalDuration) {
     final remainingDuration = totalDuration - currentPosition;
     return formatDuration(remainingDuration);
+  }
+
+  void _playPreviousSong() {
+    if (currentSongIndex > 0) {
+      _handleStop();
+      setState(() {
+        currentSongIndex--;
+      });
+      _loadSongSrc();
+      _handlePlayOrPause();
+    } else {
+      // Optionally, you can loop to the last song or do nothing
+      print("Already at the beginning of the playlist.");
+    }
+  }
+
+  void _playNextSong() {
+    if (currentSongIndex < playlist.length - 1) {
+      _handleStop();
+      setState(() {
+        currentSongIndex++;
+      });
+      _loadSongSrc();
+      _handlePlayOrPause();
+    } else {
+      print("Already at the end of the playlist.");
+    }
   }
 
   @override
@@ -187,7 +225,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
-                    onPressed: () {}, // Previous song functionality can be added here
+                    onPressed: _playPreviousSong,
                     icon: Icon(
                       Icons.skip_previous,
                       size: 32,
@@ -210,7 +248,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                   ),
                   SizedBox(width: 30),
                   IconButton(
-                    onPressed: () {}, // Next song functionality can be added here
+                    onPressed: _playNextSong,
                     icon: Icon(
                       Icons.skip_next,
                       size: 32,
