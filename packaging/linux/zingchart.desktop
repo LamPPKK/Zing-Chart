@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=#zingChart
+Comment=Music chart player
+Exec=zingchart
+Icon=zingchart
+Terminal=false
+Categories=AudioVideo;Audio;Player;

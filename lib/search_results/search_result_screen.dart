@@ -33,7 +33,9 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           isLoading = true;
         });
         await Future.delayed(const Duration(seconds: 1));
-        final (searchedSongs, searchedArtists) = await ZingMP3API.search(searchQuery);
+        final (searchedSongs, searchedArtists) = await ZingMP3API.search(
+          searchQuery,
+        );
 
         setState(() {
           isLoading = false;
@@ -49,24 +51,22 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
   @override
   Widget build(BuildContext context) {
     // Set the status bar color to match the app bar color
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      statusBarColor: Colors.deepPurple, // Set your desired color here
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.deepPurple, // Set your desired color here
+      ),
+    );
 
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(60),
-        child: SearchResultAppBar(
-          onChanged: search,
-        ),
+        child: SearchResultAppBar(onChanged: search),
       ),
       body: Builder(
         builder: (context) {
           if (isLoading) {
             return Center(
-              child: CircularProgressIndicator(
-                color: Colors.deepPurpleAccent,
-              ),
+              child: CircularProgressIndicator(color: Colors.deepPurpleAccent),
             );
           }
 
@@ -89,17 +89,11 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                 Expanded(
                   child: TabBarView(
                     children: [
-                      SearchSongsResult(
-                        isViewAll: false,
-                        songs: songs,
-                      ),
-                      SearchArtistsResult(
-                        isViewAll: false,
-                        artists: artists,
-                      ),
+                      SearchSongsResult(isViewAll: false, songs: songs),
+                      SearchArtistsResult(isViewAll: false, artists: artists),
                     ],
                   ),
-                )
+                ),
               ],
             ),
           );

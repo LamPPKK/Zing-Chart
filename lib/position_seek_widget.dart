@@ -86,17 +86,20 @@ class _PositionSeekWidgetState extends State<PositionSeekWidget> {
             children: [
               SizedBox(
                 width: 40,
-                child: Text(durationToString(widget.currentPosition),
-                    style: const TextStyle(color: Colors.white, fontSize: 12)),
+                child: Text(
+                  durationToString(widget.currentPosition),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
               ),
               SizedBox(
                 width: 40,
                 child: Text(
                   durationToString(widget.duration),
                   style: const TextStyle(
-                      fontWeight: FontWeight.normal,
-                      color: Colors.white,
-                      fontSize: 12),
+                    fontWeight: FontWeight.normal,
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
@@ -113,9 +116,11 @@ String durationToString(Duration duration) {
     return '0$n';
   }
 
-  final twoDigitMinutes =
-      twoDigits(duration.inMinutes.remainder(Duration.minutesPerHour));
-  final twoDigitSeconds =
-      twoDigits(duration.inSeconds.remainder(Duration.secondsPerMinute));
+  final twoDigitMinutes = twoDigits(
+    duration.inMinutes.remainder(Duration.minutesPerHour),
+  );
+  final twoDigitSeconds = twoDigits(
+    duration.inSeconds.remainder(Duration.secondsPerMinute),
+  );
   return '$twoDigitMinutes:$twoDigitSeconds';
 }

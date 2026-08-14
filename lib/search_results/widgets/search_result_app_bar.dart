@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
-class SearchResultAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const SearchResultAppBar({
-    Key? key,
-    required this.onChanged,
-  }) : super(key: key);
+class SearchResultAppBar extends StatelessWidget
+    implements PreferredSizeWidget {
+  const SearchResultAppBar({Key? key, required this.onChanged})
+    : super(key: key);
 
   final void Function(String? s) onChanged;
 
@@ -19,10 +18,7 @@ class SearchResultAppBar extends StatelessWidget implements PreferredSizeWidget 
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_ios,
-                  color: Colors.white,
-                ),
+                icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
                 onPressed: () {
                   Navigator.of(context).pop();
                 },

@@ -1,12 +1,28 @@
-class Song {
-  String id;
-  String name;
-  String title;
-  String thumbnail;
-  String artistsNames;
-  String code;
+import 'package:json_annotation/json_annotation.dart';
 
-  Song({
+part 'song.g.dart';
+
+@JsonSerializable()
+class Song {
+  @JsonKey(defaultValue: '')
+  final String id;
+
+  @JsonKey(defaultValue: '')
+  final String name;
+
+  @JsonKey(defaultValue: '')
+  final String title;
+
+  @JsonKey(defaultValue: '')
+  final String thumbnail;
+
+  @JsonKey(name: 'artists_names', defaultValue: '')
+  final String artistsNames;
+
+  @JsonKey(defaultValue: '')
+  final String code;
+
+  const Song({
     required this.id,
     required this.name,
     required this.title,
@@ -15,14 +31,9 @@ class Song {
     required this.code,
   });
 
-  factory Song.fromJson(Map<String, dynamic> json) {
-    return Song(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      title: json['title'] ?? '',
-      thumbnail: json['thumbnail'] ?? json['thumb'] ?? '',
-      artistsNames: json['artists_names'] ?? json['artist'] ?? '',
-      code: json['code'] ?? '',
-    );
-  }
+  factory Song.fromJson(Map<String, dynamic> json) => _$SongFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SongToJson(this);
+
+  String get displayTitle => title.isNotEmpty ? title : name;
 }

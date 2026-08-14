@@ -4,10 +4,8 @@ import 'package:zmp3chart/search_results/widgets/search_songs_result.dart';
 import '../models/song.dart';
 
 class SearchSongsResultScreen extends StatelessWidget {
-  const SearchSongsResultScreen({
-    Key? key,
-    required this.songs,
-  }) : super(key: key);
+  const SearchSongsResultScreen({Key? key, required this.songs})
+    : super(key: key);
 
   final List<Song> songs;
 
@@ -15,10 +13,7 @@ class SearchSongsResultScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Songs',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: Text('Songs', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.deepPurple,

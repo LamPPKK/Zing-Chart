@@ -1,0 +1,16 @@
+{
+  "id": "software.baycho.app.zingchart",
+  "version": "1.0.0",
+  "vendor": "LamNDT",
+  "type": "web",
+  "main": "index.html",
+  "title": "#zingChart",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "appDescription": "Bảng xếp hạng và trình phát nhạc cho TV",
+  "resolution": "1920x1080",
+  "bgColor": "#101113",
+  "iconColor": "#17181B",
+  "disableBackHistoryAPI": true,
+  "handlesRelaunch": false
+}

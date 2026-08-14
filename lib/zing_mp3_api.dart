@@ -1,85 +1,56 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-import 'package:zmp3chart/models/song.dart';
-
+import 'data/music_repository.dart';
 import 'models/artist.dart';
+import 'models/song.dart';
 
+/// Compatibility facade retained for the existing screens. All network calls
+/// are routed through the configured first-party proxy repository.
 class ZingMP3API {
-  static const String zingChartURL =
-      'https://mp3.zing.vn/xhr/chart-realtime?songId=0&videoId=0&albumId=0&chart=song&time=-1';
+  static MusicRepository? _repository;
 
-  static const String songDetailURL =
-      'https://m.zingmp3.vn/xhr/media/get-source?type=audio&key=';
-  static const String searchUrl =
-      'http://ac.mp3.zing.vn/complete?type=artist,song,key,code&num=20&query=';
-
-  static Future<List<Song>> getZingChartSongs() async {
-    try {
-      final response = await http.get(Uri.parse(zingChartURL));
-      if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body);
-        final songsData = jsonData['data']['song'] as List<dynamic>;
-
-        List<Song> songs =
-            songsData.map((songData) => Song.fromJson(songData)).toList();
-        return songs;
-      } else {
-        throw Exception('Failed to load Zing MP3 chart');
-      }
-    } catch (e) {
-      throw Exception('Failed to load Zing MP3 chart: $e');
-    }
+  static void configure(MusicRepository repository) {
+    _repository = repository;
   }
 
-  static Future<String> getSongUrlByCode(String code) async {
-    try {
-      final response = await http.get(Uri.parse(songDetailURL + code));
-      if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body);
-        final src = jsonData['data']['source']['128'] as String;
-
-        return 'https:' + src;
-      } else {
-        throw Exception('Failed to load MP3 Source');
-      }
-    } catch (e) {
-      throw Exception('Failed to load MP3 Source: $e');
+  static MusicRepository get _client {
+    final repository = _repository;
+    if (repository == null) {
+      throw const MusicRepositoryException(
+        'MusicRepository chưa được cấu hình.',
+      );
     }
+    return repository;
   }
 
-  static Future<(List<Song>, List<Artist>)> search(String q) async {
-    try {
-      final response = await http.get(Uri.parse(searchUrl + q));
-      if (response.statusCode == 200) {
-        List<Song>? songs;
-        List<Artist>? artists;
-        final jsonData = jsonDecode(response.body);
-        final data = jsonData['data'] as List<dynamic>;
+  static Future<List<Song>> getZingChartSongs() => _client.getChartSongs();
 
-        if (data.isEmpty) return (<Song>[], <Artist>[]);
+  static Future<String> getSongUrlByCode(String code) =>
+      _client.getSongSource(code);
 
-        if (data.length > 1) {
-          final songsData = data[0]['song'] as List<dynamic>;
-          songs = songsData.map((song) => Song.fromJson(song)).toList();
-        }
-
-        if (data.length == 2) {
-          final artistsData = data[1]['artist'] as List<dynamic>;
-
-          artists =
-              artistsData.map((artist) => Artist.fromJson(artist)).toList();
-        }
-
-        return (
-          songs ?? [],
-          artists ?? [],
-        );
-      } else {
-        throw Exception('Failed to load Search');
-      }
-    } catch (e) {
-      throw Exception('Failed to Search: $e');
-    }
+  static Future<(List<Song>, List<Artist>)> search(String query) async {
+    final normalized = query.trim().toLowerCase();
+    if (normalized.isEmpty) return (<Song>[], <Artist>[]);
+    final songs = await getZingChartSongs();
+    return (
+      songs
+          .where(
+            (song) =>
+                song.displayTitle.toLowerCase().contains(normalized) ||
+                song.artistsNames.toLowerCase().contains(normalized),
+          )
+          .toList(growable: false),
+      <Artist>[],
+    );
   }
+}
+
+typedef ZingApiException = MusicRepositoryException;
+
+String normalizeSongSource(String source) {
+  final normalized = source.trim();
+  if (normalized.startsWith('//')) return 'https:$normalized';
+  if (normalized.startsWith('http://')) {
+    return normalized.replaceFirst('http://', 'https://');
+  }
+  if (normalized.startsWith('https://')) return normalized;
+  return Uri.https('m.zingmp3.vn', normalized).toString();
 }
