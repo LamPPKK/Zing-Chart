@@ -7,17 +7,17 @@ part of 'artist.dart';
 // **************************************************************************
 
 Artist _$ArtistFromJson(Map<String, dynamic> json) => Artist(
-      aliasName: json['aliasName'] as String,
-      thumb: json['thumb'] as String,
-      name: json['name'] as String,
-      block: json['block'] as String,
-      id: json['id'] as String,
-    );
+  aliasName: json['aliasName'] as String,
+  thumb: json['thumb'] as String,
+  name: json['name'] as String,
+  block: json['block'] as String,
+  id: json['id'] as String,
+);
 
 Map<String, dynamic> _$ArtistToJson(Artist instance) => <String, dynamic>{
-      'aliasName': instance.aliasName,
-      'thumb': instance.thumb,
-      'name': instance.name,
-      'block': instance.block,
-      'id': instance.id,
-    };
+  'aliasName': instance.aliasName,
+  'thumb': instance.thumb,
+  'name': instance.name,
+  'block': instance.block,
+  'id': instance.id,
+};

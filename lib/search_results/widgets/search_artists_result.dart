@@ -40,9 +40,8 @@ class SearchArtistsResult extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => SearchArtistsResultScreen(
-                          artists: artists,
-                        ),
+                        builder: (context) =>
+                            SearchArtistsResultScreen(artists: artists),
                       ),
                     );
                   },
@@ -81,7 +80,8 @@ class SearchArtistsResult extends StatelessWidget {
                     shape: BoxShape.circle,
                     image: DecorationImage(
                       image: NetworkImage(
-                        'https://photo-resize-zmp3.zmdcdn.me/w165_r1x1_webp/' + artists[index].thumb,
+                        'https://photo-resize-zmp3.zmdcdn.me/w165_r1x1_webp/' +
+                            artists[index].thumb,
                       ),
                       fit: BoxFit.cover,
                     ),

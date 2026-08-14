@@ -4,8 +4,7 @@
 .dart_tool/
 .packages
 build/
-# If you're building an application, you may want to check-in your pubspec.lock
-pubspec.lock
+# Applications commit pubspec.lock for reproducible cross-platform builds.
 
 # Directory created by dartdoc
 # If you don't generate documentation locally you can remove this line.
@@ -13,6 +12,8 @@ doc/api/
 
 # dotenv environment variables file
 .env*
+!.env.example
+!**/.env.example
 
 # Avoid committing generated Javascript files:
 *.dart.js
@@ -25,3 +26,6 @@ doc/api/
 
 .flutter-plugins
 .flutter-plugins-dependencies
+.fvm/flutter_sdk
+.idea/
+*.iml

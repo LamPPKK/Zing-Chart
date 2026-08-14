@@ -4,10 +4,8 @@ import 'package:zmp3chart/search_results/widgets/search_artists_result.dart';
 import '../models/artist.dart';
 
 class SearchArtistsResultScreen extends StatelessWidget {
-  const SearchArtistsResultScreen({
-    Key? key,
-    required this.artists,
-  }) : super(key: key);
+  const SearchArtistsResultScreen({Key? key, required this.artists})
+    : super(key: key);
 
   final List<Artist> artists;
 

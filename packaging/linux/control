@@ -1,0 +1,9 @@
+Package: zingchart
+Version: @VERSION@
+Section: sound
+Priority: optional
+Architecture: amd64
+Maintainer: #zingChart contributors <maintainers@example.invalid>
+Depends: libgtk-3-0, libglib2.0-0, libgstreamer1.0-0, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-libav
+Description: #zingChart multiplatform music player
+ A dark, adaptive music chart player built with Flutter.

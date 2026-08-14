@@ -20,7 +20,7 @@ class SearchSongsResult extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bodyText1 = Theme.of(context).textTheme.bodyText1;
+    final bodyText1 = Theme.of(context).textTheme.bodyLarge;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -37,9 +37,8 @@ class SearchSongsResult extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => SearchSongsResultScreen(
-                          songs: songs,
-                        ),
+                        builder: (context) =>
+                            SearchSongsResultScreen(songs: songs),
                       ),
                     );
                   },
@@ -99,16 +98,14 @@ class SearchSongsResult extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => MusicPlayerScreen(
-                        song: song,
-                      ),
+                      builder: (context) => MusicPlayerScreen(song: song),
                     ),
                   );
                 },
               );
             },
           ),
-        )
+        ),
       ],
     );
   }
