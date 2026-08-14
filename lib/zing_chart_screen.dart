@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'analytics_dashboard_screen.dart';
 import 'models/local_library.dart';
+import 'models/listening_analytics.dart';
 import 'models/song.dart';
 import 'music_player_controller.dart';
 import 'music_player_scope.dart';
@@ -14,8 +16,10 @@ import 'theme/app_theme.dart';
 import 'widgets/album_art.dart';
 import 'widgets/desktop_now_playing_panel.dart';
 import 'widgets/editorial_discovery.dart';
+import 'widgets/for_you_hub.dart';
 import 'widgets/library_hub.dart';
 import 'widgets/mini_player.dart';
+import 'wrapped_screen.dart';
 import 'zing_mp3_api.dart';
 
 typedef ChartLoader = Future<List<Song>> Function();
@@ -60,7 +64,7 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
   String? _selectedPlaylistId;
 
   List<Song> _visibleSongs(MusicPlayerController controller) {
-    final source = _selectedTab == 2
+    final source = _selectedTab == 3
         ? _selectedPlaylist(controller)?.songs ?? controller.likedSongs
         : _songs;
     return filterSongs(source, _searchController.text);
@@ -99,6 +103,7 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
       final songs = await widget.loadSongs();
       if (!mounted) return;
       setState(() => _songs = songs);
+      MusicPlayerScope.of(context).updateCatalog(songs);
     } catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = error.toString());
@@ -162,6 +167,11 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
                             NavigationDestination(
                               icon: Icon(Icons.search_rounded),
                               label: 'Tìm kiếm',
+                            ),
+                            NavigationDestination(
+                              icon: Icon(Icons.auto_awesome_outlined),
+                              selectedIcon: Icon(Icons.auto_awesome_rounded),
+                              label: 'Dành cho bạn',
                             ),
                             NavigationDestination(
                               icon: Icon(Icons.library_music_outlined),
@@ -296,6 +306,17 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
               SliverToBoxAdapter(child: _buildHeader()),
               if (_selectedTab == 2)
                 SliverToBoxAdapter(
+                  child: ForYouHub(
+                    controller: controller,
+                    onPlaySongs: (songs) {
+                      if (songs.isNotEmpty) _selectSong(songs.first, songs);
+                    },
+                    onOpenAnalytics: _openAnalytics,
+                    onOpenWrapped: _openWrapped,
+                  ),
+                )
+              else if (_selectedTab == 3)
+                SliverToBoxAdapter(
                   child: LibraryHub(
                     controller: controller,
                     selectedPlaylistId: _selectedPlaylistId,
@@ -313,6 +334,8 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
                     },
                     onExportBackup: () => _exportBackupFile(controller),
                     onImportBackup: () => _importBackupFile(controller),
+                    onOpenAnalytics: _openAnalytics,
+                    onOpenWrapped: _openWrapped,
                   ),
                 )
               else if (!_isLoading &&
@@ -326,12 +349,12 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
                     onPlay: _selectSong,
                   ),
                 ),
-              if (_selectedTab != 2 && _isLoading)
+              if (_selectedTab < 2 && _isLoading)
                 const SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(child: CircularProgressIndicator()),
                 )
-              else if (_selectedTab != 2 && _errorMessage != null)
+              else if (_selectedTab < 2 && _errorMessage != null)
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: _ErrorState(
@@ -339,12 +362,12 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
                     onRetry: _loadSongs,
                   ),
                 )
-              else if (visibleSongs.isEmpty)
+              else if (_selectedTab != 2 && visibleSongs.isEmpty)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 46),
                     child: _EmptyState(
-                      message: _selectedTab == 2
+                      message: _selectedTab == 3
                           ? _selectedPlaylist(controller) == null
                                 ? 'Thư viện yêu thích đang trống'
                                 : 'Playlist này chưa có bài hát'
@@ -352,7 +375,7 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
                     ),
                   ),
                 )
-              else
+              else if (_selectedTab != 2)
                 SliverPadding(
                   padding: EdgeInsets.fromLTRB(
                     widget.tvMode ? 28 : 12,
@@ -427,7 +450,9 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
       song: song,
       rank: rank,
       isLiked: controller.isLiked(song),
+      moods: controller.moodsFor(song),
       onLike: () => controller.toggleLike(song),
+      onToggleMood: (mood) => controller.toggleMood(song, mood),
       onAddToQueue: addToQueue,
       onAddToPlaylist: () => _showPlaylistPicker(controller, song),
       onTap: () => _selectSong(song, visibleSongs),
@@ -516,6 +541,11 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
         label: Text('Tìm kiếm'),
       ),
       NavigationRailDestination(
+        icon: Icon(Icons.auto_awesome_outlined),
+        selectedIcon: Icon(Icons.auto_awesome_rounded),
+        label: Text('Dành cho bạn'),
+      ),
+      NavigationRailDestination(
         icon: Icon(Icons.library_music_outlined),
         selectedIcon: Icon(Icons.library_music_rounded),
         label: Text('Thư viện'),
@@ -538,6 +568,20 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
 
   bool _isEditingText() =>
       FocusManager.instance.primaryFocus?.context?.widget is EditableText;
+
+  void _openAnalytics() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const AnalyticsDashboardScreen()),
+    );
+  }
+
+  void _openWrapped() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => WrappedScreen(tvMode: widget.tvMode),
+      ),
+    );
+  }
 
   Future<void> _showCreatePlaylist(MusicPlayerController controller) async {
     final name = await _promptPlaylistName(title: 'Tạo playlist mới');
@@ -770,11 +814,13 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
     final titles = [
       '#zingChart',
       'Tìm kiếm',
+      'Dành cho bạn',
       selectedPlaylist?.name ?? 'Thư viện',
     ];
     final subtitles = [
       'BẢNG XẾP HẠNG · CẬP NHẬT THEO THỜI GIAN THỰC',
       'TÊN BÀI HÁT · NGHỆ SĨ · TỪ KHÓA',
+      'DAILY MIX · MOOD MIX · WRAPPED LOCAL',
       selectedPlaylist == null
           ? '${controller.likedSongs.length} BÀI THÍCH · ${controller.playlists.length} PLAYLIST'
           : '${selectedPlaylist.songs.length} BÀI HÁT · LƯU TRÊN THIẾT BỊ',
@@ -848,90 +894,96 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
                 ),
             ],
           ),
-          SizedBox(height: widget.tvMode ? 30 : 24),
-          TextField(
-            key: const ValueKey('chart-search-field'),
-            controller: _searchController,
-            focusNode: _searchFocusNode,
-            onChanged: (_) => setState(() {}),
-            onSubmitted: controller.recordSearch,
-            textInputAction: TextInputAction.search,
-            style: TextStyle(fontSize: widget.tvMode ? 20 : 16),
-            decoration: InputDecoration(
-              labelText: 'Tìm bài hát hoặc nghệ sĩ',
-              hintText: 'Ví dụ: Quốc Thiên',
-              prefixIcon: const Icon(Icons.search_rounded),
-              suffixIcon: _searchController.text.isEmpty
-                  ? null
-                  : IconButton(
-                      tooltip: 'Xóa tìm kiếm',
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() {});
-                      },
-                      icon: const Icon(Icons.close_rounded),
-                    ),
+          if (_selectedTab != 2) ...[
+            SizedBox(height: widget.tvMode ? 30 : 24),
+            TextField(
+              key: const ValueKey('chart-search-field'),
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: controller.recordSearch,
+              textInputAction: TextInputAction.search,
+              style: TextStyle(fontSize: widget.tvMode ? 20 : 16),
+              decoration: InputDecoration(
+                labelText: 'Tìm bài hát hoặc nghệ sĩ',
+                hintText: 'Ví dụ: Quốc Thiên',
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: _searchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Xóa tìm kiếm',
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {});
+                        },
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+              ),
             ),
-          ),
-          if (_selectedTab == 1 &&
-              _searchController.text.isEmpty &&
-              controller.recentSearches.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            if (_selectedTab == 1 &&
+                _searchController.text.isEmpty &&
+                controller.recentSearches.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: controller.recentSearches
+                          .map(
+                            (query) => ActionChip(
+                              avatar: const Icon(
+                                Icons.history_rounded,
+                                size: 17,
+                              ),
+                              label: Text(query),
+                              onPressed: () {
+                                _searchController.text = query;
+                                controller.recordSearch(query);
+                                setState(() {});
+                              },
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Xóa tìm kiếm gần đây',
+                    onPressed: controller.clearRecentSearches,
+                    icon: const Icon(Icons.delete_sweep_outlined),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 18),
             Row(
               children: [
-                Expanded(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: controller.recentSearches
-                        .map(
-                          (query) => ActionChip(
-                            avatar: const Icon(Icons.history_rounded, size: 17),
-                            label: Text(query),
-                            onPressed: () {
-                              _searchController.text = query;
-                              controller.recordSearch(query);
-                              setState(() {});
-                            },
-                          ),
-                        )
-                        .toList(),
+                Text(
+                  _selectedTab == 3
+                      ? selectedPlaylist?.name.toUpperCase() ??
+                            'BÀI HÁT ĐÃ THÍCH'
+                      : _searchController.text.isEmpty
+                      ? 'TOP 100'
+                      : 'KẾT QUẢ',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.4,
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Xóa tìm kiếm gần đây',
-                  onPressed: controller.clearRecentSearches,
-                  icon: const Icon(Icons.delete_sweep_outlined),
-                ),
+                const Spacer(),
+                if (!_isLoading && _errorMessage == null)
+                  Text(
+                    '${_visibleSongs(controller).length} bài hát',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
               ],
             ),
           ],
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Text(
-                _selectedTab == 2
-                    ? selectedPlaylist?.name.toUpperCase() ?? 'BÀI HÁT ĐÃ THÍCH'
-                    : _searchController.text.isEmpty
-                    ? 'TOP 100'
-                    : 'KẾT QUẢ',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.4,
-                ),
-              ),
-              const Spacer(),
-              if (!_isLoading && _errorMessage == null)
-                Text(
-                  '${_visibleSongs(controller).length} bài hát',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontSize: 12,
-                  ),
-                ),
-            ],
-          ),
         ],
       ),
     );
@@ -945,7 +997,9 @@ class _SongTile extends StatefulWidget {
     required this.rank,
     required this.onTap,
     required this.isLiked,
+    required this.moods,
     required this.onLike,
+    required this.onToggleMood,
     required this.onAddToQueue,
     required this.onAddToPlaylist,
     this.tvMode = false,
@@ -956,7 +1010,9 @@ class _SongTile extends StatefulWidget {
   final int rank;
   final VoidCallback onTap;
   final bool isLiked;
+  final Set<MoodTag> moods;
   final VoidCallback onLike;
+  final ValueChanged<MoodTag> onToggleMood;
   final VoidCallback onAddToQueue;
   final VoidCallback onAddToPlaylist;
   final bool tvMode;
@@ -1088,11 +1144,7 @@ class _SongTileState extends State<_SongTile> {
                 ),
                 PopupMenuButton<String>(
                   tooltip: 'Tùy chọn bài hát',
-                  onSelected: (value) {
-                    if (value == 'queue') widget.onAddToQueue();
-                    if (value == 'playlist') widget.onAddToPlaylist();
-                    if (value == 'like') widget.onLike();
-                  },
+                  onSelected: _handleSelection,
                   itemBuilder: (_) => [
                     const PopupMenuItem(
                       value: 'queue',
@@ -1121,6 +1173,7 @@ class _SongTileState extends State<_SongTile> {
                         ),
                       ),
                     ),
+                    ...MoodTag.values.map(_moodMenuItem),
                   ],
                 ),
               ],
@@ -1172,14 +1225,49 @@ class _SongTileState extends State<_SongTile> {
             title: Text(widget.isLiked ? 'Bỏ yêu thích' : 'Yêu thích'),
           ),
         ),
+        ...MoodTag.values.map(_moodMenuItem),
       ],
     );
-    if (selection == 'play') widget.onTap();
-    if (selection == 'queue') widget.onAddToQueue();
-    if (selection == 'playlist') widget.onAddToPlaylist();
-    if (selection == 'like') widget.onLike();
+    if (selection != null) _handleSelection(selection);
+  }
+
+  PopupMenuItem<String> _moodMenuItem(MoodTag mood) => PopupMenuItem(
+    value: 'mood-${mood.name}',
+    child: ListTile(
+      leading: Icon(
+        widget.moods.contains(mood)
+            ? Icons.check_circle_rounded
+            : _moodIcon(mood),
+        color: widget.moods.contains(mood) ? ZingColors.lime : null,
+      ),
+      title: Text(
+        '${widget.moods.contains(mood) ? 'Bỏ' : 'Gắn'} mood ${_moodLabel(mood)}',
+      ),
+    ),
+  );
+
+  void _handleSelection(String value) {
+    if (value == 'play') widget.onTap();
+    if (value == 'queue') widget.onAddToQueue();
+    if (value == 'playlist') widget.onAddToPlaylist();
+    if (value == 'like') widget.onLike();
+    for (final mood in MoodTag.values) {
+      if (value == 'mood-${mood.name}') widget.onToggleMood(mood);
+    }
   }
 }
+
+String _moodLabel(MoodTag mood) => switch (mood) {
+  MoodTag.chill => 'Chill',
+  MoodTag.gym => 'Gym',
+  MoodTag.focus => 'Tập trung',
+};
+
+IconData _moodIcon(MoodTag mood) => switch (mood) {
+  MoodTag.chill => Icons.water_rounded,
+  MoodTag.gym => Icons.bolt_rounded,
+  MoodTag.focus => Icons.center_focus_strong_rounded,
+};
 
 class _PlaylistNameDialog extends StatefulWidget {
   const _PlaylistNameDialog({required this.title, required this.initialValue});

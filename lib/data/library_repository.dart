@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/listening_analytics.dart';
 import '../models/local_library.dart';
 import '../models/song.dart';
 
@@ -101,6 +102,7 @@ class LibraryBackupData {
     this.history = const [],
     this.recentSearches = const [],
     this.themePreferenceIndex = 0,
+    this.analytics,
   });
 
   final List<Song> likedSongs;
@@ -108,12 +110,13 @@ class LibraryBackupData {
   final List<ListeningRecord> history;
   final List<String> recentSearches;
   final int themePreferenceIndex;
+  final ListeningAnalyticsSnapshot? analytics;
 
   static const maxEncodedBytes = 5 * 1024 * 1024;
 
   String encode() => const JsonEncoder.withIndent('  ').convert({
     'schema': 'zingchart-library',
-    'version': 1,
+    'version': 2,
     'exportedAt': DateTime.now().toUtc().toIso8601String(),
     'library': {
       'likedSongs': likedSongs.map((song) => song.toJson()).toList(),
@@ -121,6 +124,7 @@ class LibraryBackupData {
       'history': history.map((record) => record.toJson()).toList(),
       'recentSearches': recentSearches,
       'themePreferenceIndex': themePreferenceIndex,
+      if (analytics != null) 'analytics': analytics!.toJson(),
     },
   });
 
@@ -133,11 +137,19 @@ class LibraryBackupData {
       final decoded = jsonDecode(source);
       if (decoded is! Map<String, dynamic> ||
           decoded['schema'] != 'zingchart-library' ||
-          decoded['version'] != 1 ||
+          (decoded['version'] != 1 && decoded['version'] != 2) ||
           decoded['library'] is! Map<String, dynamic>) {
         throw const FormatException('File backup #zingChart không hợp lệ.');
       }
       final library = decoded['library'] as Map<String, dynamic>;
+      final analyticsJson = library['analytics'];
+      if (decoded['version'] == 2 &&
+          library.containsKey('analytics') &&
+          analyticsJson is! Map<String, dynamic>) {
+        throw const FormatException(
+          'File backup #zingChart có analytics không hợp lệ.',
+        );
+      }
       return LibraryBackupData(
         likedSongs: _readSongList(library['likedSongs']),
         playlists: _readMaps(library['playlists'])
@@ -164,6 +176,10 @@ class LibraryBackupData {
             : const [],
         themePreferenceIndex:
             (library['themePreferenceIndex'] as num?)?.toInt() ?? 0,
+        analytics:
+            decoded['version'] == 2 && analyticsJson is Map<String, dynamic>
+            ? ListeningAnalyticsSnapshot.fromJson(analyticsJson)
+            : null,
       );
     } on FormatException {
       rethrow;

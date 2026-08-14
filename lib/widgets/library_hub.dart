@@ -18,6 +18,8 @@ class LibraryHub extends StatelessWidget {
     required this.onPlaySongs,
     required this.onExportBackup,
     required this.onImportBackup,
+    required this.onOpenAnalytics,
+    required this.onOpenWrapped,
   });
 
   final MusicPlayerController controller;
@@ -29,6 +31,8 @@ class LibraryHub extends StatelessWidget {
   final ValueChanged<List<Song>> onPlaySongs;
   final VoidCallback onExportBackup;
   final VoidCallback onImportBackup;
+  final VoidCallback onOpenAnalytics;
+  final VoidCallback onOpenWrapped;
 
   @override
   Widget build(BuildContext context) {
@@ -51,18 +55,21 @@ class LibraryHub extends StatelessWidget {
                   label: 'phút đã nghe',
                   icon: Icons.schedule_rounded,
                   accent: ZingColors.coral,
+                  onTap: onOpenAnalytics,
                 ),
                 _StatCard(
                   value: '${controller.history.length}',
                   label: 'lượt phát local',
                   icon: Icons.graphic_eq_rounded,
                   accent: ZingColors.lime,
+                  onTap: onOpenAnalytics,
                 ),
                 _StatCard(
                   value: '${controller.likedSongs.length}',
                   label: 'bài đã thích',
                   icon: Icons.favorite_rounded,
                   accent: ZingColors.blue,
+                  onTap: onOpenAnalytics,
                 ),
               ];
               return compact
@@ -198,6 +205,38 @@ class LibraryHub extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 30),
+          _SectionTitle(
+            eyebrow: 'YEAR IN SOUND',
+            title: 'Mini Wrapped',
+            trailing: FilledButton.tonalIcon(
+              onPressed: onOpenWrapped,
+              icon: const Icon(Icons.auto_awesome_rounded),
+              label: const Text('Mở Wrapped'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 10,
+              ),
+              leading: const Icon(
+                Icons.local_fire_department_rounded,
+                color: ZingColors.coral,
+              ),
+              title: const Text(
+                'Dấu ấn nghe nhạc quanh năm',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+              subtitle: const Text(
+                '6 slide được dựng hoàn toàn từ dữ liệu trên thiết bị.',
+              ),
+              trailing: const Icon(Icons.arrow_forward_rounded),
+              onTap: onOpenWrapped,
+            ),
+          ),
+          const SizedBox(height: 30),
           const _SectionTitle(eyebrow: 'LOCAL-FIRST', title: 'Dữ liệu của bạn'),
           const SizedBox(height: 12),
           Card(
@@ -265,48 +304,54 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.accent,
+    required this.onTap,
   });
 
   final String value;
   final String label;
   final IconData icon;
   final Color accent;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Icon(icon, color: accent),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 28,
-                    height: 1,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(icon, color: accent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      height: 1,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -1,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
+                  const SizedBox(height: 7),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );

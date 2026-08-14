@@ -357,7 +357,7 @@ void main() {
     await tester.pump();
     expect(
       tester.widget<NavigationRail>(find.byType(NavigationRail)).selectedIndex,
-      2,
+      3,
     );
     expect(await tester.binding.handlePopRoute(), isTrue);
     await tester.pump();

@@ -21,9 +21,12 @@ class EditorialDiscovery extends StatelessWidget {
   Widget build(BuildContext context) {
     if (songs.isEmpty) return const SizedBox.shrink();
     final lead = songs.first;
-    final localMix = controller.dailyMix.isEmpty
+    final personalized = controller.dailyMix
+        .where((song) => song.id != lead.id)
+        .toList(growable: false);
+    final localMix = personalized.isEmpty
         ? songs.skip(1).take(12).toList(growable: false)
-        : controller.dailyMix;
+        : personalized;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
       child: Column(

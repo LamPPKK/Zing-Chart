@@ -4,8 +4,12 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
 import 'data/library_repository.dart';
+import 'data/listening_analytics_repository.dart';
+import 'models/listening_analytics.dart';
 import 'models/local_library.dart';
 import 'models/song.dart';
+import 'services/listening_analytics_service.dart';
+import 'services/local_mix_engine.dart';
 import 'services/playback_audio_player.dart';
 import 'services/system_media_bridge.dart';
 import 'zing_mp3_api.dart';
@@ -20,6 +24,9 @@ class PlaybackService extends ChangeNotifier {
     PlaybackAudioPlayer? playbackAudioPlayer,
     SongSourceResolver? sourceResolver,
     LibraryRepository? libraryRepository,
+    ListeningAnalyticsRepository? analyticsRepository,
+    ListeningAnalyticsService? analyticsService,
+    LocalMixEngine? mixEngine,
     SystemMediaBridge? systemMediaBridge,
   }) : assert(audioPlayer == null || playbackAudioPlayer == null),
        _audioPlayer =
@@ -28,11 +35,17 @@ class PlaybackService extends ChangeNotifier {
        _sourceResolver = sourceResolver ?? ZingMP3API.getSongUrlByCode,
        _libraryRepository =
            libraryRepository ?? SharedPreferencesLibraryRepository(),
+       _analytics =
+           analyticsService ??
+           ListeningAnalyticsService(repository: analyticsRepository),
+       _mixEngine = mixEngine ?? const LocalMixEngine(),
        _systemMediaBridge = systemMediaBridge;
 
   final PlaybackAudioPlayer _audioPlayer;
   final SongSourceResolver _sourceResolver;
   final LibraryRepository _libraryRepository;
+  final ListeningAnalyticsService _analytics;
+  final LocalMixEngine _mixEngine;
   SystemMediaBridge? _systemMediaBridge;
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   Future<void> _playerCommandQueue = Future<void>.value();
@@ -55,6 +68,7 @@ class PlaybackService extends ChangeNotifier {
   final Map<String, LocalPlaylist> _playlists = {};
   List<ListeningRecord> _history = const [];
   List<String> _recentSearches = const [];
+  List<Song> _catalog = const [];
   AppThemePreference _themePreference = AppThemePreference.system;
   String? _activeHistoryRecordId;
   Duration _lastListeningPosition = Duration.zero;
@@ -98,6 +112,8 @@ class PlaybackService extends ChangeNotifier {
   PlayerRepeatMode get repeatMode => _repeatMode;
   bool get canGoNext => _queue.length > 1;
   bool get canGoPrevious => _queue.length > 1;
+  ListeningAnalyticsSnapshot get analyticsSnapshot => _analytics.snapshot;
+  bool get hasAnalyticsActivity => _analytics.hasActivity;
 
   Duration get totalListeningTime =>
       _history.fold(Duration.zero, (total, record) => total + record.listened);
@@ -170,16 +186,45 @@ class PlaybackService extends ChangeNotifier {
         .toList(growable: false);
   }
 
-  List<Song> get dailyMix {
-    final result = <Song>[];
-    final seen = <String>{};
-    for (final stat in topSongStats) {
-      if (seen.add(stat.song.id)) result.add(stat.song);
+  List<Song> get dailyMix => dailyMixCollection.songs;
+
+  MixCollection get dailyMixCollection => _mixEngine.buildDailyMix(
+    candidates: _mixCandidates,
+    likedSongIds: _likedSongs.keys.toSet(),
+    analytics: _analytics,
+  );
+
+  MixCollection moodMix(MoodTag mood) => _mixEngine.buildMoodMix(
+    mood: mood,
+    candidates: _mixCandidates,
+    likedSongIds: _likedSongs.keys.toSet(),
+    analytics: _analytics,
+  );
+
+  Set<MoodTag> moodsFor(Song song) => _analytics.moodsFor(song);
+
+  AnalyticsSummary analyticsSummary(AnalyticsPeriod period, {int? year}) =>
+      _analytics.summary(period, year: year);
+
+  WrappedSummary wrappedSummary(int year) => _analytics.wrapped(year);
+
+  List<Song> get _mixCandidates {
+    final songs = <String, Song>{};
+    for (final song in _catalog) {
+      songs.putIfAbsent(song.id, () => song);
     }
     for (final song in _likedSongs.values) {
-      if (seen.add(song.id)) result.add(song);
+      songs.putIfAbsent(song.id, () => song);
     }
-    return List<Song>.unmodifiable(result.take(25));
+    for (final playlist in _playlists.values) {
+      for (final song in playlist.songs) {
+        songs.putIfAbsent(song.id, () => song);
+      }
+    }
+    for (final record in _history) {
+      songs.putIfAbsent(record.song.id, () => record.song);
+    }
+    return songs.values.toList(growable: false);
   }
 
   double get progress {
@@ -189,6 +234,7 @@ class PlaybackService extends ChangeNotifier {
 
   Future<void> initialize() async {
     await _restoreSnapshot();
+    await _analytics.initialize(legacyHistory: _history);
     if (_systemMediaBridge == null) {
       try {
         _systemMediaBridge = await createSystemMediaBridge();
@@ -240,12 +286,14 @@ class PlaybackService extends ChangeNotifier {
       ..add(
         _audioPlayer.onDurationChanged.listen((duration) {
           _duration = duration;
+          _analytics.updateDuration(duration);
           _notifyPlaybackChanged();
         }),
       )
       ..add(
         _audioPlayer.onPositionChanged.listen((position) {
           _recordListeningProgress(position);
+          _analytics.recordProgress(position);
           _position = position;
           _notifyPlaybackChanged();
           final bucket = position.inSeconds ~/ 5;
@@ -264,6 +312,7 @@ class PlaybackService extends ChangeNotifier {
               completedSongId != _currentSong?.id) {
             return;
           }
+          _analytics.completeSession();
           _state = PlayerState.completed;
           _position = _duration;
           _notifyPlaybackChanged();
@@ -274,6 +323,7 @@ class PlaybackService extends ChangeNotifier {
   }
 
   Future<void> playSong(Song song, {List<Song>? queue}) async {
+    _analytics.finishSession(earlySkip: true);
     if (queue != null && queue.isNotEmpty) {
       _queue = List<Song>.unmodifiable(queue);
       _currentIndex = _queue.indexWhere((item) => item.id == song.id);
@@ -325,6 +375,9 @@ class PlaybackService extends ChangeNotifier {
       });
       if (requestId != _requestId) return;
       _recordPlaybackStarted(song);
+      _analytics.startSession(song);
+      _analytics.updateDuration(_duration);
+      _analytics.finishSeek(_position);
     } catch (error) {
       if (requestId != _requestId) return;
       _state = PlayerState.stopped;
@@ -351,6 +404,8 @@ class PlaybackService extends ChangeNotifier {
           await _audioPlayer.resume();
         });
         _recordPlaybackStarted(_currentSong!);
+        _analytics.startSession(_currentSong!);
+        _analytics.updateDuration(_duration);
       } else if (_state == PlayerState.stopped && _currentSource != null) {
         final requestId = ++_requestId;
         await _runPlayerCommand(() async {
@@ -359,6 +414,8 @@ class PlaybackService extends ChangeNotifier {
           await _audioPlayer.play(UrlSource(_currentSource!));
         });
         _recordPlaybackStarted(_currentSong!);
+        _analytics.startSession(_currentSong!);
+        _analytics.updateDuration(_duration);
       } else if (_state == PlayerState.stopped) {
         await playSong(_currentSong!);
       } else {
@@ -371,6 +428,7 @@ class PlaybackService extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    _analytics.finishSession(earlySkip: false);
     _requestId++;
     _activePlaybackRequestId = -1;
     _activePlaybackSongId = null;
@@ -393,6 +451,7 @@ class PlaybackService extends ChangeNotifier {
       if (_repeatMode == PlayerRepeatMode.all) {
         await _playQueueIndex(0);
       } else {
+        _analytics.finishSession(earlySkip: true);
         await stop();
       }
       return;
@@ -438,6 +497,20 @@ class PlaybackService extends ChangeNotifier {
   }
 
   bool isLiked(Song song) => _likedSongs.containsKey(song.id);
+
+  void updateCatalog(List<Song> songs) {
+    final nextIds = songs.map((song) => song.id).join('|');
+    final currentIds = _catalog.map((song) => song.id).join('|');
+    if (nextIds == currentIds) return;
+    _catalog = List<Song>.unmodifiable(songs);
+    notifyListeners();
+  }
+
+  bool toggleMood(Song song, MoodTag mood) {
+    final added = _analytics.toggleMood(song, mood);
+    notifyListeners();
+    return added;
+  }
 
   bool addToQueue(Song song) {
     if (song.id == _currentSong?.id) return false;
@@ -616,6 +689,7 @@ class PlaybackService extends ChangeNotifier {
     history: history,
     recentSearches: recentSearches,
     themePreferenceIndex: themePreference.index,
+    analytics: _analytics.snapshot,
   ).encode();
 
   Future<BackupImportResult> importLibraryJson(
@@ -669,6 +743,14 @@ class PlaybackService extends ChangeNotifier {
         searches.putIfAbsent(query.toLowerCase(), () => query);
       }
       _recentSearches = List<String>.unmodifiable(searches.values.take(8));
+    }
+    final incomingAnalytics = backup.analytics;
+    if (incomingAnalytics != null) {
+      if (mode == BackupImportMode.overwrite) {
+        await _analytics.overwriteSnapshot(incomingAnalytics);
+      } else {
+        await _analytics.mergeSnapshot(incomingAnalytics);
+      }
     }
     if (mode == BackupImportMode.overwrite) {
       _themePreference =
@@ -733,12 +815,28 @@ class PlaybackService extends ChangeNotifier {
         : target > _duration
         ? _duration
         : target;
-    await _runPlayerCommand(() => _audioPlayer.seek(safeTarget));
+    _analytics.beginSeek(safeTarget);
+    try {
+      await _runPlayerCommand(() => _audioPlayer.seek(safeTarget));
+      _analytics.finishSeek(safeTarget);
+    } catch (_) {
+      _analytics.finishSeek(_position);
+      rethrow;
+    }
   }
 
   void clearError() {
     _errorMessage = null;
     _notifyPlaybackChanged();
+  }
+
+  Future<void> clearListeningHistoryAndStats() async {
+    _history = const [];
+    _activeHistoryRecordId = null;
+    _lastListeningPosition = Duration.zero;
+    await _analytics.clearActivity();
+    notifyListeners();
+    await _saveSnapshot();
   }
 
   Future<void> _runPlayerCommand(Future<void> Function() command) {
@@ -952,6 +1050,7 @@ class PlaybackService extends ChangeNotifier {
     }
     final bridge = _systemMediaBridge;
     if (bridge != null) unawaited(bridge.dispose());
+    _analytics.dispose();
     unawaited(_audioPlayer.dispose());
     super.dispose();
   }

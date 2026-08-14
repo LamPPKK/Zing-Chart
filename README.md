@@ -16,13 +16,40 @@ proxy Node/TypeScript do người triển khai tự host.
 - Queue kéo thả, vuốt sang phải để thêm bài và sleep timer.
 - Background playback cùng system media controls trên nền tảng được hỗ trợ.
 - Thư viện Local-First: yêu thích, playlist cá nhân, lịch sử nghe, tìm kiếm gần
-  đây, thống kê local và Daily Mix.
-- Export/import backup JSON theo hai chế độ Merge hoặc Overwrite.
+  đây, analytics 7/30 ngày/theo năm, Daily Mix và Mood Mix Chill/Gym/Tập trung.
+- Mini Wrapped 6 slide quanh năm; xuất PNG trên phone/web/desktop và QR tóm tắt
+  local trên TV.
+- Export/import backup JSON v2 theo hai chế độ Merge hoặc Overwrite; vẫn đọc
+  được backup v1.
 - Theme Sáng/Tối/Theo hệ thống, giữ nhận diện charcoal, coral và lime.
 - UI adaptive cho mobile, tablet, desktop và giao diện 10-foot cho TV.
 
 Chưa hỗ trợ tải/caching file nhạc để nghe offline. PWA chỉ cache app shell và
 dữ liệu không phải audio.
+
+### Local Intelligence v1.1
+
+- Thời gian nghe được cộng từ tiến trình phát thực tế; bước nhảy do seek không
+  được tính. Một lượt hợp lệ khi đạt `min(30 giây, 50% thời lượng)`.
+- Chỉ Next, Previous hoặc chọn bài khác trước ngưỡng mới là early skip. Pause,
+  Stop và seek là tín hiệu trung tính; completion được ghi khi player phát hết.
+- Dữ liệu giữ tối đa 500 lịch sử gần nhất, chi tiết theo bài trong 62 ngày và
+  tổng hợp tháng trong 24 tháng. Tất cả nằm trên thiết bị và không gửi lên proxy.
+- Daily Mix lấy ứng viên từ chart, favorites, playlist và lịch sử, tối đa 25
+  bài và không quá hai bài cùng nghệ sĩ. Cold start ưu tiên bài đã thích rồi tới
+  thứ hạng chart.
+- Mood không được suy đoán từ tên bài. Người dùng tự gắn nhiều nhãn Chill, Gym
+  hoặc Tập trung từ menu bài hát và màn hình Now Playing.
+- Backup v2 chứa analytics và mood. Merge dùng installation/date/song cùng bộ
+  đếm lớn nhất để import lặp lại không cộng trùng; Overwrite vẫn giữ installation
+  ID đang hoạt động. Giới hạn file là 5 MB.
+- “Xóa lịch sử và thống kê” không xóa favorites, playlist hoặc mood tags.
+
+Wrapped dùng Canvas nội bộ để dựng gradient, typography và họa tiết, không tải
+ảnh bìa khi xuất nên không phụ thuộc CORS. Android/iOS mở share sheet, Web tải
+hoặc chia sẻ PNG, desktop chọn nơi lưu; TV hiển thị QR chứa summary đã phiên bản
+hóa và không cần server. HarmonyOS tự rơi về summary/QR có thể sao chép nếu
+adapter share/save không khả dụng.
 
 ## 2. Kiến trúc và thư mục
 

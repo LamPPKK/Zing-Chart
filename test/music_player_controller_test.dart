@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zmp3chart/data/library_repository.dart';
+import 'package:zmp3chart/data/listening_analytics_repository.dart';
+import 'package:zmp3chart/models/listening_analytics.dart';
 import 'package:zmp3chart/models/local_library.dart';
 import 'package:zmp3chart/models/song.dart';
 import 'package:zmp3chart/music_player_controller.dart';
@@ -367,6 +369,154 @@ void main() {
       expect(controller.topArtistStats.first.playCount, 1);
       controller.dispose();
     });
+
+    test(
+      'records qualified plays, completion and explicit early skips',
+      () async {
+        final audio = FakePlaybackAudioPlayer();
+        final analyticsRepository = MemoryListeningAnalyticsRepository();
+        final controller = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: MemoryLibraryRepository(),
+          analyticsRepository: analyticsRepository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+
+        await controller.playSong(songs.first, queue: songs);
+        audio.emitDuration(const Duration(minutes: 2));
+        audio.emitPosition(const Duration(seconds: 5));
+        await controller.next();
+        await _flushAsync();
+
+        var summary = controller.analyticsSummary(AnalyticsPeriod.sevenDays);
+        expect(summary.earlySkips, 1);
+        expect(summary.qualifiedPlays, 0);
+
+        audio.emitDuration(const Duration(seconds: 20));
+        audio.emitPosition(const Duration(seconds: 5));
+        audio.emitPosition(const Duration(seconds: 10));
+        audio.complete();
+        await _flushAsync();
+
+        summary = controller.analyticsSummary(AnalyticsPeriod.sevenDays);
+        expect(summary.qualifiedPlays, 1);
+        expect(summary.completions, 1);
+        expect(summary.earlySkips, 1);
+        controller.dispose();
+      },
+    );
+
+    test(
+      'Next at the queue end is an early skip while Stop is neutral',
+      () async {
+        final audio = FakePlaybackAudioPlayer();
+        final controller = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: MemoryLibraryRepository(),
+          analyticsRepository: MemoryListeningAnalyticsRepository(),
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+
+        await controller.playSong(songs.first);
+        audio.emitDuration(const Duration(minutes: 2));
+        audio.emitPosition(const Duration(seconds: 5));
+        await controller.stop();
+        expect(
+          controller.analyticsSummary(AnalyticsPeriod.sevenDays).earlySkips,
+          0,
+        );
+
+        await controller.togglePlayPause();
+        audio.emitPosition(const Duration(seconds: 5));
+        await controller.next();
+        expect(
+          controller.analyticsSummary(AnalyticsPeriod.sevenDays).earlySkips,
+          1,
+        );
+        controller.dispose();
+      },
+    );
+
+    test('persists mood tags and analytics in backup v2', () async {
+      final source = PlaybackService(
+        playbackAudioPlayer: FakePlaybackAudioPlayer(),
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        libraryRepository: MemoryLibraryRepository(),
+        analyticsRepository: MemoryListeningAnalyticsRepository(),
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await source.initialize();
+      source.toggleMood(songs.first, MoodTag.focus);
+      final backup = source.exportLibraryJson();
+
+      final target = PlaybackService(
+        playbackAudioPlayer: FakePlaybackAudioPlayer(),
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        libraryRepository: MemoryLibraryRepository(),
+        analyticsRepository: MemoryListeningAnalyticsRepository(),
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await target.initialize();
+      await target.importLibraryJson(backup, BackupImportMode.merge);
+
+      expect(target.moodsFor(songs.first), {MoodTag.focus});
+      expect(target.analyticsSnapshot.installationId, isNotEmpty);
+      source.dispose();
+      target.dispose();
+    });
+
+    test(
+      'restores analytics after restart and clears it without favorites',
+      () async {
+        final analyticsRepository = MemoryListeningAnalyticsRepository();
+        final libraryRepository = MemoryLibraryRepository();
+        final audio = FakePlaybackAudioPlayer();
+        final first = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: libraryRepository,
+          analyticsRepository: analyticsRepository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await first.initialize();
+        first.toggleLike(songs.first);
+        first.toggleMood(songs.first, MoodTag.chill);
+        await first.playSong(songs.first);
+        audio.emitDuration(const Duration(seconds: 20));
+        audio.emitPosition(const Duration(seconds: 5));
+        audio.emitPosition(const Duration(seconds: 10));
+        audio.complete();
+        await _flushAsync();
+        first.dispose();
+        await _flushAsync();
+
+        final restored = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: libraryRepository,
+          analyticsRepository: analyticsRepository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await restored.initialize();
+        expect(
+          restored.analyticsSummary(AnalyticsPeriod.sevenDays).qualifiedPlays,
+          1,
+        );
+        expect(restored.moodsFor(songs.first), {MoodTag.chill});
+        expect(restored.isLiked(songs.first), isTrue);
+
+        await restored.clearListeningHistoryAndStats();
+        expect(restored.hasAnalyticsActivity, isFalse);
+        expect(restored.history, isEmpty);
+        expect(restored.isLiked(songs.first), isTrue);
+        expect(restored.moodsFor(songs.first), {MoodTag.chill});
+        restored.dispose();
+      },
+    );
 
     test('exports and imports library data with merge or overwrite', () async {
       final source = _controller(FakePlaybackAudioPlayer());

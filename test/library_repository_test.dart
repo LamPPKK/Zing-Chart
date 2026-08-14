@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zmp3chart/data/library_repository.dart';
+import 'package:zmp3chart/models/listening_analytics.dart';
 import 'package:zmp3chart/models/local_library.dart';
 import 'package:zmp3chart/models/song.dart';
 
@@ -102,6 +103,12 @@ void main() {
       history: [ListeningRecord(id: 'record', song: song, playedAt: now)],
       recentSearches: const ['Một Bài Hát'],
       themePreferenceIndex: AppThemePreference.dark.index,
+      analytics: const ListeningAnalyticsSnapshot(
+        installationId: 'install-a',
+        moodAssignments: {
+          'one': MoodAssignment(song: song, tags: {MoodTag.focus}),
+        },
+      ),
     );
 
     final restored = LibraryBackupData.decode(backup.encode());
@@ -111,6 +118,8 @@ void main() {
     expect(restored.history.single.id, 'record');
     expect(restored.recentSearches.single, 'Một Bài Hát');
     expect(restored.themePreferenceIndex, AppThemePreference.dark.index);
+    expect(restored.analytics?.installationId, 'install-a');
+    expect(restored.analytics?.moodAssignments['one']?.tags, {MoodTag.focus});
     expect(
       () => LibraryBackupData.decode('{"version":1}'),
       throwsFormatException,
@@ -123,6 +132,31 @@ void main() {
       throwsFormatException,
       reason:
           'Nested type errors must be reported as a recoverable format error.',
+    );
+  });
+
+  test('library backup v1 remains readable without analytics', () {
+    final restored = LibraryBackupData.decode(
+      '{"schema":"zingchart-library","version":1,"library":{}}',
+    );
+
+    expect(restored.analytics, isNull);
+    expect(restored.likedSongs, isEmpty);
+  });
+
+  test('library backup v2 rejects malformed analytics and files over 5 MB', () {
+    expect(
+      () => LibraryBackupData.decode(
+        '{"schema":"zingchart-library","version":2,"library":{'
+        '"analytics":{"installationId":[],"daily":"broken"}}}',
+      ),
+      throwsFormatException,
+    );
+    expect(
+      () => LibraryBackupData.decode(
+        'x' * (LibraryBackupData.maxEncodedBytes + 1),
+      ),
+      throwsFormatException,
     );
   });
 

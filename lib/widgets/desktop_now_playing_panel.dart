@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../music_player_controller.dart';
 import '../music_player_scope.dart';
 import 'album_art.dart';
+import 'mood_selector.dart';
 
 class DesktopNowPlayingPanel extends StatelessWidget {
   const DesktopNowPlayingPanel({super.key, this.tvMode = false});
@@ -101,6 +102,12 @@ class DesktopNowPlayingPanel extends StatelessWidget {
                               ),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 12),
+                        MoodSelector(
+                          controller: controller,
+                          song: song,
+                          compact: true,
                         ),
                         const SizedBox(height: 16),
                         _DesktopProgress(controller: controller),

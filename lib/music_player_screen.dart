@@ -6,6 +6,7 @@ import 'models/song.dart';
 import 'music_player_controller.dart';
 import 'music_player_scope.dart';
 import 'widgets/album_art.dart';
+import 'widgets/mood_selector.dart';
 
 class MusicPlayerScreen extends StatefulWidget {
   const MusicPlayerScreen({super.key, this.song});
@@ -144,6 +145,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                                   ),
                                 ),
                               ),
+                              const SizedBox(height: 16),
+                              MoodSelector(controller: controller, song: song),
                               const SizedBox(height: 26),
                               _ProgressSection(controller: controller),
                               if (controller.errorMessage != null) ...[
