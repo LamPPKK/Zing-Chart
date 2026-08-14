@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- SharedPreferencesAsync uses AndroidX DataStore by default. -->
+    <include domain="file" path="datastore/FlutterSharedPreferences.preferences_pb" />
+    <!-- Keep the legacy domain for restored installs migrated from older releases. -->
+    <include domain="sharedpref" path="." />
+</full-backup-content>

@@ -179,8 +179,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Thư viện'), findsWidgets);
+    expect(find.text('1 BÀI THÍCH · 0 PLAYLIST'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Nàng Thơ'),
+      280,
+      scrollable: find
+          .descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     expect(find.text('Nàng Thơ'), findsOneWidget);
-    expect(find.text('1 BÀI HÁT ĐÃ YÊU THÍCH'), findsOneWidget);
     controller.dispose();
   });
 

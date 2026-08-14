@@ -40,17 +40,24 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
       animation: controller,
       builder: (context, _) {
         final song = controller.currentSong;
+        final dark = Theme.of(context).brightness == Brightness.dark;
         return Scaffold(
           body: DecoratedBox(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: RadialGradient(
                 center: Alignment(0.45, -0.6),
                 radius: 1.25,
-                colors: [
-                  Color(0xFF35302C),
-                  Color(0xFF151618),
-                  Color(0xFF101113),
-                ],
+                colors: dark
+                    ? const [
+                        Color(0xFF35302C),
+                        Color(0xFF151618),
+                        Color(0xFF101113),
+                      ]
+                    : const [
+                        Color(0xFFFFDCCE),
+                        Color(0xFFF8F1E7),
+                        Color(0xFFF5F0E8),
+                      ],
                 stops: [0, 0.52, 1],
               ),
             ),
@@ -127,8 +134,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                                   song.artistsNames,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFFB8F43D),
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.secondary,
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: 0.2,
@@ -146,28 +155,50 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                               const SizedBox(height: 22),
                               _PlayerControls(controller: controller),
                               const SizedBox(height: 14),
-                              TextButton.icon(
-                                onPressed: () =>
-                                    _showQueue(context, controller),
-                                icon: const Icon(Icons.queue_music_rounded),
-                                label: Text(
-                                  'Hàng đợi · ${controller.queue.length} bài',
-                                ),
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: () =>
+                                        _showQueue(context, controller),
+                                    icon: const Icon(Icons.queue_music_rounded),
+                                    label: Text(
+                                      'Hàng đợi · ${controller.queue.length} bài',
+                                    ),
+                                  ),
+                                  TextButton.icon(
+                                    key: const ValueKey('sleep-timer-button'),
+                                    onPressed: () =>
+                                        _showSleepTimer(context, controller),
+                                    icon: Icon(
+                                      controller.hasSleepTimer
+                                          ? Icons.bedtime_rounded
+                                          : Icons.bedtime_outlined,
+                                    ),
+                                    label: Text(_sleepTimerLabel(controller)),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 12),
-                              const Row(
+                              Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
                                     Icons.screen_lock_portrait_rounded,
-                                    color: Color(0xFF77787D),
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                                     size: 16,
                                   ),
-                                  SizedBox(width: 7),
+                                  const SizedBox(width: 7),
                                   Text(
                                     'Tiếp tục phát khi khóa màn hình',
                                     style: TextStyle(
-                                      color: Color(0xFF8E8F94),
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
                                       fontSize: 12,
                                     ),
                                   ),
@@ -205,13 +236,15 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                 ),
               ),
               Expanded(
-                child: ListView.builder(
+                child: ReorderableListView.builder(
                   itemCount: controller.queue.length,
+                  onReorderItem: controller.reorderQueueItem,
                   itemBuilder: (context, index) {
                     final queuedSong = controller.queue[index];
                     final isCurrent =
                         queuedSong.id == controller.currentSong?.id;
                     return ListTile(
+                      key: ValueKey('queue-${queuedSong.id}'),
                       leading: isCurrent
                           ? const Icon(
                               Icons.graphic_eq_rounded,
@@ -252,6 +285,65 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
       ),
     );
   }
+
+  void _showSleepTimer(BuildContext context, MusicPlayerController controller) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 18),
+          children: [
+            const ListTile(
+              title: Text(
+                'Hẹn giờ tắt',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+              ),
+              subtitle: Text('Nhạc sẽ dừng, không chỉ tạm dừng.'),
+            ),
+            for (final minutes in const [15, 30, 45, 60])
+              ListTile(
+                leading: const Icon(Icons.timer_outlined),
+                title: Text('$minutes phút'),
+                onTap: () {
+                  controller.setSleepTimer(Duration(minutes: minutes));
+                  Navigator.pop(sheetContext);
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.skip_next_rounded),
+              title: const Text('Sau khi phát xong bài này'),
+              onTap: () {
+                controller.setSleepAfterCurrentSong();
+                Navigator.pop(sheetContext);
+              },
+            ),
+            if (controller.hasSleepTimer)
+              ListTile(
+                leading: const Icon(Icons.timer_off_outlined),
+                title: const Text('Hủy hẹn giờ'),
+                onTap: () {
+                  controller.cancelSleepTimer();
+                  Navigator.pop(sheetContext);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _sleepTimerLabel(MusicPlayerController controller) {
+    if (controller.sleepAfterCurrentSong) return 'Tắt sau bài này';
+    final remaining = controller.sleepTimerRemaining;
+    if (remaining == null) return 'Hẹn giờ';
+    final minutes = remaining.inMinutes;
+    final seconds = remaining.inSeconds
+        .remainder(60)
+        .toString()
+        .padLeft(2, '0');
+    return 'Còn $minutes:$seconds';
+  }
 }
 
 class _PlayerHeader extends StatelessWidget {
@@ -269,20 +361,20 @@ class _PlayerHeader extends StatelessWidget {
           onPressed: onClose,
           icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 30),
         ),
-        const Expanded(
+        Expanded(
           child: Column(
             children: [
               Text(
                 'ĐANG PHÁT TỪ',
                 style: TextStyle(
-                  color: Color(0xFF8E8F94),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1.4,
                 ),
               ),
-              SizedBox(height: 3),
-              Text(
+              const SizedBox(height: 3),
+              const Text(
                 '#zingChart',
                 style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
               ),

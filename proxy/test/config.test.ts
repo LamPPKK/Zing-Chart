@@ -17,4 +17,15 @@ describe('stream production config', () => {
     expect(() => loadConfig({ ...production, PUBLIC_BASE_URL: 'https://api.example.test/path' }))
       .toThrow('only scheme, host, and optional port');
   });
+
+  it('allows the packaged TV null origin only when explicitly configured', () => {
+    const config = loadConfig({
+      ...production,
+      CORS_ORIGINS: 'https://app.example.test,null',
+    });
+    expect(config.corsOrigins).toEqual(['https://app.example.test', 'null']);
+    expect(() =>
+      loadConfig({ ...production, CORS_ORIGINS: 'not-an-origin' }),
+    ).toThrow('CORS_ORIGINS must be an absolute URL');
+  });
 });

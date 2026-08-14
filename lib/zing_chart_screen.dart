@@ -3,12 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'models/local_library.dart';
 import 'models/song.dart';
 import 'music_player_controller.dart';
 import 'music_player_scope.dart';
 import 'music_player_screen.dart';
+import 'platform/tv_exit.dart';
+import 'services/library_backup_file_service.dart';
+import 'theme/app_theme.dart';
 import 'widgets/album_art.dart';
 import 'widgets/desktop_now_playing_panel.dart';
+import 'widgets/editorial_discovery.dart';
+import 'widgets/library_hub.dart';
 import 'widgets/mini_player.dart';
 import 'zing_mp3_api.dart';
 
@@ -30,9 +36,13 @@ class ZingChartScreen extends StatefulWidget {
   const ZingChartScreen({
     super.key,
     this.loadSongs = ZingMP3API.getZingChartSongs,
+    this.tvMode = false,
+    this.backupFileService,
   });
 
   final ChartLoader loadSongs;
+  final bool tvMode;
+  final LibraryBackupFileService? backupFileService;
 
   @override
   State<ZingChartScreen> createState() => _ZingChartScreenState();
@@ -41,20 +51,35 @@ class ZingChartScreen extends StatefulWidget {
 class _ZingChartScreenState extends State<ZingChartScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  late final LibraryBackupFileService _backupFileService;
   List<Song> _songs = const [];
   bool _isLoading = true;
   String? _errorMessage;
   int _selectedTab = 0;
   bool _desktopPlayerVisible = true;
+  String? _selectedPlaylistId;
 
   List<Song> _visibleSongs(MusicPlayerController controller) {
-    final source = _selectedTab == 2 ? controller.likedSongs : _songs;
+    final source = _selectedTab == 2
+        ? _selectedPlaylist(controller)?.songs ?? controller.likedSongs
+        : _songs;
     return filterSongs(source, _searchController.text);
+  }
+
+  LocalPlaylist? _selectedPlaylist(MusicPlayerController controller) {
+    final id = _selectedPlaylistId;
+    if (id == null) return null;
+    for (final playlist in controller.playlists) {
+      if (playlist.id == id) return playlist;
+    }
+    return null;
   }
 
   @override
   void initState() {
     super.initState();
+    _backupFileService =
+        widget.backupFileService ?? createLibraryBackupFileService();
     unawaited(_loadSongs());
   }
 
@@ -85,7 +110,7 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
   void _selectSong(Song song, List<Song> queue) {
     final controller = MusicPlayerScope.of(context);
     unawaited(controller.playSong(song, queue: queue));
-    if (MediaQuery.sizeOf(context).width >= 1100) {
+    if (widget.tvMode || MediaQuery.sizeOf(context).width >= 1100) {
       if (!_desktopPlayerVisible) {
         setState(() => _desktopPlayerVisible = true);
       }
@@ -101,112 +126,162 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
     final controller = MusicPlayerScope.of(context);
     final visibleSongs = _visibleSongs(controller);
     final width = MediaQuery.sizeOf(context).width;
-    final useRail = width >= 720;
-    final showPlayerPanel = width >= 1100 && _desktopPlayerVisible;
+    final useRail = widget.tvMode || width >= 720;
+    final showPlayerPanel =
+        widget.tvMode || (width >= 1100 && _desktopPlayerVisible);
 
     return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.space): () {
-          if (!_isEditingText()) unawaited(controller.togglePlayPause());
-        },
-        const SingleActivator(LogicalKeyboardKey.keyF, control: true):
-            _focusSearch,
-        const SingleActivator(LogicalKeyboardKey.keyF, meta: true):
-            _focusSearch,
-        const SingleActivator(LogicalKeyboardKey.arrowLeft): () {
-          if (!_isEditingText()) {
-            unawaited(
-              controller.seek(
-                controller.position - const Duration(seconds: 10),
-              ),
-            );
-          }
-        },
-        const SingleActivator(LogicalKeyboardKey.arrowRight): () {
-          if (!_isEditingText()) {
-            unawaited(
-              controller.seek(
-                controller.position + const Duration(seconds: 10),
-              ),
-            );
-          }
-        },
-        const SingleActivator(LogicalKeyboardKey.arrowLeft, control: true):
-            controller.previous,
-        const SingleActivator(LogicalKeyboardKey.arrowLeft, meta: true):
-            controller.previous,
-        const SingleActivator(LogicalKeyboardKey.arrowRight, control: true):
-            controller.next,
-        const SingleActivator(LogicalKeyboardKey.arrowRight, meta: true):
-            controller.next,
-        const SingleActivator(LogicalKeyboardKey.escape): () {
-          if (width >= 1100 && _desktopPlayerVisible) {
-            setState(() => _desktopPlayerVisible = false);
-          } else if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
-          }
-        },
-      },
-      child: Focus(
-        autofocus: true,
-        child: Scaffold(
-          bottomNavigationBar: useRail
-              ? null
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const MiniPlayer(),
-                    NavigationBar(
-                      selectedIndex: _selectedTab,
-                      onDestinationSelected: _selectTab,
-                      destinations: const [
-                        NavigationDestination(
-                          icon: Icon(Icons.home_outlined),
-                          selectedIcon: Icon(Icons.home_rounded),
-                          label: 'Trang chủ',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(Icons.search_rounded),
-                          label: 'Tìm kiếm',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(Icons.library_music_outlined),
-                          selectedIcon: Icon(Icons.library_music_rounded),
-                          label: 'Thư viện',
+      bindings: _shortcutBindings(controller, width),
+      child: FocusTraversalGroup(
+        policy: ReadingOrderTraversalPolicy(),
+        child: Focus(
+          autofocus: !widget.tvMode,
+          child: PopScope<void>(
+            canPop:
+                !widget.tvMode ||
+                (_selectedTab == 0 && !_searchFocusNode.hasFocus),
+            onPopInvokedWithResult: (didPop, _) {
+              if (widget.tvMode && !didPop) _handleBack(width);
+            },
+            child: Scaffold(
+              bottomNavigationBar: useRail
+                  ? null
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const MiniPlayer(),
+                        NavigationBar(
+                          selectedIndex: _selectedTab,
+                          onDestinationSelected: _selectTab,
+                          destinations: const [
+                            NavigationDestination(
+                              icon: Icon(Icons.home_outlined),
+                              selectedIcon: Icon(Icons.home_rounded),
+                              label: 'Trang chủ',
+                            ),
+                            NavigationDestination(
+                              icon: Icon(Icons.search_rounded),
+                              label: 'Tìm kiếm',
+                            ),
+                            NavigationDestination(
+                              icon: Icon(Icons.library_music_outlined),
+                              selectedIcon: Icon(Icons.library_music_rounded),
+                              label: 'Thư viện',
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
-          body: Row(
-            children: [
-              if (useRail) _buildNavigationRail(),
-              Expanded(
-                child: Column(
-                  children: [
-                    Expanded(child: _buildContent(controller, visibleSongs)),
-                    if (useRail && !showPlayerPanel) const MiniPlayer(),
-                  ],
-                ),
+              body: Row(
+                children: [
+                  if (useRail) _buildNavigationRail(tvMode: widget.tvMode),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: _buildContent(controller, visibleSongs),
+                        ),
+                        if (useRail && !showPlayerPanel) const MiniPlayer(),
+                      ],
+                    ),
+                  ),
+                  if (showPlayerPanel)
+                    DesktopNowPlayingPanel(tvMode: widget.tvMode),
+                ],
               ),
-              if (showPlayerPanel) const DesktopNowPlayingPanel(),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  Map<ShortcutActivator, VoidCallback> _shortcutBindings(
+    MusicPlayerController controller,
+    double width,
+  ) {
+    final bindings = <ShortcutActivator, VoidCallback>{
+      const SingleActivator(LogicalKeyboardKey.space): () {
+        if (!_isEditingText()) unawaited(controller.togglePlayPause());
+      },
+      const SingleActivator(LogicalKeyboardKey.keyF, control: true):
+          _focusSearch,
+      const SingleActivator(LogicalKeyboardKey.keyF, meta: true): _focusSearch,
+      const SingleActivator(LogicalKeyboardKey.arrowLeft, control: true):
+          controller.previous,
+      const SingleActivator(LogicalKeyboardKey.arrowLeft, meta: true):
+          controller.previous,
+      const SingleActivator(LogicalKeyboardKey.arrowRight, control: true):
+          controller.next,
+      const SingleActivator(LogicalKeyboardKey.arrowRight, meta: true):
+          controller.next,
+      const SingleActivator(LogicalKeyboardKey.escape): () =>
+          _handleBack(width),
+      const SingleActivator(LogicalKeyboardKey.mediaPlayPause):
+          controller.togglePlayPause,
+      const SingleActivator(LogicalKeyboardKey.mediaPlay): () {
+        if (!controller.isPlaying) unawaited(controller.togglePlayPause());
+      },
+      const SingleActivator(LogicalKeyboardKey.mediaPause): () {
+        if (controller.isPlaying) unawaited(controller.togglePlayPause());
+      },
+      const SingleActivator(LogicalKeyboardKey.mediaStop): controller.stop,
+      const SingleActivator(LogicalKeyboardKey.mediaTrackPrevious):
+          controller.previous,
+      const SingleActivator(LogicalKeyboardKey.mediaTrackNext): controller.next,
+      const SingleActivator(LogicalKeyboardKey.mediaRewind): () =>
+          unawaited(_seekBy(controller, -10)),
+      const SingleActivator(LogicalKeyboardKey.mediaFastForward): () =>
+          unawaited(_seekBy(controller, 10)),
+    };
+    if (!widget.tvMode) {
+      bindings
+        ..[const SingleActivator(LogicalKeyboardKey.arrowLeft)] = () {
+          if (!_isEditingText()) unawaited(_seekBy(controller, -10));
+        }
+        ..[const SingleActivator(LogicalKeyboardKey.arrowRight)] = () {
+          if (!_isEditingText()) unawaited(_seekBy(controller, 10));
+        };
+    }
+    return bindings;
+  }
+
+  void _handleBack(double width) {
+    if (widget.tvMode) {
+      if (_searchFocusNode.hasFocus) {
+        _searchFocusNode.unfocus(
+          disposition: UnfocusDisposition.previouslyFocusedChild,
+        );
+      } else if (_selectedTab != 0) {
+        _selectTab(0);
+      } else {
+        if (!requestTvPlatformExit()) unawaited(SystemNavigator.pop());
+      }
+      return;
+    }
+    if (width >= 1100 && _desktopPlayerVisible) {
+      setState(() => _desktopPlayerVisible = false);
+    } else if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _seekBy(MusicPlayerController controller, int seconds) =>
+      controller.seek(controller.position + Duration(seconds: seconds));
+
   Widget _buildContent(
     MusicPlayerController controller,
     List<Song> visibleSongs,
   ) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF1A1B1E), Color(0xFF101113)],
+          colors: dark
+              ? const [Color(0xFF1A1B1E), ZingColors.ink]
+              : const [Color(0xFFFFFBF4), ZingColors.paper],
           stops: [0, 0.42],
         ),
       ),
@@ -219,12 +294,44 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _buildHeader()),
-              if (_isLoading)
+              if (_selectedTab == 2)
+                SliverToBoxAdapter(
+                  child: LibraryHub(
+                    controller: controller,
+                    selectedPlaylistId: _selectedPlaylistId,
+                    onSelectPlaylist: (playlistId) => setState(() {
+                      _selectedPlaylistId = playlistId;
+                      _searchController.clear();
+                    }),
+                    onCreatePlaylist: () => _showCreatePlaylist(controller),
+                    onRenamePlaylist: (playlist) =>
+                        _showRenamePlaylist(controller, playlist),
+                    onDeletePlaylist: (playlist) =>
+                        _confirmDeletePlaylist(controller, playlist),
+                    onPlaySongs: (songs) {
+                      if (songs.isNotEmpty) _selectSong(songs.first, songs);
+                    },
+                    onExportBackup: () => _exportBackupFile(controller),
+                    onImportBackup: () => _importBackupFile(controller),
+                  ),
+                )
+              else if (!_isLoading &&
+                  _errorMessage == null &&
+                  _selectedTab == 0 &&
+                  _searchController.text.isEmpty)
+                SliverToBoxAdapter(
+                  child: EditorialDiscovery(
+                    songs: _songs,
+                    controller: controller,
+                    onPlay: _selectSong,
+                  ),
+                ),
+              if (_selectedTab != 2 && _isLoading)
                 const SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(child: CircularProgressIndicator()),
                 )
-              else if (_errorMessage != null)
+              else if (_selectedTab != 2 && _errorMessage != null)
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: _ErrorState(
@@ -233,43 +340,59 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
                   ),
                 )
               else if (visibleSongs.isEmpty)
-                const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _EmptyState(),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 46),
+                    child: _EmptyState(
+                      message: _selectedTab == 2
+                          ? _selectedPlaylist(controller) == null
+                                ? 'Thư viện yêu thích đang trống'
+                                : 'Playlist này chưa có bài hát'
+                          : 'Không tìm thấy bài hát phù hợp',
+                    ),
+                  ),
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 28),
-                  sliver: SliverList.separated(
-                    itemCount: visibleSongs.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 5),
-                    itemBuilder: (context, index) {
-                      final song = visibleSongs[index];
-                      final rank =
-                          _songs.indexWhere((item) => item.id == song.id) + 1;
-                      return _SongTile(
-                        key: ValueKey(song.id),
-                        song: song,
-                        rank: rank,
-                        isLiked: controller.isLiked(song),
-                        onLike: () => controller.toggleLike(song),
-                        onAddToQueue: () {
-                          final didAdd = controller.addToQueue(song);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                didAdd
-                                    ? 'Đã thêm ${song.displayTitle} vào hàng đợi'
-                                    : '${song.displayTitle} đã ở vị trí tiếp theo',
-                              ),
-                            ),
-                          );
-                        },
-                        onTap: () => _selectSong(song, visibleSongs),
-                      );
-                    },
+                  padding: EdgeInsets.fromLTRB(
+                    widget.tvMode ? 28 : 12,
+                    4,
+                    widget.tvMode ? 28 : 12,
+                    widget.tvMode ? 48 : 28,
                   ),
+                  sliver: widget.tvMode
+                      ? SliverGrid.builder(
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount:
+                                    MediaQuery.sizeOf(context).width >= 1500
+                                    ? 2
+                                    : 1,
+                                mainAxisExtent: 104,
+                                crossAxisSpacing: 14,
+                                mainAxisSpacing: 12,
+                              ),
+                          itemCount: visibleSongs.length,
+                          itemBuilder: (context, index) => _buildSongTile(
+                            controller,
+                            visibleSongs,
+                            index,
+                            tvMode: true,
+                          ),
+                        )
+                      : SliverList.separated(
+                          itemCount: visibleSongs.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 5),
+                          itemBuilder: (context, index) =>
+                              _buildSongTile(controller, visibleSongs, index),
+                        ),
                 ),
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: MediaQuery.paddingOf(context).bottom + 8,
+                ),
+              ),
             ],
           ),
         ),
@@ -277,36 +400,111 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
     );
   }
 
-  NavigationRail _buildNavigationRail() => NavigationRail(
+  Widget _buildSongTile(
+    MusicPlayerController controller,
+    List<Song> visibleSongs,
+    int index, {
+    bool tvMode = false,
+  }) {
+    final song = visibleSongs[index];
+    final chartIndex = _songs.indexWhere((item) => item.id == song.id);
+    final rank = chartIndex >= 0 ? chartIndex + 1 : index + 1;
+    void addToQueue() {
+      final didAdd = controller.addToQueue(song);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            didAdd
+                ? 'Đã thêm ${song.displayTitle} vào hàng đợi'
+                : '${song.displayTitle} đã ở vị trí tiếp theo',
+          ),
+        ),
+      );
+    }
+
+    final tile = _SongTile(
+      key: ValueKey(song.id),
+      song: song,
+      rank: rank,
+      isLiked: controller.isLiked(song),
+      onLike: () => controller.toggleLike(song),
+      onAddToQueue: addToQueue,
+      onAddToPlaylist: () => _showPlaylistPicker(controller, song),
+      onTap: () => _selectSong(song, visibleSongs),
+      tvMode: tvMode,
+      autofocus: tvMode && index == 0,
+    );
+    if (tvMode) return tile;
+    return Dismissible(
+      key: ValueKey('swipe-queue-${song.id}'),
+      direction: DismissDirection.startToEnd,
+      confirmDismiss: (_) async {
+        addToQueue();
+        return false;
+      },
+      background: Container(
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.only(left: 24),
+        decoration: BoxDecoration(
+          color: ZingColors.lime.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.playlist_add_rounded, color: ZingColors.lime),
+            SizedBox(width: 8),
+            Text(
+              'THÊM VÀO HÀNG ĐỢI',
+              style: TextStyle(
+                color: ZingColors.lime,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ],
+        ),
+      ),
+      child: tile,
+    );
+  }
+
+  NavigationRail _buildNavigationRail({required bool tvMode}) => NavigationRail(
     selectedIndex: _selectedTab,
     onDestinationSelected: _selectTab,
-    labelType: NavigationRailLabelType.all,
-    backgroundColor: const Color(0xFF151619),
-    leading: const Padding(
-      padding: EdgeInsets.fromLTRB(8, 20, 8, 26),
+    extended: tvMode,
+    minWidth: tvMode ? 96 : 72,
+    minExtendedWidth: tvMode ? 220 : 256,
+    labelType: tvMode
+        ? NavigationRailLabelType.none
+        : NavigationRailLabelType.all,
+    backgroundColor: Theme.of(context).colorScheme.surface,
+    leading: Padding(
+      padding: const EdgeInsets.fromLTRB(8, 20, 8, 26),
       child: Text(
         '#Z',
         style: TextStyle(
-          color: Color(0xFFFF6B4A),
+          color: Theme.of(context).colorScheme.primary,
           fontSize: 25,
           fontWeight: FontWeight.w900,
           letterSpacing: -1.5,
         ),
       ),
     ),
-    trailing: Expanded(
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 18),
-          child: IconButton(
-            tooltip: 'Hiện bảng đang phát',
-            onPressed: () => setState(() => _desktopPlayerVisible = true),
-            icon: const Icon(Icons.queue_music_rounded),
+    trailing: tvMode
+        ? null
+        : Expanded(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 18),
+                child: IconButton(
+                  tooltip: 'Hiện bảng đang phát',
+                  onPressed: () => setState(() => _desktopPlayerVisible = true),
+                  icon: const Icon(Icons.queue_music_rounded),
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
-    ),
     destinations: const [
       NavigationRailDestination(
         icon: Icon(Icons.home_outlined),
@@ -341,16 +539,253 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
   bool _isEditingText() =>
       FocusManager.instance.primaryFocus?.context?.widget is EditableText;
 
+  Future<void> _showCreatePlaylist(MusicPlayerController controller) async {
+    final name = await _promptPlaylistName(title: 'Tạo playlist mới');
+    if (name == null) return;
+    try {
+      final playlist = controller.createPlaylist(name);
+      if (mounted) setState(() => _selectedPlaylistId = playlist.id);
+    } on ArgumentError catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message.toString())));
+    }
+  }
+
+  Future<void> _showRenamePlaylist(
+    MusicPlayerController controller,
+    LocalPlaylist playlist,
+  ) async {
+    final name = await _promptPlaylistName(
+      title: 'Đổi tên playlist',
+      initialValue: playlist.name,
+    );
+    if (name != null) controller.renamePlaylist(playlist.id, name);
+  }
+
+  Future<String?> _promptPlaylistName({
+    required String title,
+    String initialValue = '',
+  }) => showDialog<String>(
+    context: context,
+    builder: (_) =>
+        _PlaylistNameDialog(title: title, initialValue: initialValue),
+  );
+
+  Future<void> _confirmDeletePlaylist(
+    MusicPlayerController controller,
+    LocalPlaylist playlist,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Xóa playlist?'),
+        content: Text(
+          '“${playlist.name}” sẽ bị xóa khỏi thiết bị. Bài hát gốc không bị ảnh hưởng.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Giữ lại'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    controller.deletePlaylist(playlist.id);
+    if (mounted && _selectedPlaylistId == playlist.id) {
+      setState(() => _selectedPlaylistId = null);
+    }
+  }
+
+  Future<void> _showPlaylistPicker(
+    MusicPlayerController controller,
+    Song song,
+  ) async {
+    if (controller.playlists.isEmpty) {
+      await _showCreatePlaylist(controller);
+    }
+    if (!mounted || controller.playlists.isEmpty) return;
+    final playlistId = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 18),
+          children: [
+            const ListTile(
+              title: Text(
+                'Thêm vào playlist',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+              ),
+            ),
+            ...controller.playlists.map(
+              (playlist) => ListTile(
+                leading: const Icon(Icons.queue_music_rounded),
+                title: Text(playlist.name),
+                subtitle: Text('${playlist.songs.length} bài hát'),
+                trailing: playlist.songs.any((item) => item.id == song.id)
+                    ? const Icon(Icons.check_rounded, color: ZingColors.lime)
+                    : null,
+                onTap: () => Navigator.pop(sheetContext, playlist.id),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (playlistId == null || !mounted) return;
+    final added = controller.addSongToPlaylist(playlistId, song);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          added
+              ? 'Đã thêm ${song.displayTitle} vào playlist'
+              : '${song.displayTitle} đã có trong playlist',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showExportBackup(MusicPlayerController controller) async {
+    final json = controller.exportLibraryJson();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Backup thư viện JSON'),
+        content: SizedBox(
+          width: 620,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Sao chép nội dung này vào file có đuôi .json. File không chứa nhạc hoặc URL stream.',
+              ),
+              const SizedBox(height: 14),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 260),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: SingleChildScrollView(
+                  child: SelectableText(
+                    json,
+                    key: const ValueKey('backup-json-content'),
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Đóng'),
+          ),
+          FilledButton.icon(
+            key: const ValueKey('copy-backup-json-button'),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: json));
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Đã sao chép backup JSON')),
+                );
+              }
+            },
+            icon: const Icon(Icons.copy_rounded),
+            label: const Text('Sao chép JSON'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _exportBackupFile(MusicPlayerController controller) async {
+    final json = controller.exportLibraryJson();
+    final date = DateTime.now().toUtc().toIso8601String().substring(0, 10);
+    try {
+      final exported = await _backupFileService.exportJson(
+        json,
+        fileName: 'zingchart-library-$date.json',
+      );
+      if (exported && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã xuất backup thư viện')),
+        );
+      }
+    } catch (_) {
+      if (mounted) await _showExportBackup(controller);
+    }
+  }
+
+  Future<void> _importBackupFile(MusicPlayerController controller) async {
+    try {
+      final json = await _backupFileService.importJson();
+      if (json != null && mounted) {
+        await _showImportBackup(controller, initialJson: json);
+      }
+    } on FormatException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message.toString())));
+    } catch (_) {
+      if (mounted) await _showImportBackup(controller);
+    }
+  }
+
+  Future<void> _showImportBackup(
+    MusicPlayerController controller, {
+    String initialJson = '',
+  }) async {
+    final restored = await showDialog<bool>(
+      context: context,
+      builder: (_) =>
+          _ImportBackupDialog(controller: controller, initialJson: initialJson),
+    );
+    if (restored == true && mounted) {
+      setState(() => _selectedPlaylistId = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã khôi phục thư viện local')),
+      );
+    }
+  }
+
   Widget _buildHeader() {
     final controller = MusicPlayerScope.of(context);
-    final titles = ['#zingChart', 'Tìm kiếm', 'Thư viện'];
+    final selectedPlaylist = _selectedPlaylist(controller);
+    final titles = [
+      '#zingChart',
+      'Tìm kiếm',
+      selectedPlaylist?.name ?? 'Thư viện',
+    ];
     final subtitles = [
-      'NHỮNG GIAI ĐIỆU ĐANG DẪN ĐẦU',
-      'TÌM THEO BÀI HÁT HOẶC NGHỆ SĨ',
-      '${controller.likedSongs.length} BÀI HÁT ĐÃ YÊU THÍCH',
+      'BẢNG XẾP HẠNG · CẬP NHẬT THEO THỜI GIAN THỰC',
+      'TÊN BÀI HÁT · NGHỆ SĨ · TỪ KHÓA',
+      selectedPlaylist == null
+          ? '${controller.likedSongs.length} BÀI THÍCH · ${controller.playlists.length} PLAYLIST'
+          : '${selectedPlaylist.songs.length} BÀI HÁT · LƯU TRÊN THIẾT BỊ',
     ];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+      padding: EdgeInsets.fromLTRB(
+        widget.tvMode ? 32 : 20,
+        widget.tvMode ? 34 : 20,
+        widget.tvMode ? 32 : 20,
+        widget.tvMode ? 24 : 18,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -363,19 +798,19 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
                   children: [
                     Text(
                       titles[_selectedTab],
-                      style: const TextStyle(
-                        fontSize: 38,
-                        height: 1,
+                      style: TextStyle(
+                        fontSize: widget.tvMode ? 48 : 42,
+                        height: 0.96,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: -2.2,
+                        letterSpacing: -2.5,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       subtitles[_selectedTab],
-                      style: const TextStyle(
-                        color: Color(0xFFB8F43D),
-                        fontSize: 11,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.secondary,
+                        fontSize: widget.tvMode ? 14 : 11,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.6,
                       ),
@@ -413,13 +848,15 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
                 ),
             ],
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: widget.tvMode ? 30 : 24),
           TextField(
             key: const ValueKey('chart-search-field'),
             controller: _searchController,
             focusNode: _searchFocusNode,
             onChanged: (_) => setState(() {}),
+            onSubmitted: controller.recordSearch,
             textInputAction: TextInputAction.search,
+            style: TextStyle(fontSize: widget.tvMode ? 20 : 16),
             decoration: InputDecoration(
               labelText: 'Tìm bài hát hoặc nghệ sĩ',
               hintText: 'Ví dụ: Quốc Thiên',
@@ -436,12 +873,45 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
                     ),
             ),
           ),
+          if (_selectedTab == 1 &&
+              _searchController.text.isEmpty &&
+              controller.recentSearches.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: controller.recentSearches
+                        .map(
+                          (query) => ActionChip(
+                            avatar: const Icon(Icons.history_rounded, size: 17),
+                            label: Text(query),
+                            onPressed: () {
+                              _searchController.text = query;
+                              controller.recordSearch(query);
+                              setState(() {});
+                            },
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Xóa tìm kiếm gần đây',
+                  onPressed: controller.clearRecentSearches,
+                  icon: const Icon(Icons.delete_sweep_outlined),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 18),
           Row(
             children: [
               Text(
                 _selectedTab == 2
-                    ? 'BÀI HÁT ĐÃ THÍCH'
+                    ? selectedPlaylist?.name.toUpperCase() ?? 'BÀI HÁT ĐÃ THÍCH'
                     : _searchController.text.isEmpty
                     ? 'TOP 100'
                     : 'KẾT QUẢ',
@@ -455,8 +925,8 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
               if (!_isLoading && _errorMessage == null)
                 Text(
                   '${_visibleSongs(controller).length} bài hát',
-                  style: const TextStyle(
-                    color: Color(0xFF929296),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 12,
                   ),
                 ),
@@ -468,7 +938,7 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
   }
 }
 
-class _SongTile extends StatelessWidget {
+class _SongTile extends StatefulWidget {
   const _SongTile({
     super.key,
     required this.song,
@@ -477,6 +947,9 @@ class _SongTile extends StatelessWidget {
     required this.isLiked,
     required this.onLike,
     required this.onAddToQueue,
+    required this.onAddToPlaylist,
+    this.tvMode = false,
+    this.autofocus = false,
   });
 
   final Song song;
@@ -485,117 +958,173 @@ class _SongTile extends StatelessWidget {
   final bool isLiked;
   final VoidCallback onLike;
   final VoidCallback onAddToQueue;
+  final VoidCallback onAddToPlaylist;
+  final bool tvMode;
+  final bool autofocus;
+
+  @override
+  State<_SongTile> createState() => _SongTileState();
+}
+
+class _SongTileState extends State<_SongTile> {
+  bool _focused = false;
 
   Color get rankColor {
-    if (rank == 1) return const Color(0xFFFF6B4A);
-    if (rank == 2) return const Color(0xFFB8F43D);
-    if (rank == 3) return const Color(0xFF68A7FF);
+    if (widget.rank == 1) return const Color(0xFFFF6B4A);
+    if (widget.rank == 2) return const Color(0xFFB8F43D);
+    if (widget.rank == 3) return const Color(0xFF68A7FF);
     return const Color(0xFF6F7075);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: rank <= 3 ? const Color(0xFF1D1E21) : Colors.transparent,
-      borderRadius: BorderRadius.circular(18),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        onSecondaryTapDown: (details) =>
-            _showContextMenu(context, details.globalPosition),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 38,
-                child: Text(
-                  rank.toString().padLeft(2, '0'),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: rankColor,
-                    fontSize: rank <= 3 ? 20 : 15,
-                    fontWeight: FontWeight.w900,
-                    fontFeatures: const [FontFeature.tabularFigures()],
+    final radius = BorderRadius.circular(widget.tvMode ? 20 : 18);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        border: Border.all(
+          color: _focused ? const Color(0xFFFF6B4A) : Colors.transparent,
+          width: widget.tvMode ? 3 : 2,
+        ),
+        boxShadow: _focused
+            ? const [
+                BoxShadow(
+                  color: Color(0x55FF6B4A),
+                  blurRadius: 18,
+                  spreadRadius: 1,
+                ),
+              ]
+            : const [],
+      ),
+      child: Material(
+        color: _focused
+            ? scheme.primaryContainer
+            : widget.rank <= 3
+            ? scheme.surfaceContainer
+            : theme.cardColor,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          autofocus: widget.autofocus,
+          onFocusChange: (focused) {
+            if (_focused != focused) setState(() => _focused = focused);
+          },
+          onTap: widget.onTap,
+          onSecondaryTapDown: (details) =>
+              _showContextMenu(context, details.globalPosition),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.tvMode ? 14 : 10,
+              vertical: widget.tvMode ? 11 : 9,
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: widget.tvMode ? 46 : 38,
+                  child: Text(
+                    widget.rank.toString().padLeft(2, '0'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: rankColor,
+                      fontSize: widget.tvMode
+                          ? (widget.rank <= 3 ? 24 : 19)
+                          : (widget.rank <= 3 ? 20 : 15),
+                      fontWeight: FontWeight.w900,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              AlbumArt(
-                imageUrl: song.thumbnail,
-                semanticLabel: 'Bìa album ${song.displayTitle}',
-                size: 58,
-                borderRadius: 15,
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      song.displayTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.2,
+                const SizedBox(width: 8),
+                AlbumArt(
+                  imageUrl: widget.song.thumbnail,
+                  semanticLabel: 'Bìa album ${widget.song.displayTitle}',
+                  size: widget.tvMode ? 76 : 58,
+                  borderRadius: widget.tvMode ? 17 : 15,
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.song.displayTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: widget.tvMode ? 18 : 15,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        widget.song.artistsNames,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: widget.tvMode ? 15 : 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: widget.isLiked ? 'Bỏ yêu thích' : 'Yêu thích',
+                  onPressed: widget.onLike,
+                  icon: Icon(
+                    widget.isLiked
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    color: widget.isLiked
+                        ? const Color(0xFFFF6B4A)
+                        : scheme.onSurfaceVariant,
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  tooltip: 'Tùy chọn bài hát',
+                  onSelected: (value) {
+                    if (value == 'queue') widget.onAddToQueue();
+                    if (value == 'playlist') widget.onAddToPlaylist();
+                    if (value == 'like') widget.onLike();
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
+                      value: 'queue',
+                      child: ListTile(
+                        leading: Icon(Icons.playlist_add_rounded),
+                        title: Text('Thêm vào hàng đợi'),
                       ),
                     ),
-                    const SizedBox(height: 5),
-                    Text(
-                      song.artistsNames,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFFA4A5A9),
-                        fontSize: 13,
+                    const PopupMenuItem(
+                      value: 'playlist',
+                      child: ListTile(
+                        leading: Icon(Icons.library_add_rounded),
+                        title: Text('Thêm vào playlist'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'like',
+                      child: ListTile(
+                        leading: Icon(
+                          widget.isLiked
+                              ? Icons.heart_broken_outlined
+                              : Icons.favorite_border_rounded,
+                        ),
+                        title: Text(
+                          widget.isLiked ? 'Bỏ yêu thích' : 'Yêu thích',
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                tooltip: isLiked ? 'Bỏ yêu thích' : 'Yêu thích',
-                onPressed: onLike,
-                icon: Icon(
-                  isLiked
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                  color: isLiked
-                      ? const Color(0xFFFF6B4A)
-                      : const Color(0xFFD7D7DA),
-                ),
-              ),
-              PopupMenuButton<String>(
-                tooltip: 'Tùy chọn bài hát',
-                onSelected: (value) {
-                  if (value == 'queue') onAddToQueue();
-                  if (value == 'like') onLike();
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(
-                    value: 'queue',
-                    child: ListTile(
-                      leading: Icon(Icons.playlist_add_rounded),
-                      title: Text('Thêm vào hàng đợi'),
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'like',
-                    child: ListTile(
-                      leading: Icon(
-                        isLiked
-                            ? Icons.heart_broken_outlined
-                            : Icons.favorite_border_rounded,
-                      ),
-                      title: Text(isLiked ? 'Bỏ yêu thích' : 'Yêu thích'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -625,21 +1154,197 @@ class _SongTile extends StatelessWidget {
             title: Text('Thêm vào hàng đợi'),
           ),
         ),
+        const PopupMenuItem(
+          value: 'playlist',
+          child: ListTile(
+            leading: Icon(Icons.library_add_rounded),
+            title: Text('Thêm vào playlist'),
+          ),
+        ),
         PopupMenuItem(
           value: 'like',
           child: ListTile(
             leading: Icon(
-              isLiked ? Icons.heart_broken_outlined : Icons.favorite_border,
+              widget.isLiked
+                  ? Icons.heart_broken_outlined
+                  : Icons.favorite_border,
             ),
-            title: Text(isLiked ? 'Bỏ yêu thích' : 'Yêu thích'),
+            title: Text(widget.isLiked ? 'Bỏ yêu thích' : 'Yêu thích'),
           ),
         ),
       ],
     );
-    if (selection == 'play') onTap();
-    if (selection == 'queue') onAddToQueue();
-    if (selection == 'like') onLike();
+    if (selection == 'play') widget.onTap();
+    if (selection == 'queue') widget.onAddToQueue();
+    if (selection == 'playlist') widget.onAddToPlaylist();
+    if (selection == 'like') widget.onLike();
   }
+}
+
+class _PlaylistNameDialog extends StatefulWidget {
+  const _PlaylistNameDialog({required this.title, required this.initialValue});
+
+  final String title;
+  final String initialValue;
+
+  @override
+  State<_PlaylistNameDialog> createState() => _PlaylistNameDialogState();
+}
+
+class _PlaylistNameDialogState extends State<_PlaylistNameDialog> {
+  late final TextEditingController _textController;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final value = _textController.text.trim();
+    if (value.isNotEmpty) Navigator.pop(context, value);
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.title),
+    content: TextField(
+      key: const ValueKey('playlist-name-field'),
+      controller: _textController,
+      autofocus: true,
+      maxLength: 60,
+      textInputAction: TextInputAction.done,
+      decoration: const InputDecoration(labelText: 'Tên playlist'),
+      onSubmitted: (_) => _save(),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Hủy'),
+      ),
+      FilledButton(onPressed: _save, child: const Text('Lưu')),
+    ],
+  );
+}
+
+class _ImportBackupDialog extends StatefulWidget {
+  const _ImportBackupDialog({
+    required this.controller,
+    required this.initialJson,
+  });
+
+  final MusicPlayerController controller;
+  final String initialJson;
+
+  @override
+  State<_ImportBackupDialog> createState() => _ImportBackupDialogState();
+}
+
+class _ImportBackupDialogState extends State<_ImportBackupDialog> {
+  late final TextEditingController _textController;
+  var _mode = BackupImportMode.merge;
+  var _isRestoring = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController = TextEditingController(text: widget.initialJson);
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _restore() async {
+    if (_isRestoring) return;
+    setState(() => _isRestoring = true);
+    try {
+      await widget.controller.importLibraryJson(_textController.text, _mode);
+      if (mounted) Navigator.pop(context, true);
+    } on FormatException catch (error) {
+      if (!mounted) return;
+      setState(() => _isRestoring = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message.toString())));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isRestoring = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể khôi phục file này. Vui lòng thử lại.'),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Khôi phục thư viện'),
+    content: SizedBox(
+      width: 620,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SegmentedButton<BackupImportMode>(
+            segments: const [
+              ButtonSegment(
+                value: BackupImportMode.merge,
+                icon: Icon(Icons.merge_rounded),
+                label: Text('Hợp nhất'),
+              ),
+              ButtonSegment(
+                value: BackupImportMode.overwrite,
+                icon: Icon(Icons.sync_problem_rounded),
+                label: Text('Ghi đè'),
+              ),
+            ],
+            selected: {_mode},
+            onSelectionChanged: _isRestoring
+                ? null
+                : (selection) => setState(() => _mode = selection.single),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            key: const ValueKey('import-backup-json-field'),
+            controller: _textController,
+            enabled: !_isRestoring,
+            minLines: 7,
+            maxLines: 12,
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+            decoration: const InputDecoration(
+              labelText: 'Dán nội dung file .json',
+              alignLabelWithHint: true,
+            ),
+          ),
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: _isRestoring ? null : () => Navigator.pop(context, false),
+        child: const Text('Hủy'),
+      ),
+      FilledButton(
+        key: const ValueKey('confirm-import-backup-button'),
+        onPressed: _isRestoring ? null : _restore,
+        child: _isRestoring
+            ? const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('Khôi phục'),
+      ),
+    ],
+  );
 }
 
 class _LiveDot extends StatelessWidget {
@@ -702,26 +1407,28 @@ class _ErrorState extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({this.message = 'Không tìm thấy bài hát phù hợp'});
+
+  final String message;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
+            const Icon(
               Icons.manage_search_rounded,
               size: 52,
               color: Color(0xFFB8F43D),
             ),
-            SizedBox(height: 14),
+            const SizedBox(height: 14),
             Text(
-              'Không tìm thấy bài hát phù hợp',
+              message,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
           ],
         ),

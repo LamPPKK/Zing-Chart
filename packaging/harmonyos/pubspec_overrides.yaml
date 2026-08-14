@@ -1,0 +1,75 @@
+# Flutter OHOS 3.41 compatibility set. Every Git dependency is overridden to
+# an immutable commit and pubspec.lock freezes the hosted dependency graph:
+# - audioplayers 6.5.1-ohos-1.0.0
+# - audio_service 0.18.18-ohos-1.0.0
+# - shared_preferences 2.5.4-ohos-1.0.0
+dependency_overrides:
+  audioplayers:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_audioplayers.git
+      ref: 3a3e22642fac78dedb5fd4364b5ca29bcb144365
+      path: packages/audioplayers
+  audioplayers_android:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_audioplayers.git
+      ref: 3a3e22642fac78dedb5fd4364b5ca29bcb144365
+      path: packages/audioplayers_android
+  audioplayers_darwin:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_audioplayers.git
+      ref: 3a3e22642fac78dedb5fd4364b5ca29bcb144365
+      path: packages/audioplayers_darwin
+  audioplayers_linux:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_audioplayers.git
+      ref: 3a3e22642fac78dedb5fd4364b5ca29bcb144365
+      path: packages/audioplayers_linux
+  audioplayers_ohos:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_audioplayers.git
+      ref: 3a3e22642fac78dedb5fd4364b5ca29bcb144365
+      path: packages/audioplayers_ohos
+  audioplayers_platform_interface:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_audioplayers.git
+      ref: 3a3e22642fac78dedb5fd4364b5ca29bcb144365
+      path: packages/audioplayers_platform_interface
+  audioplayers_web:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_audioplayers.git
+      ref: 3a3e22642fac78dedb5fd4364b5ca29bcb144365
+      path: packages/audioplayers_web
+  audioplayers_windows:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_audioplayers.git
+      ref: 3a3e22642fac78dedb5fd4364b5ca29bcb144365
+      path: packages/audioplayers_windows
+  audio_service:
+    git:
+      url: https://gitcode.com/CPF-Flutter/fluttertpc_audio_service.git
+      ref: a9a26269ea04d77355f0d0aaad089ce6ac526fe5
+      path: audio_service
+  audio_session:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_audio_session.git
+      ref: bd97a32d519c94772a4693d92cca88b145c6f4f3
+  path_provider:
+    git:
+      url: https://gitcode.com/openharmony-sig/flutter_packages.git
+      ref: fd410050c6842717ee1b851ca7640c294de9568c
+      path: packages/path_provider/path_provider
+  path_provider_ohos:
+    git:
+      url: https://gitcode.com/openharmony-tpc/flutter_packages.git
+      ref: fd410050c6842717ee1b851ca7640c294de9568c
+      path: packages/path_provider/path_provider_ohos
+  shared_preferences:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      ref: baa08b15565efccb870a6484ff6a31e7b7e5af74
+      path: packages/shared_preferences/shared_preferences
+  shared_preferences_ohos:
+    git:
+      url: https://gitcode.com/openharmony-tpc/flutter_packages.git
+      ref: 19bd50ff6d5eaa96f18c63796c51e1b4e78a7480
+      path: packages/shared_preferences/shared_preferences_ohos

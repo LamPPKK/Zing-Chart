@@ -24,7 +24,7 @@ class MiniPlayer extends StatelessWidget {
                   top: false,
                   minimum: const EdgeInsets.fromLTRB(12, 0, 12, 10),
                   child: Material(
-                    color: const Color(0xFF242529),
+                    color: Theme.of(context).colorScheme.surfaceContainer,
                     elevation: 16,
                     shadowColor: Colors.black54,
                     borderRadius: BorderRadius.circular(22),
@@ -45,7 +45,9 @@ class MiniPlayer extends StatelessWidget {
                                   : controller.progress,
                               minHeight: 3,
                               color: const Color(0xFFFF6B4A),
-                              backgroundColor: const Color(0xFF38393D),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
                             ),
                             Expanded(
                               child: Padding(
@@ -86,8 +88,10 @@ class MiniPlayer extends StatelessWidget {
                                                 : song.artistsNames,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              color: Color(0xFFB5B6BA),
+                                            style: TextStyle(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
                                               fontSize: 12,
                                             ),
                                           ),

@@ -207,6 +207,18 @@ describe('CORS', () => {
     expect(allowed.headers['access-control-allow-origin']).toBe('https://app.example.test');
     expect(denied.headers['access-control-allow-origin']).toBeUndefined();
   });
+
+  it('allows a packaged TV null origin only when configured', async () => {
+    const upstream: MusicUpstream = { fetchChart: vi.fn(), fetchSource: vi.fn() };
+    const app = await buildApp(config({
+      CORS_ORIGINS: 'https://app.example.test,null',
+    }), upstream);
+    apps.push(app);
+    const response = await app.inject({
+      method: 'GET', url: '/health', headers: { origin: 'null' },
+    });
+    expect(response.headers['access-control-allow-origin']).toBe('null');
+  });
 });
 
 describe('chart cache', () => {

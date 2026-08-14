@@ -5,9 +5,16 @@ endpoints. Requires Node.js 22 or newer.
 
 ```bash
 cp .env.example .env
-npm install
+set -a
+. ./.env
+set +a
+npm ci
 npm run dev
 ```
+
+Node does not load `.env` automatically. The `set -a`/source sequence above
+exports every value from the file into the current shell. Restart the process
+after changing the file.
 
 ## API
 
@@ -38,11 +45,36 @@ reverse proxy, so rate limiting keys clients by the correct address.
 domains and their subdomains are accepted, while ports, credentials, HTTP, and
 redirects outside the allowlist are rejected.
 
+Packaged webOS and Tizen applications can send the literal CORS origin `null`
+because they launch from an installed file bundle. Add `null` explicitly to
+`CORS_ORIGINS` only for a proxy deployment that serves these TV packages. This
+also admits other sandboxed/file origins, so keep rate limiting enabled and use
+a separate TV proxy origin when stricter browser isolation is required.
+
+## Production with Node.js
+
+Create and edit `.env.production` first, then load it into the shell before
+starting the compiled server:
+
+```bash
+cp .env.example .env.production # Run once, then edit production values.
+npm ci
+npm run typecheck
+npm test
+npm run build
+set -a
+. ./.env.production
+set +a
+npm start
+```
+
+## Production with Docker
+
+Reuse the production environment file described above:
+
 ```bash
 docker build -t zing-chart-proxy .
 docker run --rm -p 8080:8080 \
-  -e CORS_ORIGINS=https://music.example.com \
-  -e PUBLIC_BASE_URL=https://api.example.com \
-  -e STREAM_TOKEN_SECRET=replace-with-a-strong-random-secret \
+  --env-file .env.production \
   zing-chart-proxy
 ```

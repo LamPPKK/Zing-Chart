@@ -62,6 +62,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
 
   for (const origin of corsOrigins) {
+    // Packaged webOS/Tizen applications can identify their file origin as
+    // the literal string "null". It is accepted only when explicitly listed.
+    if (origin === 'null') continue;
     url(origin, origin, 'CORS_ORIGINS');
   }
 

@@ -5,7 +5,7 @@ on:
     inputs:
       version:
         description: Artifact version (for example 1.0.0)
-        required: false
+        required: true
         type: string
   push:
     tags:
@@ -24,6 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -33,6 +36,10 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
+      - name: Validate Fire OS and HarmonyOS packaging
+        run: |
+          bash -n packaging/fireos/build_fireos.sh packaging/harmonyos/build_harmonyos.sh
+          node --test packaging/fireos/*.test.mjs packaging/harmonyos/*.test.mjs
 
   proxy:
     name: Proxy tests and Docker image
@@ -64,7 +71,7 @@ jobs:
           if-no-files-found: error
 
   android:
-    name: Android APK and AAB
+    name: Android, Android TV APK and AAB
     runs-on: ubuntu-latest
     needs: [quality, proxy]
     env:
@@ -98,12 +105,106 @@ jobs:
           } > android/key.properties
       - run: flutter build apk --release --dart-define=API_BASE_URL="$API_BASE_URL"
       - run: flutter build appbundle --release --dart-define=API_BASE_URL="$API_BASE_URL"
+      - name: Name universal Android TV artifacts
+        run: |
+          mkdir -p dist/android
+          cp build/app/outputs/flutter-apk/app-release.apk dist/android/zingchart-android-tv.apk
+          cp build/app/outputs/bundle/release/app-release.aab dist/android/zingchart-android-tv.aab
       - uses: actions/upload-artifact@v4
         with:
           name: zingchart-android
           path: |
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/bundle/release/app-release.aab
+            dist/android/zingchart-android-tv.apk
+            dist/android/zingchart-android-tv.aab
+          if-no-files-found: error
+
+  fireos:
+    name: Amazon Fire OS touch and Fire TV APKs
+    runs-on: ubuntu-latest
+    needs: [quality, proxy]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Require Amazon production signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD ANDROID_STORE_PASSWORD; do
+            [[ -n "${!name}" ]] || { echo "Missing required signing secret: $name" >&2; exit 78; }
+          done
+      - name: Configure Amazon production signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release.jks
+          {
+            echo "storeFile=release.jks"
+            echo "storePassword=$ANDROID_STORE_PASSWORD"
+            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+          } > android/key.properties
+      - name: Build Amazon Appstore APKs
+        env:
+          FIREOS_BUILD_NUMBER: ${{ github.run_number }}
+          FIREOS_REQUIRE_PRODUCTION_SIGNING: '1'
+        run: |
+          VERSION="${{ inputs.version || github.ref_name }}"
+          VERSION="${VERSION#v}"
+          [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo "A Fire OS release requires an explicit x.y.z version or vX.Y.Z tag." >&2; exit 64; }
+          ./packaging/fireos/build_fireos.sh "$API_BASE_URL" "$VERSION"
+          ./packaging/fireos/build_fireos.sh "$API_BASE_URL" "$VERSION" tv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zingchart-fireos
+          path: |
+            dist/fireos/*.apk
+            dist/firetv/*.apk
+          if-no-files-found: error
+
+  harmonyos:
+    name: HarmonyOS phone/tablet HAP
+    if: ${{ vars.HARMONYOS_RUNNER_ENABLED == 'true' }}
+    runs-on: [self-hosted, harmonyos]
+    needs: [quality, proxy]
+    env:
+      HARMONY_FLUTTER_BIN: ${{ vars.HARMONY_FLUTTER_BIN }}
+      DEVECO_SDK_HOME: ${{ vars.DEVECO_SDK_HOME }}
+      HARMONY_BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add DevEco command-line tools
+        if: ${{ vars.DEVECO_TOOL_HOME != '' }}
+        run: |
+          echo "${{ vars.DEVECO_TOOL_HOME }}/tools/ohpm/bin" >> "$GITHUB_PATH"
+          echo "${{ vars.DEVECO_TOOL_HOME }}/tools/hvigor/bin" >> "$GITHUB_PATH"
+          echo "${{ vars.DEVECO_TOOL_HOME }}/tools/node/bin" >> "$GITHUB_PATH"
+      - name: Build HarmonyOS HAP
+        run: |
+          VERSION="${{ inputs.version || github.ref_name }}"
+          VERSION="${VERSION#v}"
+          [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo "A HarmonyOS release requires an explicit x.y.z version or vX.Y.Z tag." >&2; exit 64; }
+          ./packaging/harmonyos/build_harmonyos.sh "$API_BASE_URL" "$VERSION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zingchart-harmonyos
+          path: dist/harmonyos/*.hap
           if-no-files-found: error
 
   web:
@@ -127,12 +228,72 @@ jobs:
           path: build/zingchart-web.tar.gz
           if-no-files-found: error
 
+  webos-tv:
+    name: LG webOS TV IPK
+    runs-on: ubuntu-latest
+    needs: [quality, proxy]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Install official webOS CLI
+        run: npm install --global @webos-tools/cli@3.2.5
+      - name: Build webOS TV package
+        run: |
+          VERSION="${{ inputs.version || github.ref_name }}"
+          VERSION="${VERSION#v}"
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || VERSION="1.0.0"
+          ./packaging/tv/build_tv_web.sh webos "$API_BASE_URL" "$VERSION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zingchart-webos-tv
+          path: dist/webos/*.ipk
+          if-no-files-found: error
+
+  tizen-tv:
+    name: Samsung Tizen TV signable project
+    runs-on: ubuntu-latest
+    needs: [quality, proxy]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build Tizen TV project
+        run: |
+          VERSION="${{ inputs.version || github.ref_name }}"
+          VERSION="${VERSION#v}"
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || VERSION="1.0.0"
+          ./packaging/tv/build_tv_web.sh tizen "$API_BASE_URL" "$VERSION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zingchart-tizen-tv-project
+          path: dist/tizen/*.zip
+          if-no-files-found: error
+
   windows:
-    name: Windows ZIP and installer
+    name: Windows ZIP, installer and MSIX
     runs-on: windows-latest
     needs: [quality, proxy]
     env:
       WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+      WINDOWS_PUBLISHER: ${{ secrets.WINDOWS_PUBLISHER }}
+      WINDOWS_IDENTITY_NAME: ${{ secrets.WINDOWS_IDENTITY_NAME }}
+      WINDOWS_PUBLISHER_DISPLAY_NAME: ${{ secrets.WINDOWS_PUBLISHER_DISPLAY_NAME }}
+      WINDOWS_MSIX_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_MSIX_CERTIFICATE_BASE64 }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -155,12 +316,68 @@ jobs:
           [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64))
           $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Filter signtool.exe -Recurse | Sort-Object FullName -Descending | Select-Object -First 1
           & $signtool.FullName sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f $certificatePath /p $env:WINDOWS_CERTIFICATE_PASSWORD build/windows/x64/runner/Release/zmp3chart.exe
+          if ($LASTEXITCODE -ne 0) { throw "Windows executable signing failed with exit code $LASTEXITCODE." }
       - name: Install Inno Setup
         shell: powershell
         run: choco install innosetup --yes --no-progress
       - name: Package Windows
         shell: powershell
         run: ./packaging/windows/package_windows.ps1 -Version "${{ inputs.version || github.ref_name }}"
+      - name: Validate Microsoft Store identity
+        shell: powershell
+        run: |
+          $values = @($env:WINDOWS_PUBLISHER, $env:WINDOWS_IDENTITY_NAME, $env:WINDOWS_PUBLISHER_DISPLAY_NAME)
+          $configured = @($values | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
+          if ($configured -ne 0 -and $configured -ne 3) {
+            throw "Configure WINDOWS_PUBLISHER, WINDOWS_IDENTITY_NAME and WINDOWS_PUBLISHER_DISPLAY_NAME together."
+          }
+          if ($env:WINDOWS_MSIX_CERTIFICATE_BASE64 -and $configured -ne 3) {
+            throw "A direct-distribution MSIX certificate requires the complete Microsoft Store identity configuration."
+          }
+      - name: Package development MSIX
+        shell: powershell
+        run: |
+          $version = "${{ inputs.version || github.ref_name }}"
+          if ($version -notmatch '^v?\d') { $version = "1.0.0" }
+          ./packaging/windows/package_msix.ps1 -Version $version -Publisher "CN=ZingChart Development" -IdentityName "ZingChart.Music.Development" -PublisherDisplayName "#zingChart Development" -OutputName "zingchart-windows-development"
+      - name: Sign development MSIX
+        shell: powershell
+        run: |
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Filter signtool.exe -Recurse | Sort-Object FullName -Descending | Select-Object -First 1
+          $developmentPasswordText = [Guid]::NewGuid().ToString("N")
+          $developmentPassword = ConvertTo-SecureString $developmentPasswordText -AsPlainText -Force
+          $certificate = New-SelfSignedCertificate -Type Custom -Subject "CN=ZingChart Development" -KeyUsage DigitalSignature -KeyAlgorithm RSA -KeyLength 2048 -KeyExportPolicy Exportable -HashAlgorithm SHA256 -CertStoreLocation "Cert:\CurrentUser\My" -NotAfter (Get-Date).AddDays(30) -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
+          $certificatePath = Join-Path $env:RUNNER_TEMP "zingchart-development.pfx"
+          Export-PfxCertificate -Cert $certificate -FilePath $certificatePath -Password $developmentPassword | Out-Null
+          Export-Certificate -Cert $certificate -FilePath "dist/windows/zingchart-development.cer" | Out-Null
+          & $signtool.FullName sign /fd SHA256 /f $certificatePath /p $developmentPasswordText dist/windows/zingchart-windows-development.msix
+          $signExitCode = $LASTEXITCODE
+          Remove-Item "Cert:\CurrentUser\My\$($certificate.Thumbprint)" -Force
+          if ($signExitCode -ne 0) { throw "MSIX signing failed with exit code $signExitCode." }
+          Copy-Item packaging/windows/install_development_msix.ps1 dist/windows/install-zingchart-development.ps1
+      - name: Package Microsoft Store MSIX
+        if: ${{ env.WINDOWS_PUBLISHER != '' && env.WINDOWS_IDENTITY_NAME != '' && env.WINDOWS_PUBLISHER_DISPLAY_NAME != '' }}
+        shell: powershell
+        run: |
+          $version = "${{ inputs.version }}"
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            if ($env:GITHUB_REF_TYPE -ne "tag") {
+              throw "A Microsoft Store MSIX release requires an explicit workflow version or a version tag."
+            }
+            $version = $env:GITHUB_REF_NAME
+          }
+          ./packaging/windows/package_msix.ps1 -Version $version -Publisher $env:WINDOWS_PUBLISHER -IdentityName $env:WINDOWS_IDENTITY_NAME -PublisherDisplayName $env:WINDOWS_PUBLISHER_DISPLAY_NAME -OutputName "zingchart-windows-store" -SkipDependencyCopy
+      - name: Sign Microsoft Store identity MSIX for direct distribution
+        if: ${{ env.WINDOWS_PUBLISHER != '' && env.WINDOWS_IDENTITY_NAME != '' && env.WINDOWS_PUBLISHER_DISPLAY_NAME != '' && env.WINDOWS_MSIX_CERTIFICATE_BASE64 != '' }}
+        shell: powershell
+        env:
+          WINDOWS_MSIX_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_MSIX_CERTIFICATE_PASSWORD }}
+        run: |
+          $certificatePath = Join-Path $env:RUNNER_TEMP "zingchart-msix.pfx"
+          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:WINDOWS_MSIX_CERTIFICATE_BASE64))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Filter signtool.exe -Recurse | Sort-Object FullName -Descending | Select-Object -First 1
+          & $signtool.FullName sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f $certificatePath /p $env:WINDOWS_MSIX_CERTIFICATE_PASSWORD dist/windows/zingchart-windows-store.msix
+          if ($LASTEXITCODE -ne 0) { throw "Store identity MSIX signing failed with exit code $LASTEXITCODE." }
       - name: Sign Windows installer
         if: ${{ env.WINDOWS_CERTIFICATE_BASE64 != '' }}
         shell: powershell
@@ -171,10 +388,11 @@ jobs:
           $certificatePath = Join-Path $env:RUNNER_TEMP "zingchart.pfx"
           $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Filter signtool.exe -Recurse | Sort-Object FullName -Descending | Select-Object -First 1
           & $signtool.FullName sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f $certificatePath /p $env:WINDOWS_CERTIFICATE_PASSWORD dist/windows/zingchart-windows-installer.exe
+          if ($LASTEXITCODE -ne 0) { throw "Windows installer signing failed with exit code $LASTEXITCODE." }
       - uses: actions/upload-artifact@v4
         with:
           name: zingchart-windows
-          path: dist/windows/*
+          path: dist/windows/**
           if-no-files-found: error
 
   macos:
