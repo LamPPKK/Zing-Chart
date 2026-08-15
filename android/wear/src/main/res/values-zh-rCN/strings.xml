@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="watch_connecting">正在连接</string>
+    <string name="watch_connected">手机已连接</string>
+    <string name="watch_disconnected">请在手机上打开 #zingChart</string>
+    <string name="watch_sending">正在发送指令</string>
+    <string name="watch_open_phone">请在手机上选择歌曲</string>
+    <string name="watch_previous">上一首</string>
+    <string name="watch_play">播放</string>
+    <string name="watch_pause">暂停</string>
+    <string name="watch_next">下一首</string>
+</resources>

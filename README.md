@@ -1,5 +1,11 @@
 # #zingChart
 
+[Tiếng Việt](README.md) · [English](README.en.md) · [简体中文](README.zh-CN.md)
+
+Tài liệu được duy trì bằng ba ngôn ngữ trên. UI Flutter hiện mặc định tiếng
+Việt; các widget/remote native tự chọn nhãn tiếng Việt, English hoặc 简体中文
+theo ngôn ngữ hệ điều hành.
+
 #zingChart là ứng dụng bảng xếp hạng và trình phát nhạc Local-First viết bằng
 Flutter. Một codebase phục vụ Android, Android TV, iOS, Web/PWA, Windows,
 macOS, Linux, Amazon Fire OS/Fire TV, LG webOS TV, Samsung Tizen TV và
@@ -23,6 +29,8 @@ proxy Node/TypeScript do người triển khai tự host.
   được backup v1.
 - Theme Sáng/Tối/Theo hệ thống, giữ nhận diện charcoal, coral và lime.
 - UI adaptive cho mobile, tablet, desktop và giao diện 10-foot cho TV.
+- Now Playing widget trên Android, iOS/iPadOS 17+, macOS 14+ và HarmonyOS;
+  companion remote trên Wear OS 3+ và watchOS 10+.
 
 Chưa hỗ trợ tải/caching file nhạc để nghe offline. PWA chỉ cache app shell và
 dữ liệu không phải audio.
@@ -51,6 +59,22 @@ hoặc chia sẻ PNG, desktop chọn nơi lưu; TV hiển thị QR chứa summar
 hóa và không cần server. HarmonyOS tự rơi về summary/QR có thể sao chép nếu
 adapter share/save không khả dụng.
 
+### Widget và đồng hồ
+
+| Bề mặt | Trạng thái | Điều khiển |
+| --- | --- | --- |
+| Android Home Widget | Có | Previous, play/pause, next |
+| Fire OS tablet | Có trong APK Android; phụ thuộc launcher của thiết bị có cho đặt widget hay không | Previous, play/pause, next |
+| iOS/iPadOS WidgetKit | iOS/iPadOS 17+ | Previous, play/pause, next qua `AudioPlaybackIntent` |
+| macOS WidgetKit | macOS 14+ | Previous, play/pause, next |
+| HarmonyOS Service Widget | API 18 | Previous, play/pause, next; mở EntryAbility khi cần đánh thức Flutter |
+| Wear OS remote | Wear OS 3+, ghép với Android phone | Previous, play/pause, next qua Data Layer |
+| watchOS remote | watchOS 10+, ghép với iPhone | Previous, play/pause, next qua WatchConnectivity |
+| Windows/Linux/Web/TV | Không có home-widget portable trong v1 | Dùng SMTC, MPRIS, Media Session hoặc remote TV sẵn có |
+
+Widget/watch chỉ nhận snapshot metadata, trạng thái và lệnh điều khiển. Lịch sử,
+analytics, favorites và URL stream không được gửi ra server hay sang wearable.
+
 ## 2. Kiến trúc và thư mục
 
 ```text
@@ -72,7 +96,8 @@ Flutter clients
 | Flutter app | `lib/` | UI, playback, Local-First library |
 | Proxy | `proxy/` | Chuẩn hóa chart, ký URL và relay audio |
 | Native runners | `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` | Runner từng hệ điều hành |
-| Packaging | `packaging/` | Fire OS, TV, HarmonyOS và installer desktop |
+| Companion surfaces | `android/wear/`, `ios/ZingChartWatch/`, `ios/ZingChartWidget/`, `macos/ZingChartWidget/` | Widget và smartwatch remote |
+| Packaging | `packaging/` | Fire OS, TV, HarmonyOS, Apple target preparation và installer desktop |
 | CI/Release | `.github/workflows/` | Test và build artifact đa nền tảng |
 
 ## 3. Yêu cầu chung
@@ -89,8 +114,8 @@ Flutter clients
 
 | Nền tảng | Toolchain bổ sung |
 | --- | --- |
-| Android/Android TV/Fire OS | Android SDK, Android Studio hoặc command-line tools, JDK 17 |
-| iOS/macOS | macOS, full Xcode, CocoaPods; iOS deployment target 13+ |
+| Android/Android TV/Fire OS/Wear OS | Android SDK 36, Android Studio hoặc command-line tools, JDK 17; Wear OS emulator/device cho E2E |
+| iOS/macOS/watchOS | macOS, full Xcode, CocoaPods; Ruby gem `xcodeproj 1.27.0`; WidgetKit yêu cầu iOS 17+/macOS 14+, watchOS 10+ |
 | Windows | Windows, Visual Studio 2022 với Desktop development with C++, Windows 10/11 SDK |
 | Linux | Clang, CMake, Ninja, GTK 3, LZMA và GStreamer development packages |
 | webOS TV | Node.js và `@webos-tools/cli@3.2.5` |
@@ -255,9 +280,11 @@ Kiểm tra packaging scripts:
 
 ```sh
 node --test \
+  packaging/apple/*.test.mjs \
   packaging/fireos/*.test.mjs \
   packaging/harmonyos/*.test.mjs \
-  packaging/tv/*.test.mjs
+  packaging/tv/*.test.mjs \
+  packaging/wearos/*.test.mjs
 ```
 
 ## 7. Build và cài đặt theo nền tảng
@@ -309,6 +336,33 @@ keyPassword=YOUR_KEY_PASSWORD
 Không commit keystore, password hoặc `key.properties`. Nếu file này không tồn
 tại, Gradle sẽ ký release APK bằng debug key; artifact đó chỉ dùng để test.
 
+#### Android Home Widget và Wear OS remote
+
+Home Widget được đóng ngay trong APK Android và dùng MediaSession của
+`audio_service`; không khởi tạo player riêng. Sau khi cài app, nhấn giữ màn hình
+chính → **Widgets** → **#zingChart**.
+
+Build APK remote cho Wear OS sau khi Flutter đã tạo Android build config:
+
+```sh
+fvm flutter build apk --release \
+  --dart-define=API_BASE_URL="$API_BASE_URL"
+./android/gradlew -p android :wear:assembleRelease
+```
+
+Artifact:
+
+```text
+build/wear/outputs/apk/release/wear-release.apk
+```
+
+APK phone và watch phải có cùng application ID `software.baycho.zmp3chart` và
+cùng signing certificate để Wear OS Data Layer cho phép giao tiếp. Cài mỗi APK
+đúng thiết bị tương ứng; mở app điện thoại ít nhất một lần rồi mở **#zingChart
+Remote** trên đồng hồ. Data Layer chỉ truyền state/lệnh qua kết nối cục bộ của
+Android/Wear OS. Fire OS không cần Google Play Services để widget Android hoạt
+động; Wear OS sync tự vô hiệu hóa khi Play Services không có.
+
 ### 7.2 Android TV
 
 Android runner đã có Leanback launcher, TV banner và đánh dấu touchscreen là
@@ -333,6 +387,13 @@ adb install -r build/app/outputs/flutter-apk/app-release.apk
 
 Yêu cầu macOS, full Xcode, CocoaPods và deployment target iOS 13+.
 
+Tạo/cập nhật target WidgetKit và watchOS theo version trong `pubspec.yaml`:
+
+```sh
+gem install xcodeproj -v 1.27.0 --no-document
+ruby packaging/apple/prepare_ios_companions.rb
+```
+
 Build app không ký để kiểm tra CI:
 
 ```sh
@@ -356,6 +417,18 @@ fvm flutter build ipa --release \
 IPA nằm trong `build/ios/ipa/`. Có thể mở `ios/Runner.xcworkspace` bằng Xcode,
 chọn thiết bị thật, cấu hình Signing & Capabilities rồi dùng Product → Archive
 để cài qua TestFlight hoặc phương thức phân phối phù hợp.
+
+Widget tương tác yêu cầu iOS/iPadOS 17+. Trong Apple Developer, đăng ký thêm:
+
+- App Group `group.software.baycho.zmp3chart.shared`;
+- bundle ID `software.baycho.zmp3chart.widget`;
+- bundle ID `software.baycho.zmp3chart.watchkitapp`;
+- provisioning profile riêng cho Runner, Widget và Watch, nhưng cùng team và
+  distribution certificate.
+
+Sau khi cài, thêm **#zingChart Widget** từ Widget Gallery. Trên Apple Watch, cài
+**#zingChart Remote** từ ứng dụng Watch của iPhone. WatchConnectivity chỉ làm
+remote cho app iPhone; watch không tải audio và không gửi analytics lên mạng.
 
 ### 7.4 Web/PWA
 
@@ -443,6 +516,8 @@ Yêu cầu full Xcode:
 ```sh
 fvm flutter config --enable-macos-desktop
 fvm flutter pub get
+gem install xcodeproj -v 1.27.0 --no-document
+ruby packaging/apple/prepare_macos_widget.rb
 fvm flutter build macos --release \
   --dart-define=API_BASE_URL="$API_BASE_URL"
 ./packaging/macos/package_macos.sh
@@ -456,6 +531,11 @@ Artifact:
 
 Mở DMG và kéo app vào Applications. Bản phát hành bên ngoài máy phát triển cần
 Developer ID signing, hardened runtime, notarization và stapling.
+
+WidgetKit yêu cầu macOS 14+ và App Group
+`group.software.baycho.zmp3chart.shared`. Sau khi cài app, mở Notification
+Center → **Edit Widgets** → thêm **#zingChart**. Windows và Linux tiếp tục dùng
+SMTC/MPRIS vì không có một home-widget API chung tương đương trong codebase.
 
 ### 7.7 Linux x64
 
@@ -675,6 +755,11 @@ signing profile thật.
 Các plugin file picker/share hiện chưa có OHOS implementation đã được review;
 backup UI sẽ fallback sang copy/paste JSON trên HarmonyOS.
 
+Build script đồng thời chèn HarmonyOS Service Widget `2×4`, lưu snapshot trong
+Preferences cục bộ và gọi cùng MethodChannel companion. Sau khi cài HAP, thêm
+card **#zingChart đang phát** từ màn hình chính. Các nút card có thể đánh thức
+`EntryAbility` để chuyển lệnh vào Flutter; không dùng endpoint proxy mới.
+
 ## 8. Backup và dữ liệu Local-First
 
 App lưu favorites, playlist, queue, history, recent searches, theme và phiên
@@ -700,7 +785,8 @@ Backup theo chính sách hệ điều hành; đây không phải đồng bộ re
 workflow dispatch. Pipeline kiểm tra:
 
 - format, analyze và Flutter tests;
-- Web/Android TV/Fire OS/TV package smoke builds;
+- Web/Android TV/Fire OS/TV package smoke builds và Wear OS APK;
+- contract tests cho Android/iOS/macOS/HarmonyOS widget và watch remote;
 - Windows MSIX layout;
 - proxy typecheck/test/build và Docker smoke build.
 
@@ -724,7 +810,7 @@ chính:
 | Windows Store MSIX | `WINDOWS_PUBLISHER`, `WINDOWS_IDENTITY_NAME`, `WINDOWS_PUBLISHER_DISPLAY_NAME` |
 | Windows direct MSIX | `WINDOWS_MSIX_CERTIFICATE_BASE64`, `WINDOWS_MSIX_CERTIFICATE_PASSWORD` |
 | macOS | `MACOS_CERTIFICATE_BASE64`, `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGNING_IDENTITY`, Apple notarization secrets |
-| iOS | `IOS_CERTIFICATE_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64`, `IOS_SIGNING_IDENTITY` |
+| iOS/Widget/watchOS | `IOS_CERTIFICATE_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64`, `IOS_WIDGET_PROVISIONING_PROFILE_BASE64`, `IOS_WATCH_PROVISIONING_PROFILE_BASE64`, `IOS_SIGNING_IDENTITY` |
 | Linux AppImage | `LINUXDEPLOY_SHA256` |
 | HarmonyOS | self-hosted runner variables `HARMONY_FLUTTER_BIN`, `DEVECO_SDK_HOME`, tùy chọn `DEVECO_TOOL_HOME` |
 
@@ -737,17 +823,18 @@ Chi tiết signing và artifact xem thêm tại
 | Nền tảng | Artifact |
 | --- | --- |
 | Android | APK, AAB |
+| Wear OS | `zingchart-wearos-remote.apk` |
 | Android TV | APK/AAB universal hoặc APK ép `TV_MODE=true` |
-| iOS | unsigned app ZIP trong CI, IPA khi có signing |
+| iOS/iPadOS/watchOS | unsigned app ZIP có WidgetKit/watchOS bundle; IPA khi đủ ba provisioning profile |
 | Web/PWA | `build/web/` hoặc tar.gz trong CI |
 | Windows | portable ZIP, Inno EXE, MSIX |
-| macOS | `.app` ZIP, DMG |
+| macOS | `.app` ZIP, DMG có WidgetKit extension |
 | Linux | tar.gz, DEB, tùy chọn AppImage |
 | Fire OS | touch APK |
 | Fire TV | TV APK |
 | webOS TV | IPK |
 | Tizen TV | signable project ZIP, WGT sau khi ký |
-| HarmonyOS | HAP |
+| HarmonyOS | HAP có Service Widget |
 | Proxy | Docker image tar.gz trong release CI |
 
 ## 11. Lỗi thường gặp
@@ -773,6 +860,21 @@ Không upload debug-signed artifact lên Store.
 
 Command Line Tools không đủ. Cài full Xcode, chọn đúng developer directory và
 chạy lại `fvm flutter doctor -v`.
+
+### Widget Apple không xuất hiện
+
+- Thiết bị chưa đạt iOS/iPadOS 17 hoặc macOS 14.
+- Runner và Widget chưa cùng App Group hoặc provisioning profile thiếu
+  entitlement App Group.
+- Chưa chạy lại script `prepare_ios_companions.rb`/
+  `prepare_macos_widget.rb` sau khi đổi version/project.
+
+### Wear OS báo chưa kết nối
+
+- Phone/watch APK không cùng application ID hoặc signing certificate.
+- Đồng hồ chưa ghép với Android phone, app phone chưa mở, hoặc Google Play
+  Services/Wear Data Layer không khả dụng.
+- Wear OS remote không giao tiếp với iPhone; iPhone dùng watchOS target riêng.
 
 ### Windows MSIX không cài được
 
@@ -801,6 +903,8 @@ DevEco HarmonyOS API 18 metadata. Cài đúng HarmonyOS SDK từ DevEco Studio.
 - Artifact không có signing secret chỉ dành cho development/test.
 - Background playback, lock screen metadata, media keys và TV remote cần kiểm
   tra thêm trên thiết bị thật trước mỗi release.
+- Widget/watch cần kiểm tra thêm trên launcher, Apple Watch, Wear OS và
+  HarmonyOS hardware thật; CI không mô phỏng ghép đôi thiết bị.
 - Nguồn Zing là upstream bên ngoài và có thể thay đổi; mọi thay đổi adapter phải
   được cô lập trong proxy.
 - Chỉ sử dụng, relay hoặc tải nội dung khi có quyền phù hợp.

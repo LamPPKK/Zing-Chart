@@ -35,10 +35,10 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
-      - name: Validate Fire OS and HarmonyOS packaging
+      - name: Validate companion and platform packaging
         run: |
           bash -n packaging/fireos/build_fireos.sh packaging/harmonyos/build_harmonyos.sh
-          node --test packaging/fireos/*.test.mjs packaging/harmonyos/*.test.mjs
+          node --test packaging/apple/*.test.mjs packaging/fireos/*.test.mjs packaging/harmonyos/*.test.mjs packaging/wearos/*.test.mjs
 
   web-smoke:
     name: Web release smoke build
@@ -73,6 +73,10 @@ jobs:
       - run: flutter pub get
       - name: Build Android TV APK
         run: flutter build apk --release --dart-define=API_BASE_URL="$API_BASE_URL" --dart-define=TV_MODE=true
+      - name: Build Wear OS remote APK
+        run: ./android/gradlew -p android :wear:assembleRelease
+      - name: Validate Wear OS artifact
+        run: test -s build/wear/outputs/apk/release/wear-release.apk
 
   fireos-smoke:
     name: Amazon Fire OS touch and Fire TV APKs

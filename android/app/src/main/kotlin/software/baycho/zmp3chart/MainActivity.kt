@@ -12,6 +12,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : AudioServiceActivity() {
     private val platformChannel = "software.baycho.zmp3chart/platform"
+    private val companionChannel = "software.baycho.zmp3chart/companion"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -25,6 +26,21 @@ class MainActivity : AudioServiceActivity() {
                 result.success(
                     uiModeManager.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION,
                 )
+            }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, companionChannel)
+            .setMethodCallHandler { call, result ->
+                if (call.method != "publishSnapshot") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                @Suppress("UNCHECKED_CAST")
+                val values = call.arguments as? Map<String, Any?>
+                if (values == null) {
+                    result.error("invalid_snapshot", "Expected a snapshot map.", null)
+                    return@setMethodCallHandler
+                }
+                CompanionStateStore.save(applicationContext, values)
+                result.success(null)
             }
     }
 

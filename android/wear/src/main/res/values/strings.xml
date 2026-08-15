@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="watch_connecting">Đang kết nối</string>
+    <string name="watch_connected">Điện thoại đã kết nối</string>
+    <string name="watch_disconnected">Mở #zingChart trên điện thoại</string>
+    <string name="watch_sending">Đang gửi lệnh</string>
+    <string name="watch_open_phone">Chọn bài hát trên điện thoại</string>
+    <string name="watch_previous">Bài trước</string>
+    <string name="watch_play">Phát</string>
+    <string name="watch_pause">Tạm dừng</string>
+    <string name="watch_next">Bài tiếp theo</string>
+</resources>

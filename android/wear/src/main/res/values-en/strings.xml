@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="watch_connecting">Connecting</string>
+    <string name="watch_connected">Phone connected</string>
+    <string name="watch_disconnected">Open #zingChart on your phone</string>
+    <string name="watch_sending">Sending command</string>
+    <string name="watch_open_phone">Choose a song on your phone</string>
+    <string name="watch_previous">Previous</string>
+    <string name="watch_play">Play</string>
+    <string name="watch_pause">Pause</string>
+    <string name="watch_next">Next</string>
+</resources>

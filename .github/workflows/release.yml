@@ -36,10 +36,10 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
-      - name: Validate Fire OS and HarmonyOS packaging
+      - name: Validate companion and platform packaging
         run: |
           bash -n packaging/fireos/build_fireos.sh packaging/harmonyos/build_harmonyos.sh
-          node --test packaging/fireos/*.test.mjs packaging/harmonyos/*.test.mjs
+          node --test packaging/apple/*.test.mjs packaging/fireos/*.test.mjs packaging/harmonyos/*.test.mjs packaging/wearos/*.test.mjs
 
   proxy:
     name: Proxy tests and Docker image
@@ -105,11 +105,14 @@ jobs:
           } > android/key.properties
       - run: flutter build apk --release --dart-define=API_BASE_URL="$API_BASE_URL"
       - run: flutter build appbundle --release --dart-define=API_BASE_URL="$API_BASE_URL"
+      - name: Build Wear OS remote
+        run: ./android/gradlew -p android :wear:assembleRelease
       - name: Name universal Android TV artifacts
         run: |
           mkdir -p dist/android
           cp build/app/outputs/flutter-apk/app-release.apk dist/android/zingchart-android-tv.apk
           cp build/app/outputs/bundle/release/app-release.aab dist/android/zingchart-android-tv.aab
+          cp build/wear/outputs/apk/release/wear-release.apk dist/android/zingchart-wearos-remote.apk
       - uses: actions/upload-artifact@v4
         with:
           name: zingchart-android
@@ -118,6 +121,7 @@ jobs:
             build/app/outputs/bundle/release/app-release.aab
             dist/android/zingchart-android-tv.apk
             dist/android/zingchart-android-tv.aab
+            dist/android/zingchart-wearos-remote.apk
           if-no-files-found: error
 
   fireos:
@@ -412,6 +416,10 @@ jobs:
           cache: true
       - run: flutter config --enable-macos-desktop
       - run: flutter pub get
+      - name: Prepare macOS WidgetKit target
+        run: |
+          gem install xcodeproj -v 1.27.0 --no-document
+          ruby packaging/apple/prepare_macos_widget.rb
       - name: Import Apple Developer ID certificate
         if: ${{ env.MACOS_CERTIFICATE_BASE64 != '' }}
         env:
@@ -451,12 +459,9 @@ jobs:
           if-no-files-found: error
 
   ios:
-    name: iOS archive (no codesign)
+    name: iOS, WidgetKit and watchOS archive
     runs-on: macos-latest
     needs: [quality, proxy]
-    env:
-      IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
-      IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -465,9 +470,27 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - name: Import iOS distribution certificate
-        if: ${{ env.IOS_CERTIFICATE_BASE64 != '' && env.IOS_PROVISIONING_PROFILE_BASE64 != '' }}
+      - name: Prepare WidgetKit and watchOS targets
+        run: |
+          gem install xcodeproj -v 1.27.0 --no-document
+          ruby packaging/apple/prepare_ios_companions.rb
+      - name: Detect complete Apple mobile signing configuration
         env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          IOS_WIDGET_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_WIDGET_PROVISIONING_PROFILE_BASE64 }}
+          IOS_WATCH_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_WATCH_PROVISIONING_PROFILE_BASE64 }}
+          IOS_SIGNING_IDENTITY: ${{ secrets.IOS_SIGNING_IDENTITY }}
+        run: |
+          if [[ -n "$IOS_CERTIFICATE_BASE64" && -n "$IOS_PROVISIONING_PROFILE_BASE64" && -n "$IOS_WIDGET_PROVISIONING_PROFILE_BASE64" && -n "$IOS_WATCH_PROVISIONING_PROFILE_BASE64" && -n "$IOS_SIGNING_IDENTITY" ]]; then
+            echo "IOS_SIGNING_ENABLED=true" >> "$GITHUB_ENV"
+          else
+            echo "IOS_SIGNING_ENABLED=false" >> "$GITHUB_ENV"
+          fi
+      - name: Import iOS distribution certificate
+        if: ${{ env.IOS_SIGNING_ENABLED == 'true' }}
+        env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
         run: |
           KEYCHAIN="$RUNNER_TEMP/zingchart-ios.keychain-db"
@@ -483,15 +506,29 @@ jobs:
       - name: Archive app bundle
         run: ditto -c -k --sequesterRsrc --keepParent build/ios/iphoneos/Runner.app build/zingchart-ios-unsigned.zip
       - name: Sign and package iOS IPA
-        if: ${{ env.IOS_CERTIFICATE_BASE64 != '' && env.IOS_PROVISIONING_PROFILE_BASE64 != '' }}
+        if: ${{ env.IOS_SIGNING_ENABLED == 'true' }}
         env:
           IOS_SIGNING_IDENTITY: ${{ secrets.IOS_SIGNING_IDENTITY }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          IOS_WIDGET_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_WIDGET_PROVISIONING_PROFILE_BASE64 }}
+          IOS_WATCH_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_WATCH_PROVISIONING_PROFILE_BASE64 }}
         run: |
           APP=build/ios/iphoneos/Runner.app
+          WIDGET="$APP/PlugIns/ZingChartWidget.appex"
+          WATCH="$APP/Watch/ZingChartWatch.app"
+          [[ -d "$WIDGET" && -d "$WATCH" ]] || { echo "WidgetKit or watchOS bundle is missing." >&2; exit 1; }
           echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$APP/embedded.mobileprovision"
+          echo "$IOS_WIDGET_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$WIDGET/embedded.mobileprovision"
+          echo "$IOS_WATCH_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$WATCH/embedded.mobileprovision"
           security cms -D -i "$APP/embedded.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+          security cms -D -i "$WIDGET/embedded.mobileprovision" > "$RUNNER_TEMP/widget-profile.plist"
+          security cms -D -i "$WATCH/embedded.mobileprovision" > "$RUNNER_TEMP/watch-profile.plist"
           /usr/libexec/PlistBuddy -x -c 'Print :Entitlements' "$RUNNER_TEMP/profile.plist" > "$RUNNER_TEMP/entitlements.plist"
-          codesign --force --deep --timestamp --sign "$IOS_SIGNING_IDENTITY" --entitlements "$RUNNER_TEMP/entitlements.plist" "$APP"
+          /usr/libexec/PlistBuddy -x -c 'Print :Entitlements' "$RUNNER_TEMP/widget-profile.plist" > "$RUNNER_TEMP/widget-entitlements.plist"
+          /usr/libexec/PlistBuddy -x -c 'Print :Entitlements' "$RUNNER_TEMP/watch-profile.plist" > "$RUNNER_TEMP/watch-entitlements.plist"
+          codesign --force --timestamp --sign "$IOS_SIGNING_IDENTITY" --entitlements "$RUNNER_TEMP/watch-entitlements.plist" "$WATCH"
+          codesign --force --timestamp --sign "$IOS_SIGNING_IDENTITY" --entitlements "$RUNNER_TEMP/widget-entitlements.plist" "$WIDGET"
+          codesign --force --timestamp --sign "$IOS_SIGNING_IDENTITY" --entitlements "$RUNNER_TEMP/entitlements.plist" "$APP"
           mkdir -p build/ipa/Payload
           ditto "$APP" build/ipa/Payload/Runner.app
           (cd build/ipa && zip -qry ../zingchart-ios-signed.ipa Payload)
@@ -501,7 +538,7 @@ jobs:
           path: build/zingchart-ios-unsigned.zip
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
-        if: ${{ env.IOS_CERTIFICATE_BASE64 != '' && env.IOS_PROVISIONING_PROFILE_BASE64 != '' }}
+        if: ${{ env.IOS_SIGNING_ENABLED == 'true' }}
         with:
           name: zingchart-ios-signed
           path: build/zingchart-ios-signed.ipa

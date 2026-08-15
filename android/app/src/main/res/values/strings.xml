@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Điều khiển nhạc #zingChart</string>
+    <string name="widget_no_song">Chưa chọn bài hát</string>
+    <string name="widget_album_art">Ảnh bìa album</string>
+    <string name="widget_previous">Bài trước</string>
+    <string name="widget_play">Phát</string>
+    <string name="widget_pause">Tạm dừng</string>
+    <string name="widget_next">Bài tiếp theo</string>
+</resources>

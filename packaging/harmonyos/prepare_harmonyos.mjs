@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { cp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -22,6 +22,7 @@ await updatePubspec();
 await updateApplicationMetadata();
 await updateModule();
 await updateStrings();
+await installServiceWidget();
 
 async function updatePubspec() {
   const file = path.join(projectDirectory, 'pubspec.yaml');
@@ -105,6 +106,29 @@ async function updateModule() {
       'HarmonyOS INTERNET permission',
     );
   }
+  if (!source.includes('EntryFormAbility')) {
+    source = replaceRequired(
+      source,
+      /("requestPermissions"\s*:)/,
+      `"extensionAbilities": [
+      {
+        "name": "EntryFormAbility",
+        "srcEntry": "./ets/entryformability/EntryFormAbility.ets",
+        "label": "$string:form_name",
+        "description": "$string:form_desc",
+        "type": "form",
+        "metadata": [
+          {
+            "name": "ohos.extension.form",
+            "resource": "$profile:form_config"
+          }
+        ]
+      }
+    ],
+    $1`,
+      'HarmonyOS requestPermissions section',
+    );
+  }
   await writeFile(file, source);
 }
 
@@ -135,6 +159,13 @@ async function updateStrings() {
     EntryAbility_label: '#zingChart',
     background_running_reason:
       'Cho phép #zingChart tiếp tục phát nhạc trong nền.',
+    form_name: '#zingChart đang phát',
+    form_desc: 'Điều khiển nhạc từ màn hình chính',
+    form_no_song: 'Chưa chọn bài hát',
+    form_previous: 'Bài trước',
+    form_play: 'Phát',
+    form_pause: 'Tạm dừng',
+    form_next: 'Bài tiếp theo',
   });
   await updateStringResource(path.join(resourceRoot, 'en_US/element/string.json'), {
     module_desc: '#zingChart music player',
@@ -142,12 +173,39 @@ async function updateStrings() {
     EntryAbility_label: '#zingChart',
     background_running_reason:
       'Allow #zingChart to continue playing music in the background.',
+    form_name: '#zingChart Now Playing',
+    form_desc: 'Control music from the home screen',
+    form_no_song: 'Choose a song in the app',
+    form_previous: 'Previous',
+    form_play: 'Play',
+    form_pause: 'Pause',
+    form_next: 'Next',
   });
   await updateStringResource(path.join(resourceRoot, 'zh_CN/element/string.json'), {
     module_desc: '#zingChart 音乐播放器',
     EntryAbility_desc: '音乐排行榜和播放器',
     EntryAbility_label: '#zingChart',
     background_running_reason: '允许 #zingChart 在后台继续播放音乐。',
+    form_name: '#zingChart 正在播放',
+    form_desc: '从主屏幕控制音乐',
+    form_no_song: '请在应用中选择歌曲',
+    form_previous: '上一首',
+    form_play: '播放',
+    form_pause: '暂停',
+    form_next: '下一首',
+  });
+}
+
+async function installServiceWidget() {
+  const source = path.join(import.meta.dirname, 'service_widget');
+  const entryRoot = path.join(projectDirectory, 'ohos', 'entry', 'src', 'main');
+  await cp(path.join(source, 'ets'), path.join(entryRoot, 'ets'), {
+    recursive: true,
+    force: true,
+  });
+  await cp(path.join(source, 'resources'), path.join(entryRoot, 'resources'), {
+    recursive: true,
+    force: true,
   });
 }
 

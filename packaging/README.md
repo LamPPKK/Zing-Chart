@@ -1,5 +1,8 @@
 # #zingChart packaging
 
+[Tiếng Việt](../README.md) · [English](../README.en.md) ·
+[简体中文](../README.zh-CN.md)
+
 The release workflow always produces testable artifacts and conditionally signs them when protected repository secrets are available. Set `API_BASE_URL` to the deployed HTTPS proxy URL before producing a public release. If it is absent, CI injects `https://api.example.invalid`; this intentionally produces an app that displays its configuration error instead of contacting Zing directly.
 
 Optional production signing configuration:
@@ -17,13 +20,20 @@ Optional production signing configuration:
   match `WINDOWS_PUBLISHER`; Partner Center can accept the unsigned Store MSIX
   and signs it during publication.
 - macOS: `MACOS_CERTIFICATE_BASE64`, `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGNING_IDENTITY`; notarization additionally uses `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID`.
-- iOS: `IOS_CERTIFICATE_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64`, `IOS_SIGNING_IDENTITY` produce a signed direct-distribution IPA; otherwise CI keeps the unsigned app archive.
+- iOS/iPadOS/watchOS: `IOS_CERTIFICATE_BASE64`,
+  `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64`,
+  `IOS_WIDGET_PROVISIONING_PROFILE_BASE64`,
+  `IOS_WATCH_PROVISIONING_PROFILE_BASE64` and `IOS_SIGNING_IDENTITY` produce a
+  signed direct-distribution IPA containing the WidgetKit and watchOS bundles;
+  otherwise CI keeps the unsigned app archive.
 
 Set `LINUXDEPLOY_SHA256` to the reviewed SHA-256 digest of the `linuxdeploy-x86_64.AppImage` binary used by the Linux job. The download URL points to linuxdeploy's rolling `continuous` release, so the job refuses to execute it unless its bytes match the explicitly approved digest. When updating linuxdeploy, download it in a trusted environment, review its release provenance, calculate `sha256sum linuxdeploy-x86_64.AppImage`, and rotate the secret.
 
 ## Artifacts
 
 - Android: APK and AAB signed by the protected release keystore when configured, otherwise development-signed artifacts.
+- Wear OS: a companion remote APK built from `android/wear`; it must use the
+  same application ID and signing certificate as the paired Android app.
 - Android TV: the universal Android APK/AAB with Leanback launcher metadata,
   TV banner, runtime television detection and remote-focus UI.
 - Web/PWA: gzipped contents of `build/web` for any static host with SPA fallback.
@@ -36,8 +46,12 @@ Set `LINUXDEPLOY_SHA256` to the reviewed SHA-256 digest of the `linuxdeploy-x86_
   release includes a development-signed MSIX, its test certificate, installer
   script and the matching x64 VCLibs framework dependency. When Partner Center
   identity is configured, CI additionally creates `zingchart-windows-store.msix`.
-- macOS: zipped `.app` and DMG, Developer ID signed/notarized when Apple secrets are configured; otherwise ad-hoc/unsigned test artifacts.
-- iOS: unsigned `.app` ZIP plus a signed IPA when Apple distribution assets are configured.
+- macOS: zipped `.app` and DMG containing a macOS 14+ WidgetKit extension,
+  Developer ID signed/notarized when Apple secrets are configured; otherwise
+  ad-hoc/unsigned test artifacts.
+- iOS/iPadOS/watchOS: unsigned `.app` ZIP containing the iOS 17+ WidgetKit and
+  watchOS 10+ remote bundles, plus a signed IPA when all Apple distribution
+  assets are configured.
 - Linux x64: portable tarball, AppImage, and Debian package.
 - Proxy: gzipped Docker image tarball, loadable with `docker load`.
 
@@ -55,7 +69,40 @@ Linux:      LINUXDEPLOY=/path/to/linuxdeploy ./packaging/linux/package_linux.sh 
 webOS TV:   TV_FLUTTER_BIN="$(fvm which flutter)" ./packaging/tv/build_tv_web.sh webos https://proxy.example.com 1.0.0
 Tizen TV:   TV_FLUTTER_BIN="$(fvm which flutter)" ./packaging/tv/build_tv_web.sh tizen https://proxy.example.com 1.0.0
 Signed WGT: ./packaging/tv/package_tizen.sh YOUR_SAMSUNG_CERT_PROFILE
+Wear OS:    ./gradlew -p android :wear:assembleRelease
 ```
+
+## Widgets and smartwatch companions
+
+The Flutter player publishes a compact, versioned snapshot over the native
+channel `software.baycho.zmp3chart/companion`. Companion surfaces contain only
+the current title, artist, playback state, progress, and available controls;
+they do not copy listening analytics or contact the music proxy.
+
+- Android phone/tablet and Fire touch builds include the Home Screen App
+  Widget in the main APK. Its media buttons are routed to the existing
+  `audio_service` media session. Fire OS can use the widget without Google Play
+  services; the optional Wear Data Layer simply stays inactive there.
+- The Wear OS 3+ remote is a separate `:wear` APK. Install the main Android APK
+  on the phone and the Wear APK on a paired watch; both packages must have the
+  same application ID and certificate.
+- Install `xcodeproj` with `gem install xcodeproj -v 1.27.0 --no-document`,
+  then run `ruby packaging/apple/prepare_ios_companions.rb` before an iOS
+  archive and `ruby packaging/apple/prepare_macos_widget.rb`
+  before a macOS archive. These idempotent scripts add the WidgetKit/watchOS
+  targets to Flutter's generated Xcode projects.
+- Apple targets share `group.software.baycho.zmp3chart.shared`. Register that
+  App Group for the host and WidgetKit bundle IDs, and create a separate
+  provisioning profile for Runner, Widget, and Watch under one Apple team.
+- The HarmonyOS preparation script injects a `2×4` Service Widget, its form
+  extension ability, and local Preferences storage into the isolated CPF
+  runner. A full HAP still requires DevEco HarmonyOS API 18 rather than an
+  OpenHarmony-only SDK layout.
+
+There is no separate Windows/Linux widget provider in this release. Their
+native media controls remain available through SMTC/MPRIS. Web/PWA and TV
+targets intentionally use the in-app mini player instead of pretending to
+offer an operating-system widget API.
 
 ## TV packaging notes
 

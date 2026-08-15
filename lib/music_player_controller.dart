@@ -10,6 +10,7 @@ import 'models/local_library.dart';
 import 'models/song.dart';
 import 'services/listening_analytics_service.dart';
 import 'services/local_mix_engine.dart';
+import 'services/companion_surface_bridge.dart';
 import 'services/playback_audio_player.dart';
 import 'services/system_media_bridge.dart';
 import 'zing_mp3_api.dart';
@@ -28,6 +29,7 @@ class PlaybackService extends ChangeNotifier {
     ListeningAnalyticsService? analyticsService,
     LocalMixEngine? mixEngine,
     SystemMediaBridge? systemMediaBridge,
+    CompanionSurfaceBridge? companionSurfaceBridge,
   }) : assert(audioPlayer == null || playbackAudioPlayer == null),
        _audioPlayer =
            playbackAudioPlayer ??
@@ -39,7 +41,8 @@ class PlaybackService extends ChangeNotifier {
            analyticsService ??
            ListeningAnalyticsService(repository: analyticsRepository),
        _mixEngine = mixEngine ?? const LocalMixEngine(),
-       _systemMediaBridge = systemMediaBridge;
+       _systemMediaBridge = systemMediaBridge,
+       _companionSurfaceBridge = companionSurfaceBridge;
 
   final PlaybackAudioPlayer _audioPlayer;
   final SongSourceResolver _sourceResolver;
@@ -47,6 +50,7 @@ class PlaybackService extends ChangeNotifier {
   final ListeningAnalyticsService _analytics;
   final LocalMixEngine _mixEngine;
   SystemMediaBridge? _systemMediaBridge;
+  CompanionSurfaceBridge? _companionSurfaceBridge;
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   Future<void> _playerCommandQueue = Future<void>.value();
 
@@ -81,6 +85,10 @@ class PlaybackService extends ChangeNotifier {
   Future<void> _mediaPublishQueue = Future<void>.value();
   SystemMediaSnapshot? _pendingMediaSnapshot;
   bool _mediaPublishScheduled = false;
+  Future<void> _companionPublishQueue = Future<void>.value();
+  CompanionPlayerSnapshot? _pendingCompanionSnapshot;
+  bool _companionPublishScheduled = false;
+  String? _lastCompanionPublishSignature;
   Future<void> _snapshotSaveFuture = Future<void>.value();
   PlayerSnapshot? _pendingSnapshot;
   bool _snapshotSaveScheduled = false;
@@ -269,6 +277,28 @@ class PlaybackService extends ChangeNotifier {
             unawaited(_saveSnapshot());
           }
         },
+      ),
+    );
+    if (_companionSurfaceBridge == null) {
+      try {
+        _companionSurfaceBridge = await createCompanionSurfaceBridge();
+      } catch (_) {
+        _companionSurfaceBridge = NoopCompanionSurfaceBridge();
+      }
+    }
+    await _companionSurfaceBridge!.bind(
+      CompanionCallbacks(
+        play: () async {
+          if (!isPlaying) await togglePlayPause();
+        },
+        pause: () async {
+          if (isPlaying) await togglePlayPause();
+        },
+        togglePlayPause: togglePlayPause,
+        previous: previous,
+        next: next,
+        stop: stop,
+        seekRelative: (delta) => seek(position + delta),
       ),
     );
     await _audioPlayer.setAudioContext(
@@ -963,6 +993,7 @@ class PlaybackService extends ChangeNotifier {
 
   void _notifyPlaybackChanged() {
     notifyListeners();
+    _publishCompanionSnapshot();
     final bridge = _systemMediaBridge;
     if (bridge == null) return;
     _pendingMediaSnapshot = SystemMediaSnapshot(
@@ -1041,6 +1072,47 @@ class PlaybackService extends ChangeNotifier {
     _mediaPublishScheduled = false;
   }
 
+  void _publishCompanionSnapshot() {
+    final bridge = _companionSurfaceBridge;
+    if (bridge == null) return;
+    final snapshot = CompanionPlayerSnapshot(
+      song: currentSong,
+      status: isLoading
+          ? CompanionPlaybackStatus.loading
+          : switch (state) {
+              PlayerState.playing => CompanionPlaybackStatus.playing,
+              PlayerState.paused => CompanionPlaybackStatus.paused,
+              _ => CompanionPlaybackStatus.idle,
+            },
+      position: position,
+      duration: duration,
+      canGoPrevious: canGoPrevious,
+      canGoNext: canGoNext,
+      updatedAt: DateTime.now().toUtc(),
+    );
+    if (snapshot.publishSignature == _lastCompanionPublishSignature) return;
+    _lastCompanionPublishSignature = snapshot.publishSignature;
+    _pendingCompanionSnapshot = snapshot;
+    if (_companionPublishScheduled) return;
+    _companionPublishScheduled = true;
+    _companionPublishQueue = _companionPublishQueue.then(
+      (_) => _drainCompanionPublish(),
+    );
+  }
+
+  Future<void> _drainCompanionPublish() async {
+    while (_pendingCompanionSnapshot != null) {
+      final snapshot = _pendingCompanionSnapshot!;
+      _pendingCompanionSnapshot = null;
+      try {
+        await _companionSurfaceBridge?.publish(snapshot);
+      } catch (_) {
+        // Widgets and watch companions are optional playback surfaces.
+      }
+    }
+    _companionPublishScheduled = false;
+  }
+
   @override
   void dispose() {
     _sleepTimer?.cancel();
@@ -1050,6 +1122,8 @@ class PlaybackService extends ChangeNotifier {
     }
     final bridge = _systemMediaBridge;
     if (bridge != null) unawaited(bridge.dispose());
+    final companionBridge = _companionSurfaceBridge;
+    if (companionBridge != null) unawaited(companionBridge.dispose());
     _analytics.dispose();
     unawaited(_audioPlayer.dispose());
     super.dispose();

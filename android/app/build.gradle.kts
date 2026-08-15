@@ -60,3 +60,9 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Optional at runtime. Fire OS continues without Play services; this bridge
+    // only activates when a paired Wear OS device and Google Play services exist.
+    implementation("com.google.android.gms:play-services-wearable:20.0.1")
+}

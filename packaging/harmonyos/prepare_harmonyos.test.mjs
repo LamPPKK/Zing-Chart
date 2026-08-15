@@ -33,6 +33,9 @@ test('prepares phone/tablet metadata and background audio permissions', async ()
   assert.match(module, /ohos\.permission\.INTERNET/);
   assert.match(module, /ohos\.permission\.KEEP_BACKGROUND_RUNNING/);
   assert.match(module, /\$string:background_running_reason/);
+  assert.match(module, /EntryFormAbility/);
+  assert.match(module, /ohos\.extension\.form/);
+  assert.match(module, /\$profile:form_config/);
 
   const strings = JSON.parse(
     await readFile(
@@ -44,12 +47,27 @@ test('prepares phone/tablet metadata and background audio permissions', async ()
   );
   assert.equal(valueOf(strings, 'EntryAbility_label'), '#zingChart');
   assert.match(valueOf(strings, 'background_running_reason'), /phát nhạc/);
+  assert.equal(valueOf(strings, 'form_play'), 'Phát');
   const appStrings = JSON.parse(
     await readFile(
       path.join(project, 'ohos/AppScope/resources/base/element/string.json'),
     ),
   );
   assert.equal(valueOf(appStrings, 'app_name'), '#zingChart');
+  const card = await readFile(
+    path.join(project, 'ohos/entry/src/main/ets/widget/pages/PlayerCard.ets'),
+    'utf8',
+  );
+  assert.match(card, /togglePlayPause/);
+  assert.match(card, /postCardAction/);
+  const entryAbility = await readFile(
+    path.join(project, 'ohos/entry/src/main/ets/entryability/EntryAbility.ets'),
+    'utf8',
+  );
+  assert.match(entryAbility, /software\.baycho\.zmp3chart\/companion/);
+  assert.match(entryAbility, /updateForm/);
+  assert.match(entryAbility, /onCreate\(want: Want/);
+  assert.match(entryAbility, /flushPendingCompanionAction/);
 });
 
 test('pins reviewed HarmonyOS plugin forks by immutable commit', async () => {

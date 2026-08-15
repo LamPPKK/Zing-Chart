@@ -7,16 +7,55 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		11B8571E5F04252963695AAE /* ZingChartWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 25531265596B4D1F5704466D /* ZingChartWatch.app */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		16B931C35D19B7D670B24D37 /* CompanionCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FFA4E7A5B920FA2F9E72A81 /* CompanionCommand.swift */; };
+		2B3699C54C0A7E352C3605FB /* ZingChartWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4C44B6D5371765AAB7712F /* ZingChartWidget.swift */; };
+		2DBE5A091E40F6319FD27CCC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 24934BA9164852B0E09A0BDE /* Assets.xcassets */; };
+		39847AED212CA0D6D19229E2 /* CompanionCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FFA4E7A5B920FA2F9E72A81 /* CompanionCommand.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		47E8C7B7C7BB35761293FCD1 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E96D0EFD3E806A2F8629B3C1 /* Pods_Runner.framework */; };
+		6BEBD90E30D73DF17060CCB3 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0857285038FCB7C220D7A681 /* Foundation.framework */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
+		79057FD152CF08BA4BE5E7C0 /* WatchSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62CE989E216864BDC71F93CF /* WatchSessionModel.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		9BCE37A38038A34BEF796C76 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1874399302928477A265F617 /* Foundation.framework */; };
+		C77F5B631F56FBA2461F0CFF /* ZingChartWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B41959E9A0FD79E60F711A2F /* ZingChartWatchApp.swift */; };
+		E5035D72EEFEBB7CAA1D06CB /* ZingChartWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 4D13D06BB1255B4B90342FF5 /* ZingChartWidget.appex */; };
+		F367B4924317A5581201E914 /* WatchPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 648C756CEC812CC87546241E /* WatchPlayerView.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		5D80D50D0AE46B51B87F30ED /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D53FF5F491D8806AA633F8C8;
+			remoteInfo = ZingChartWidget;
+		};
+		FC22932DD435F7B818AEF53A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C2C707201BC87C6140D67D80;
+			remoteInfo = ZingChartWatch;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
+		60A7E5158C535A12CF9C18E2 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				E5035D72EEFEBB7CAA1D06CB /* ZingChartWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9705A1C41CF9048500538489 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -27,14 +66,33 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F4361ADEA84B8F7231C1A1D4 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 16;
+			files = (
+				11B8571E5F04252963695AAE /* ZingChartWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0857285038FCB7C220D7A681 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		0FFA4E7A5B920FA2F9E72A81 /* CompanionCommand.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CompanionCommand.swift; sourceTree = "<group>"; };
 		140A985E60DC879824E9E139 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		1874399302928477A265F617 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		24934BA9164852B0E09A0BDE /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		25531265596B4D1F5704466D /* ZingChartWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ZingChartWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		4D13D06BB1255B4B90342FF5 /* ZingChartWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ZingChartWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		54303BFCC45964111A4EF917 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
+		62CE989E216864BDC71F93CF /* WatchSessionModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSessionModel.swift; sourceTree = "<group>"; };
+		648C756CEC812CC87546241E /* WatchPlayerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchPlayerView.swift; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
@@ -45,11 +103,29 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		9E4C44B6D5371765AAB7712F /* ZingChartWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ZingChartWidget.swift; sourceTree = "<group>"; };
 		A897C1350EA11C9F902F2A7E /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
+		B41959E9A0FD79E60F711A2F /* ZingChartWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ZingChartWatchApp.swift; sourceTree = "<group>"; };
 		E96D0EFD3E806A2F8629B3C1 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		7241607F754F5D81FE4401AC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6BEBD90E30D73DF17060CCB3 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		91E93CBAAEDAEF60D8539130 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9BCE37A38038A34BEF796C76 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		97C146EB1CF9000F007C117D /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -65,6 +141,8 @@
 			isa = PBXGroup;
 			children = (
 				E96D0EFD3E806A2F8629B3C1 /* Pods_Runner.framework */,
+				76CEB557674BF57E10855BC4 /* iOS */,
+				4613A91B5AC107654D48EF25 /* watchOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -78,6 +156,22 @@
 			);
 			name = Pods;
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		4613A91B5AC107654D48EF25 /* watchOS */ = {
+			isa = PBXGroup;
+			children = (
+				1874399302928477A265F617 /* Foundation.framework */,
+			);
+			name = watchOS;
+			sourceTree = "<group>";
+		};
+		76CEB557674BF57E10855BC4 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				0857285038FCB7C220D7A681 /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 		9740EEB11CF90186004384FC /* Flutter */ = {
@@ -99,6 +193,9 @@
 				97C146EF1CF9000F007C117D /* Products */,
 				333A537245949583C12AD796 /* Pods */,
 				14A337EE4D9DD4CD6D4CF3AB /* Frameworks */,
+				E6B4593DC2A66F4895A39AF3 /* SharedCompanion */,
+				AB284371D7E42588BA489E0F /* ZingChartWidget */,
+				D1A22503B85C485094B82491 /* ZingChartWatch */,
 			);
 			sourceTree = "<group>";
 		};
@@ -106,6 +203,8 @@
 			isa = PBXGroup;
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
+				4D13D06BB1255B4B90342FF5 /* ZingChartWidget.appex */,
+				25531265596B4D1F5704466D /* ZingChartWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -125,6 +224,36 @@
 			path = Runner;
 			sourceTree = "<group>";
 		};
+		AB284371D7E42588BA489E0F /* ZingChartWidget */ = {
+			isa = PBXGroup;
+			children = (
+				9E4C44B6D5371765AAB7712F /* ZingChartWidget.swift */,
+			);
+			name = ZingChartWidget;
+			path = ZingChartWidget;
+			sourceTree = "<group>";
+		};
+		D1A22503B85C485094B82491 /* ZingChartWatch */ = {
+			isa = PBXGroup;
+			children = (
+				B41959E9A0FD79E60F711A2F /* ZingChartWatchApp.swift */,
+				62CE989E216864BDC71F93CF /* WatchSessionModel.swift */,
+				648C756CEC812CC87546241E /* WatchPlayerView.swift */,
+				24934BA9164852B0E09A0BDE /* Assets.xcassets */,
+			);
+			name = ZingChartWatch;
+			path = ZingChartWatch;
+			sourceTree = "<group>";
+		};
+		E6B4593DC2A66F4895A39AF3 /* SharedCompanion */ = {
+			isa = PBXGroup;
+			children = (
+				0FFA4E7A5B920FA2F9E72A81 /* CompanionCommand.swift */,
+			);
+			name = SharedCompanion;
+			path = SharedCompanion;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -140,15 +269,53 @@
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				F57588C3F59B7DF63BA2E6CD /* [CP] Embed Pods Frameworks */,
+				60A7E5158C535A12CF9C18E2 /* Embed App Extensions */,
+				F4361ADEA84B8F7231C1A1D4 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				0BBB5699FEC97B03997DE6E3 /* PBXTargetDependency */,
+				75C0789ECE761F9645543BC5 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
 			productType = "com.apple.product-type.application";
+		};
+		C2C707201BC87C6140D67D80 /* ZingChartWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6CB8E0357886B5873566E66D /* Build configuration list for PBXNativeTarget "ZingChartWatch" */;
+			buildPhases = (
+				ED7C469EEE50144172C8F812 /* Sources */,
+				91E93CBAAEDAEF60D8539130 /* Frameworks */,
+				4CEF28D2EEE53991A19F90CC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ZingChartWatch;
+			productName = ZingChartWatch;
+			productReference = 25531265596B4D1F5704466D /* ZingChartWatch.app */;
+			productType = "com.apple.product-type.application.watchapp2";
+		};
+		D53FF5F491D8806AA633F8C8 /* ZingChartWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 35011FB9E4C931D3AAA7AA89 /* Build configuration list for PBXNativeTarget "ZingChartWidget" */;
+			buildPhases = (
+				8580E5DCE37BC81700507E65 /* Sources */,
+				7241607F754F5D81FE4401AC /* Frameworks */,
+				4FCAF5E6D60F5C652F4C0C95 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ZingChartWidget;
+			productName = ZingChartWidget;
+			productReference = 4D13D06BB1255B4B90342FF5 /* ZingChartWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -179,11 +346,28 @@
 			projectRoot = "";
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
+				D53FF5F491D8806AA633F8C8 /* ZingChartWidget */,
+				C2C707201BC87C6140D67D80 /* ZingChartWatch */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		4CEF28D2EEE53991A19F90CC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2DBE5A091E40F6319FD27CCC /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4FCAF5E6D60F5C652F4C0C95 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		97C146EC1CF9000F007C117D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -271,16 +455,51 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		8580E5DCE37BC81700507E65 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				16B931C35D19B7D670B24D37 /* CompanionCommand.swift in Sources */,
+				2B3699C54C0A7E352C3605FB /* ZingChartWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		97C146EA1CF9000F007C117D /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
+				39847AED212CA0D6D19229E2 /* CompanionCommand.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ED7C469EEE50144172C8F812 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C77F5B631F56FBA2461F0CFF /* ZingChartWatchApp.swift in Sources */,
+				79057FD152CF08BA4BE5E7C0 /* WatchSessionModel.swift in Sources */,
+				F367B4924317A5581201E914 /* WatchPlayerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0BBB5699FEC97B03997DE6E3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ZingChartWidget;
+			target = D53FF5F491D8806AA633F8C8 /* ZingChartWidget */;
+			targetProxy = 5D80D50D0AE46B51B87F30ED /* PBXContainerItemProxy */;
+		};
+		75C0789ECE761F9645543BC5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ZingChartWatch;
+			target = C2C707201BC87C6140D67D80 /* ZingChartWatch */;
+			targetProxy = FC22932DD435F7B818AEF53A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		97C146FA1CF9000F007C117D /* Main.storyboard */ = {
@@ -358,6 +577,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -372,6 +592,63 @@
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Profile;
+		};
+		53A6ED6AD15C8B4D2C05B0F0 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 2;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ZingChartWatch/Info.plist;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = software.baycho.zmp3chart.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Profile;
+		};
+		893E31463A77CD3902B059E6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ZingChartWidget/ZingChartWidget.entitlements;
+				CURRENT_PROJECT_VERSION = 2;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ZingChartWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = software.baycho.zmp3chart.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8B79DF4939498E6763C87E2D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 2;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ZingChartWatch/Info.plist;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = software.baycho.zmp3chart.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
 		};
 		97C147031CF9000F007C117D /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -485,6 +762,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -507,6 +785,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -522,9 +801,90 @@
 			};
 			name = Release;
 		};
+		9D76D9F491D4B51C81285CF5 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ZingChartWidget/ZingChartWidget.entitlements;
+				CURRENT_PROJECT_VERSION = 2;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ZingChartWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = software.baycho.zmp3chart.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Profile;
+		};
+		C7E4A1D4FDE8FBAA8B2B2F6A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 2;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ZingChartWatch/Info.plist;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = software.baycho.zmp3chart.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		D4DD5DE75CDCC58E7604A5E2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ZingChartWidget/ZingChartWidget.entitlements;
+				CURRENT_PROJECT_VERSION = 2;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ZingChartWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = software.baycho.zmp3chart.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		35011FB9E4C931D3AAA7AA89 /* Build configuration list for PBXNativeTarget "ZingChartWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D4DD5DE75CDCC58E7604A5E2 /* Release */,
+				893E31463A77CD3902B059E6 /* Debug */,
+				9D76D9F491D4B51C81285CF5 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6CB8E0357886B5873566E66D /* Build configuration list for PBXNativeTarget "ZingChartWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C7E4A1D4FDE8FBAA8B2B2F6A /* Release */,
+				8B79DF4939498E6763C87E2D /* Debug */,
+				53A6ED6AD15C8B4D2C05B0F0 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		97C146E91CF9000F007C117D /* Build configuration list for PBXProject "Runner" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

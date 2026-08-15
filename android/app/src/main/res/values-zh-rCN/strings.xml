@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">#zingChart 音乐控制</string>
+    <string name="widget_no_song">请在手机上选择歌曲</string>
+    <string name="widget_album_art">专辑封面</string>
+    <string name="widget_previous">上一首</string>
+    <string name="widget_play">播放</string>
+    <string name="widget_pause">暂停</string>
+    <string name="widget_next">下一首</string>
+</resources>
