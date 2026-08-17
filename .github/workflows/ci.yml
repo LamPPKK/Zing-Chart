@@ -122,6 +122,10 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - name: Install TV packaging dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libxml2-utils
       - name: Validate TV packaging sources
         run: |
           bash -n packaging/tv/build_tv_web.sh packaging/tv/package_tizen.sh
