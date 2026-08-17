@@ -29,6 +29,43 @@ Offline audio download is intentionally disabled until a licensed source and
 storage rights are available. The PWA caches only the app shell and non-audio
 data.
 
+## Screenshots by release
+
+These images are rendered from the current UI with deterministic, fully local
+demo data, then grouped by feature milestone. They are not archived captures of
+historical binaries and contain no real user data.
+
+### v1.0 — Chart, player, and cross-platform library
+
+<table>
+  <tr>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.0-home-mobile.png" alt="Realtime ZingChart home on mobile"><br><sub><b>Home</b> · realtime chart and Daily Mix</sub></td>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.0-search-mobile.png" alt="Music search on mobile"><br><sub><b>Search</b> · songs, artists, and recent queries</sub></td>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.0-now-playing-mobile.png" alt="Now Playing on mobile"><br><sub><b>Now Playing</b> · seek, queue, moods, and sleep timer</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.0-library-mobile.png" alt="Local-First library on mobile"><br><sub><b>Library</b> · favorites, playlists, and local backup</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.0-desktop-player.png" alt="Adaptive desktop layout with Now Playing and queue panels"><br><sub><b>Adaptive desktop</b> · chart, Now Playing, and queue in one workspace</sub></td>
+  </tr>
+</table>
+
+### v1.1 — Local Intelligence
+
+<table>
+  <tr>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.1-for-you-mobile.png" alt="Daily Mix and Mood Mix in For You"><br><sub><b>For You</b> · on-device Daily Mix and Mood Mix</sub></td>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.1-analytics-mobile.png" alt="Local listening analytics dashboard"><br><sub><b>Analytics</b> · 7-day, 30-day, and yearly views</sub></td>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.1-wrapped-mobile.png" alt="Exportable Mini Wrapped"><br><sub><b>Mini Wrapped</b> · six slides with PNG export</sub></td>
+  </tr>
+  <tr>
+    <td colspan="3" align="center"><img src="docs/screenshots/v1.1-tv-for-you.png" alt="For You TV layout with remote focus and player panel"><br><sub><b>10-foot TV UI</b> · remote navigation, local mixes, and player panel</sub></td>
+  </tr>
+</table>
+
+The deterministic gallery fixture lives in
+[`tool/docs_screenshot_app.dart`](tool/docs_screenshot_app.dart). It never calls
+the proxy, real audio, or an operating-system media service.
+
 ## Widgets and smartwatch remotes
 
 | Surface | Minimum/support | Controls |

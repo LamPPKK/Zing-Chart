@@ -59,6 +59,43 @@ hoặc chia sẻ PNG, desktop chọn nơi lưu; TV hiển thị QR chứa summar
 hóa và không cần server. HarmonyOS tự rơi về summary/QR có thể sao chép nếu
 adapter share/save không khả dụng.
 
+## Ảnh giao diện theo phiên bản
+
+Các ảnh dưới đây được render từ UI hiện tại bằng dữ liệu demo hoàn toàn cục bộ,
+sau đó nhóm theo mốc tính năng. Chúng không phải ảnh lưu lại từ binary lịch sử và
+không chứa dữ liệu người dùng thật.
+
+### v1.0 — Chart, trình phát và thư viện đa nền tảng
+
+<table>
+  <tr>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.0-home-mobile.png" alt="Trang chủ ZingChart realtime trên điện thoại"><br><sub><b>Trang chủ</b> · ZingChart realtime và Daily Mix</sub></td>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.0-search-mobile.png" alt="Tìm kiếm nhạc trên điện thoại"><br><sub><b>Tìm kiếm</b> · tên bài, nghệ sĩ và từ khóa gần đây</sub></td>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.0-now-playing-mobile.png" alt="Màn hình Now Playing trên điện thoại"><br><sub><b>Now Playing</b> · seek, queue, mood và sleep timer</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.0-library-mobile.png" alt="Thư viện Local-First trên điện thoại"><br><sub><b>Thư viện</b> · favorites, playlist và backup local</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.0-desktop-player.png" alt="Giao diện desktop adaptive với bảng Now Playing và queue"><br><sub><b>Desktop adaptive</b> · chart, Now Playing và queue trong cùng workspace</sub></td>
+  </tr>
+</table>
+
+### v1.1 — Local Intelligence
+
+<table>
+  <tr>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.1-for-you-mobile.png" alt="Daily Mix và Mood Mix trong tab Dành cho bạn"><br><sub><b>Dành cho bạn</b> · Daily Mix và Mood Mix tại máy</sub></td>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.1-analytics-mobile.png" alt="Dashboard thống kê nghe nhạc local"><br><sub><b>Thống kê</b> · 7 ngày, 30 ngày và theo năm</sub></td>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.1-wrapped-mobile.png" alt="Mini Wrapped có thể xuất ảnh"><br><sub><b>Mini Wrapped</b> · sáu slide và xuất PNG</sub></td>
+  </tr>
+  <tr>
+    <td colspan="3" align="center"><img src="docs/screenshots/v1.1-tv-for-you.png" alt="Giao diện Dành cho bạn trên TV với remote focus và player panel"><br><sub><b>TV 10-foot UI</b> · điều hướng remote, mix local và player panel</sub></td>
+  </tr>
+</table>
+
+Fixture dùng để tái tạo gallery nằm tại
+[`tool/docs_screenshot_app.dart`](tool/docs_screenshot_app.dart). Entry point này
+không gọi proxy, audio thật hoặc media service của hệ điều hành.
+
 ### Widget và đồng hồ
 
 | Bề mặt | Trạng thái | Điều khiển |

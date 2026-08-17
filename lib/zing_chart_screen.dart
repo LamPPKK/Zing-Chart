@@ -42,11 +42,13 @@ class ZingChartScreen extends StatefulWidget {
     this.loadSongs = ZingMP3API.getZingChartSongs,
     this.tvMode = false,
     this.backupFileService,
+    this.initialTab = 0,
   });
 
   final ChartLoader loadSongs;
   final bool tvMode;
   final LibraryBackupFileService? backupFileService;
+  final int initialTab;
 
   @override
   State<ZingChartScreen> createState() => _ZingChartScreenState();
@@ -59,7 +61,7 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
   List<Song> _songs = const [];
   bool _isLoading = true;
   String? _errorMessage;
-  int _selectedTab = 0;
+  late int _selectedTab;
   bool _desktopPlayerVisible = true;
   String? _selectedPlaylistId;
 
@@ -82,6 +84,7 @@ class _ZingChartScreenState extends State<ZingChartScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedTab = widget.initialTab.clamp(0, 3);
     _backupFileService =
         widget.backupFileService ?? createLibraryBackupFileService();
     unawaited(_loadSongs());

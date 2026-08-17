@@ -22,6 +22,42 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 
 在获得合法音源和存储许可前，不提供离线音频下载。PWA 只缓存应用外壳和非音频数据。
 
+## 按版本展示界面
+
+以下图片由当前 UI 使用稳定、完全本地的演示数据渲染，再按功能里程碑分组。
+它们不是旧版本二进制文件的历史截图，也不包含真实用户数据。
+
+### v1.0 — 排行榜、播放器与跨平台音乐库
+
+<table>
+  <tr>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.0-home-mobile.png" alt="手机端实时 ZingChart 首页"><br><sub><b>首页</b> · 实时排行榜与 Daily Mix</sub></td>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.0-search-mobile.png" alt="手机端音乐搜索"><br><sub><b>搜索</b> · 歌曲、歌手与最近关键词</sub></td>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.0-now-playing-mobile.png" alt="手机端正在播放界面"><br><sub><b>正在播放</b> · 进度、队列、心情与睡眠定时</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.0-library-mobile.png" alt="手机端 Local-First 音乐库"><br><sub><b>音乐库</b> · 收藏、歌单与本地备份</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.0-desktop-player.png" alt="包含正在播放和队列面板的桌面自适应界面"><br><sub><b>桌面自适应</b> · 排行榜、正在播放与队列同屏</sub></td>
+  </tr>
+</table>
+
+### v1.1 — Local Intelligence
+
+<table>
+  <tr>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.1-for-you-mobile.png" alt="为你推荐中的 Daily Mix 和 Mood Mix"><br><sub><b>为你推荐</b> · 设备端 Daily Mix 与 Mood Mix</sub></td>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.1-analytics-mobile.png" alt="本地收听统计面板"><br><sub><b>统计</b> · 7 天、30 天与年度视图</sub></td>
+    <td width="33%" align="center"><img src="docs/screenshots/v1.1-wrapped-mobile.png" alt="可导出图片的 Mini Wrapped"><br><sub><b>Mini Wrapped</b> · 六页总结与 PNG 导出</sub></td>
+  </tr>
+  <tr>
+    <td colspan="3" align="center"><img src="docs/screenshots/v1.1-tv-for-you.png" alt="带遥控焦点与播放器面板的电视端为你推荐界面"><br><sub><b>电视 10-foot UI</b> · 遥控导航、本地 Mix 与播放器面板</sub></td>
+  </tr>
+</table>
+
+用于重建图片库的稳定 fixture 位于
+[`tool/docs_screenshot_app.dart`](tool/docs_screenshot_app.dart)。该入口不会
+请求代理、真实音频或操作系统媒体服务。
+
 ## 桌面组件与智能手表
 
 | 界面 | 最低版本/支持范围 | 控制 |
