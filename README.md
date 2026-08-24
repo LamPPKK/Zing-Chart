@@ -125,8 +125,11 @@ proxy Node/TypeScript do người triển khai tự host.
   hàng Nổi bật, hồ sơ nghệ sĩ và trang
   chi tiết playlist/album responsive ngay trong app. “Phát tất cả” dựng đúng
   queue từ các bài có nguồn được phép; detail hiển thị số người yêu thích chính
-  thức, ngày phát hành, đơn vị cung cấp, thể loại và các rail “Xuất hiện trong”/
-  “Có thể bạn quan tâm”. Từ 1200 px và khi vùng nội dung còn đủ rộng, trang
+  thức, ngày phát hành, đơn vị cung cấp và thể loại. Sau track list là rail
+  “Nghệ Sĩ Tham Gia” với avatar tròn, theo dõi local và hồ sơ mở nội bộ, rồi
+  các rail “Xuất hiện trong”/“Có thể bạn quan tâm”; mỗi card liên quan dùng
+  chung action deck Play/Lưu/Thêm/Chia sẻ, menu chuột phải và điều hướng
+  bàn phím/TV. Từ 1200 px và khi vùng nội dung còn đủ rộng, trang
   detail dùng workspace hai cột như Zing: artwork, tiêu đề, nghệ sĩ, ngày cập
   nhật và hành động ở trái; lời tựa có Xem thêm/Rút gọn và track list ở phải.
   Album dùng “Phát tất cả”, đánh số track và bỏ cột Album lặp lại; playlist dùng
@@ -399,7 +402,7 @@ không chứa dữ liệu người dùng thật.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="Album chính thức trong workspace hai cột kiểu Zing với artwork trái và danh sách track đánh số bên phải"><br><sub><b>Album/playlist chính thức</b> · CTA theo loại nội dung, track đánh số hoặc cột Album, bài khóa fail-closed và trạng thái lưu vẫn local-first</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="Thông tin phát hành và các album playlist liên quan trong trang chi tiết bộ sưu tập"><br><sub><b>Thông tin bộ sưu tập</b> · ngày phát hành, đơn vị cung cấp, thể loại và các rail chính thức “Xuất hiện trong”/“Có thể bạn quan tâm”</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="Thông tin phát hành, nghệ sĩ tham gia và các album playlist liên quan trong trang chi tiết bộ sưu tập"><br><sub><b>Thông tin bộ sưu tập</b> · metadata gọn, nghệ sĩ tham gia có theo dõi local và các rail liên quan với Play/Lưu/Chia sẻ</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-weekly-chart-desktop.png" alt="Bảng Xếp Hạng Tuần với ba khu vực, bộ chọn tuần và liên kết nghệ sĩ/album"><br><sub><b>BXH Tuần</b> · Việt Nam/US-UK/K-Pop, nghệ sĩ/album mở nội bộ, biến động hạng, thời lượng và queue chỉ gồm bài phát được</sub></td>

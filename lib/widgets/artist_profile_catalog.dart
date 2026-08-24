@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/catalog_artist_detail.dart';
 import '../models/catalog_search.dart';
 import '../theme/app_theme.dart';
-import 'album_art.dart';
+import 'catalog_artist_rail.dart';
 
 enum ArtistProfileCatalogView { profile, singles, videos }
 
@@ -80,9 +80,11 @@ class ArtistProfileCatalog extends StatelessWidget {
             SizedBox(height: tvMode ? 40 : 30),
           ],
           if (showProfileExtras && detail.relatedArtists.isNotEmpty) ...[
-            _RelatedArtistRail(
+            CatalogArtistRail(
+              title: 'Bạn Có Thể Thích',
               artists: detail.relatedArtists,
-              onTap: onArtistTap,
+              onArtistTap: onArtistTap,
+              keyPrefix: 'related-artist',
               tvMode: tvMode,
             ),
             SizedBox(height: tvMode ? 40 : 30),
@@ -557,137 +559,6 @@ String _formatVideoDuration(Duration value) {
   final minutes = value.inMinutes.remainder(60).toString().padLeft(2, '0');
   final seconds = value.inSeconds.remainder(60).toString().padLeft(2, '0');
   return hours > 0 ? '$hours:$minutes:$seconds' : '${value.inMinutes}:$seconds';
-}
-
-class _RelatedArtistRail extends StatelessWidget {
-  const _RelatedArtistRail({
-    required this.artists,
-    required this.onTap,
-    required this.tvMode,
-  });
-
-  final List<CatalogArtist> artists;
-  final ValueChanged<CatalogArtist> onTap;
-  final bool tvMode;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      _SectionTitle(
-        title: 'Bạn Có Thể Thích',
-        trailing: '${artists.length} nghệ sĩ',
-        tvMode: tvMode,
-      ),
-      SizedBox(height: tvMode ? 18 : 13),
-      LayoutBuilder(
-        builder: (context, constraints) {
-          final width = tvMode
-              ? 196.0
-              : constraints.maxWidth >= 900
-              ? 166.0
-              : 138.0;
-          return SizedBox(
-            height: width + (tvMode ? 64 : 54),
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: artists.length,
-              separatorBuilder: (_, __) => SizedBox(width: tvMode ? 22 : 16),
-              itemBuilder: (context, index) {
-                final artist = artists[index];
-                return SizedBox(
-                  width: width,
-                  child: _RelatedArtistCard(
-                    key: ValueKey('related-artist-${artist.id}'),
-                    artist: artist,
-                    onTap: () => onTap(artist),
-                    tvMode: tvMode,
-                  ),
-                );
-              },
-            ),
-          );
-        },
-      ),
-    ],
-  );
-}
-
-class _RelatedArtistCard extends StatefulWidget {
-  const _RelatedArtistCard({
-    super.key,
-    required this.artist,
-    required this.onTap,
-    required this.tvMode,
-  });
-
-  final CatalogArtist artist;
-  final VoidCallback onTap;
-  final bool tvMode;
-
-  @override
-  State<_RelatedArtistCard> createState() => _RelatedArtistCardState();
-}
-
-class _RelatedArtistCardState extends State<_RelatedArtistCard> {
-  bool _active = false;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    label: 'Mở nghệ sĩ ${widget.artist.name}',
-    child: Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: widget.onTap,
-        mouseCursor: SystemMouseCursors.click,
-        borderRadius: BorderRadius.circular(999),
-        onHover: (value) => setState(() => _active = value),
-        onFocusChange: (value) {
-          setState(() => _active = value);
-          if (value) {
-            Scrollable.ensureVisible(
-              context,
-              duration: const Duration(milliseconds: 220),
-              alignment: 0.14,
-            );
-          }
-        },
-        child: Column(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 170),
-              padding: EdgeInsets.all(_active ? 4 : 1),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: _active ? ZingColors.lime : Colors.transparent,
-                  width: _active ? 3 : 0,
-                ),
-              ),
-              child: AlbumArt(
-                imageUrl: widget.artist.avatar,
-                semanticLabel: 'Ảnh nghệ sĩ ${widget.artist.name}',
-                size: widget.tvMode ? 184 : 130,
-                borderRadius: 999,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              widget.artist.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: widget.tvMode ? 17 : 13,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
 }
 
 class _ArtistBiography extends StatelessWidget {

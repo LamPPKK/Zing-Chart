@@ -86,8 +86,10 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   会阻止过期详情误打开；完整结果继续支持防抖、“全部/歌曲/
   歌单-专辑/歌手/MV”分类、Zing 风格精选卡片、自适应应用内歌手主页和歌单/专辑详情页，并保留 #zingchart
   本地回退。歌单/专辑详情会显示官方收藏量，经过验证的艺人身份支持 hover/focus
-  并打开应用内艺人主页；页面还展示发行日期、发行方、流派及官方“出现于”/
-  “你可能也喜欢”内容栏，同时可保存到设备内音乐库。宽度达到 1200 px 且实际内容区域足够时，
+  并打开应用内艺人主页；页面还展示发行日期、发行方与流派。歌曲列表之后依次显示圆形头像的
+  “参与艺人”栏（支持本地关注与应用内主页），以及官方“出现于”/“你可能也喜欢”内容栏；
+  相关内容卡片共用播放、收藏、更多、分享操作，并支持右键、键盘和电视遥控器。
+  宽度达到 1200 px 且实际内容区域足够时，
   详情页切换为类似 Zing 的双栏工作区：左侧显示封面、标题、艺人、更新日期与操作；右侧显示
   可展开/收起的简介和歌曲列表。专辑使用“播放全部”、曲目编号且不重复显示专辑列；歌单使用
   “随机播放”并保留专辑列。打开队列/歌词面板后，表格会按实际内容宽度切换为紧凑模式，避免溢出。
@@ -290,7 +292,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="类似 Zing 的双栏官方专辑页面，左侧封面，右侧编号曲目"><br><sub><b>官方专辑/歌单</b> · 按内容类型显示 CTA、专辑编号或歌单专辑列、受限歌曲 fail-closed，收藏状态继续保持本地优先</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="歌单专辑详情页中的发行信息与官方相关内容"><br><sub><b>歌单/专辑信息</b> · 发行日期、发行方、流派，以及官方“出现于”/“你可能也喜欢”内容栏</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="歌单专辑详情页中的发行信息、参与艺人与官方相关内容"><br><sub><b>歌单/专辑信息</b> · 紧凑 metadata、支持本地关注的参与艺人，以及带播放/收藏/分享操作的相关内容栏</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-weekly-chart-desktop.png" alt="包含三个地区、周数选择器以及可跳转歌手与专辑的周榜"><br><sub><b>周榜</b> · 越南/欧美/K-Pop、应用内歌手/专辑导航、排名变化、时长与仅含可播放歌曲的队列</sub></td>

@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../models/catalog_search.dart';
 import '../theme/app_theme.dart';
 import 'album_art.dart';
+import 'catalog_artist_rail.dart';
+import 'catalog_collection_action_deck.dart';
 
 /// The metadata and recommendation area shown after a collection's track list.
 ///
@@ -14,42 +16,47 @@ class CollectionDetailCatalog extends StatelessWidget {
     super.key,
     required this.detail,
     required this.onCollectionTap,
+    required this.onArtistTap,
+    this.onArtistToggleFollow,
+    this.followedArtistIds = const {},
+    this.onCollectionPlay,
+    this.onCollectionToggleSaved,
+    this.onCollectionShare,
+    this.savedCollectionIds = const {},
+    this.quickPlayingCollectionId,
     this.tvMode = false,
   });
 
   final CatalogCollectionDetail detail;
   final ValueChanged<CatalogCollection> onCollectionTap;
+  final ValueChanged<CatalogArtist> onArtistTap;
+  final ValueChanged<CatalogArtist>? onArtistToggleFollow;
+  final Set<String> followedArtistIds;
+  final ValueChanged<CatalogCollection>? onCollectionPlay;
+  final ValueChanged<CatalogCollection>? onCollectionToggleSaved;
+  final ValueChanged<CatalogCollection>? onCollectionShare;
+  final Set<String> savedCollectionIds;
+  final String? quickPlayingCollectionId;
   final bool tvMode;
 
   @override
   Widget build(BuildContext context) {
+    final participantArtists = detail.participatingArtists
+        .take(20)
+        .toList(growable: false);
     final information = <_InformationItem>[
-      _InformationItem(
-        icon: Icons.queue_music_rounded,
-        label: 'SỐ BÀI HÁT',
-        value: '${detail.songs.length}',
-      ),
+      _InformationItem(label: 'SỐ BÀI HÁT', value: '${detail.songs.length}'),
       if (detail.releasedAt case final releasedAt?)
-        _InformationItem(
-          icon: Icons.calendar_today_rounded,
-          label: 'NGÀY PHÁT HÀNH',
-          value: _dateLabel(releasedAt),
-        )
+        _InformationItem(label: 'NGÀY PHÁT HÀNH', value: _dateLabel(releasedAt))
       else if (detail.year.trim().isNotEmpty)
-        _InformationItem(
-          icon: Icons.calendar_today_rounded,
-          label: 'NĂM PHÁT HÀNH',
-          value: detail.year.trim(),
-        ),
+        _InformationItem(label: 'NĂM PHÁT HÀNH', value: detail.year.trim()),
       if (detail.distributor.trim().isNotEmpty)
         _InformationItem(
-          icon: Icons.apartment_rounded,
           label: 'CUNG CẤP BỞI',
           value: detail.distributor.trim(),
         ),
       if (detail.genres.isNotEmpty)
         _InformationItem(
-          icon: Icons.sell_rounded,
           label: 'THỂ LOẠI',
           value: detail.genres.take(3).join(' · '),
         ),
@@ -68,14 +75,30 @@ class CollectionDetailCatalog extends StatelessWidget {
           _SectionHeading(title: 'THÔNG TIN', tvMode: tvMode),
           SizedBox(height: tvMode ? 18 : 12),
           _InformationGrid(items: information, tvMode: tvMode),
+          if (participantArtists.isNotEmpty) ...[
+            SizedBox(height: tvMode ? 42 : 32),
+            CatalogArtistRail(
+              key: const ValueKey('collection-participants'),
+              title: 'NGHỆ SĨ THAM GIA',
+              artists: participantArtists,
+              onArtistTap: onArtistTap,
+              onToggleFollow: onArtistToggleFollow,
+              followedArtistIds: followedArtistIds,
+              keyPrefix: 'collection-participant',
+              tvMode: tvMode,
+            ),
+          ],
           for (final section in detail.sections) ...[
             SizedBox(height: tvMode ? 42 : 32),
-            _SectionHeading(title: section.title, tvMode: tvMode),
-            SizedBox(height: tvMode ? 18 : 14),
-            _CollectionRail(
+            _RelatedCollectionSection(
               key: ValueKey('collection-related-section-${section.id}'),
-              collections: section.collections,
-              onTap: onCollectionTap,
+              section: section,
+              onOpen: onCollectionTap,
+              onPlay: onCollectionPlay,
+              onToggleSaved: onCollectionToggleSaved,
+              onShare: onCollectionShare,
+              savedCollectionIds: savedCollectionIds,
+              quickPlayingCollectionId: quickPlayingCollectionId,
               tvMode: tvMode,
             ),
           ],
@@ -106,13 +129,8 @@ class _SectionHeading extends StatelessWidget {
 }
 
 class _InformationItem {
-  const _InformationItem({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  const _InformationItem({required this.label, required this.value});
 
-  final IconData icon;
   final String label;
   final String value;
 }
@@ -126,16 +144,12 @@ class _InformationGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final columns = constraints.maxWidth >= 980
-          ? 4
-          : constraints.maxWidth >= 560
-          ? 3
-          : 2;
-      final gap = tvMode ? 16.0 : 12.0;
+      final columns = constraints.maxWidth >= 920 ? 4 : 2;
+      final gap = tvMode ? 24.0 : 18.0;
       final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
       return Wrap(
         spacing: gap,
-        runSpacing: gap,
+        runSpacing: tvMode ? 10 : 6,
         children: [
           for (final item in items)
             SizedBox(
@@ -144,71 +158,49 @@ class _InformationGrid extends StatelessWidget {
                 label: '${item.label}: ${item.value}',
                 child: ExcludeSemantics(
                   child: Container(
-                    constraints: BoxConstraints(minHeight: tvMode ? 116 : 94),
-                    padding: EdgeInsets.all(tvMode ? 18 : 14),
+                    constraints: BoxConstraints(minHeight: tvMode ? 72 : 56),
+                    padding: EdgeInsets.fromLTRB(
+                      tvMode ? 4 : 2,
+                      tvMode ? 13 : 10,
+                      tvMode ? 4 : 2,
+                      tvMode ? 12 : 9,
+                    ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest
-                          .withValues(alpha: 0.56),
-                      borderRadius: BorderRadius.circular(tvMode ? 20 : 16),
-                      border: Border.all(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.outlineVariant.withValues(alpha: 0.42),
+                      border: Border(
+                        top: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outlineVariant.withValues(alpha: 0.45),
+                        ),
                       ),
                     ),
-                    child: Row(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          width: tvMode ? 44 : 36,
-                          height: tvMode ? 44 : 36,
-                          decoration: BoxDecoration(
-                            color: ZingColors.purpleBright.withValues(
-                              alpha: 0.16,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            item.icon,
-                            size: tvMode ? 25 : 20,
-                            color: ZingColors.purpleBright,
+                        Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                            fontSize: tvMode ? 12 : 9,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.05,
                           ),
                         ),
-                        SizedBox(width: tvMode ? 14 : 11),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                  fontSize: tvMode ? 12 : 9,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.05,
-                                ),
-                              ),
-                              const SizedBox(height: 7),
-                              Text(
-                                item.value,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface,
-                                  fontSize: tvMode ? 18 : 14,
-                                  height: 1.15,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
+                        SizedBox(height: tvMode ? 8 : 6),
+                        Text(
+                          item.value,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: tvMode ? 18 : 14,
+                            height: 1.15,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
@@ -223,64 +215,268 @@ class _InformationGrid extends StatelessWidget {
   );
 }
 
-class _CollectionRail extends StatelessWidget {
-  const _CollectionRail({
+class _RelatedCollectionSection extends StatefulWidget {
+  const _RelatedCollectionSection({
     super.key,
-    required this.collections,
-    required this.onTap,
+    required this.section,
+    required this.onOpen,
+    required this.onPlay,
+    required this.onToggleSaved,
+    required this.onShare,
+    required this.savedCollectionIds,
+    required this.quickPlayingCollectionId,
     required this.tvMode,
   });
 
-  final List<CatalogCollection> collections;
-  final ValueChanged<CatalogCollection> onTap;
+  final CatalogCollectionSection section;
+  final ValueChanged<CatalogCollection> onOpen;
+  final ValueChanged<CatalogCollection>? onPlay;
+  final ValueChanged<CatalogCollection>? onToggleSaved;
+  final ValueChanged<CatalogCollection>? onShare;
+  final Set<String> savedCollectionIds;
+  final String? quickPlayingCollectionId;
   final bool tvMode;
 
   @override
-  Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 620;
-    final cardWidth = tvMode
-        ? 226.0
-        : compact
-        ? 156.0
-        : 184.0;
-    final height = tvMode
-        ? 320.0
-        : compact
-        ? 230.0
-        : 260.0;
-    return SizedBox(
-      height: height,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: collections.length,
-        separatorBuilder: (_, __) => SizedBox(width: tvMode ? 18 : 14),
-        itemBuilder: (context, index) {
-          final collection = collections[index];
-          return SizedBox(
-            width: cardWidth,
-            child: _CollectionCard(
-              key: ValueKey('collection-related-${collection.id}'),
-              collection: collection,
-              onTap: () => onTap(collection),
-              tvMode: tvMode,
-            ),
-          );
-        },
-      ),
+  State<_RelatedCollectionSection> createState() =>
+      _RelatedCollectionSectionState();
+}
+
+class _RelatedCollectionSectionState extends State<_RelatedCollectionSection> {
+  final ScrollController _scrollController = ScrollController();
+  bool _canScrollBack = false;
+  bool _canScrollForward = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_syncScrollActions);
+  }
+
+  @override
+  void didUpdateWidget(covariant _RelatedCollectionSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_sameCollectionOrder(
+      oldWidget.section.collections,
+      widget.section.collections,
+    )) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_scrollController.hasClients) return;
+        _scrollController.jumpTo(_scrollController.position.minScrollExtent);
+        _syncScrollActions();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_syncScrollActions)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _scheduleScrollActionSync() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncScrollActions();
+    });
+  }
+
+  void _syncScrollActions() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    final canScrollBack = position.pixels > position.minScrollExtent + 0.5;
+    final canScrollForward = position.pixels < position.maxScrollExtent - 0.5;
+    if (canScrollBack == _canScrollBack &&
+        canScrollForward == _canScrollForward) {
+      return;
+    }
+    setState(() {
+      _canScrollBack = canScrollBack;
+      _canScrollForward = canScrollForward;
+    });
+  }
+
+  void _scrollBy(double direction) {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    final target = (position.pixels + position.viewportDimension * direction)
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _scrollController.jumpTo(target);
+      return;
+    }
+    _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
     );
   }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final compact = !widget.tvMode && constraints.maxWidth < 620;
+      final cardWidth = widget.tvMode
+          ? 226.0
+          : compact
+          ? 156.0
+          : 184.0;
+      final gap = widget.tvMode ? 18.0 : 14.0;
+      final itemCount = widget.section.collections.length;
+      final contentWidth = itemCount == 0
+          ? 0.0
+          : itemCount * cardWidth + (itemCount - 1) * gap;
+      final overflows = contentWidth > constraints.maxWidth + 0.5;
+      final desktopPointerPlatform = switch (Theme.of(context).platform) {
+        TargetPlatform.macOS ||
+        TargetPlatform.windows ||
+        TargetPlatform.linux => true,
+        _ => false,
+      };
+      final showScrollActions =
+          overflows && (widget.tvMode || !compact || desktopPointerPlatform);
+      _scheduleScrollActionSync();
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _SectionHeading(
+                  title: widget.section.title,
+                  tvMode: widget.tvMode,
+                ),
+              ),
+              if (showScrollActions) ...[
+                _RailScrollButton(
+                  key: ValueKey('collection-related-prev-${widget.section.id}'),
+                  icon: Icons.chevron_left_rounded,
+                  tooltip: 'Xem danh sách trước',
+                  tvMode: widget.tvMode,
+                  onPressed: _canScrollBack ? () => _scrollBy(-0.82) : null,
+                ),
+                SizedBox(width: widget.tvMode ? 10 : 7),
+                _RailScrollButton(
+                  key: ValueKey('collection-related-next-${widget.section.id}'),
+                  icon: Icons.chevron_right_rounded,
+                  tooltip: 'Xem danh sách tiếp theo',
+                  tvMode: widget.tvMode,
+                  onPressed: _canScrollForward ? () => _scrollBy(0.82) : null,
+                ),
+              ],
+            ],
+          ),
+          SizedBox(height: widget.tvMode ? 18 : 14),
+          SizedBox(
+            height: widget.tvMode
+                ? 320
+                : compact
+                ? 230
+                : 260,
+            child: ListView.separated(
+              key: ValueKey('collection-related-list-${widget.section.id}'),
+              controller: _scrollController,
+              scrollDirection: Axis.horizontal,
+              itemCount: itemCount,
+              separatorBuilder: (_, __) => SizedBox(width: gap),
+              itemBuilder: (context, index) {
+                final collection = widget.section.collections[index];
+                return SizedBox(
+                  width: cardWidth,
+                  child: _CollectionCard(
+                    key: ValueKey('collection-related-${collection.id}'),
+                    collection: collection,
+                    onOpen: () => widget.onOpen(collection),
+                    onPlay: widget.onPlay == null
+                        ? null
+                        : () => widget.onPlay!(collection),
+                    onToggleSaved: widget.onToggleSaved == null
+                        ? null
+                        : () => widget.onToggleSaved!(collection),
+                    onShare:
+                        widget.onShare == null ||
+                            collection.externalUrl.trim().isEmpty
+                        ? null
+                        : () => widget.onShare!(collection),
+                    saved: widget.savedCollectionIds.contains(collection.id),
+                    playing: widget.quickPlayingCollectionId == collection.id,
+                    persistentActions: compact || widget.tvMode,
+                    tvMode: widget.tvMode,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+bool _sameCollectionOrder(
+  List<CatalogCollection> previous,
+  List<CatalogCollection> current,
+) {
+  if (previous.length != current.length) return false;
+  for (var index = 0; index < previous.length; index++) {
+    if (previous[index].id != current[index].id) return false;
+  }
+  return true;
+}
+
+class _RailScrollButton extends StatelessWidget {
+  const _RailScrollButton({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.tvMode,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final bool tvMode;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton.filledTonal(
+    tooltip: tooltip,
+    constraints: BoxConstraints.tightFor(
+      width: tvMode ? 52 : 38,
+      height: tvMode ? 52 : 38,
+    ),
+    padding: EdgeInsets.zero,
+    iconSize: tvMode ? 32 : 24,
+    onPressed: onPressed,
+    icon: Icon(icon),
+  );
 }
 
 class _CollectionCard extends StatefulWidget {
   const _CollectionCard({
     super.key,
     required this.collection,
-    required this.onTap,
+    required this.onOpen,
+    required this.onPlay,
+    required this.onToggleSaved,
+    required this.onShare,
+    required this.saved,
+    required this.playing,
+    required this.persistentActions,
     required this.tvMode,
   });
 
   final CatalogCollection collection;
-  final VoidCallback onTap;
+  final VoidCallback onOpen;
+  final VoidCallback? onPlay;
+  final VoidCallback? onToggleSaved;
+  final VoidCallback? onShare;
+  final bool saved;
+  final bool playing;
+  final bool persistentActions;
   final bool tvMode;
 
   @override
@@ -294,11 +490,28 @@ class _CollectionCardState extends State<_CollectionCard> {
   @override
   Widget build(BuildContext context) {
     final active = _hovered || _focused;
+    final actionsVisible = widget.persistentActions || active;
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    final cardDuration = reducedMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 160);
+    final overlayDuration = reducedMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 140);
     return Semantics(
+      container: true,
+      explicitChildNodes: true,
       button: true,
-      onTap: widget.onTap,
+      onTap: widget.onOpen,
       label: 'Mở ${widget.collection.kindLabel} ${widget.collection.title}',
-      child: ExcludeSemantics(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) {
+          if (mounted && !_hovered) setState(() => _hovered = true);
+        },
+        onExit: (_) {
+          if (mounted && _hovered) setState(() => _hovered = false);
+        },
         child: FocusableActionDetector(
           mouseCursor: SystemMouseCursors.click,
           shortcuts: const <ShortcutActivator, Intent>{
@@ -308,13 +521,10 @@ class _CollectionCardState extends State<_CollectionCard> {
           actions: <Type, Action<Intent>>{
             ActivateIntent: CallbackAction<ActivateIntent>(
               onInvoke: (_) {
-                widget.onTap();
+                widget.onOpen();
                 return null;
               },
             ),
-          },
-          onShowHoverHighlight: (value) {
-            if (mounted) setState(() => _hovered = value);
           },
           onShowFocusHighlight: (value) {
             if (!mounted) return;
@@ -325,29 +535,51 @@ class _CollectionCardState extends State<_CollectionCard> {
                   Scrollable.ensureVisible(
                     context,
                     alignment: 0.5,
-                    duration: const Duration(milliseconds: 180),
+                    duration: reducedMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 180),
                   );
                 }
               });
             }
           },
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
+            duration: cardDuration,
             decoration: BoxDecoration(
               color: active
                   ? ZingColors.purpleBright.withValues(alpha: 0.13)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(widget.tvMode ? 20 : 16),
               border: Border.all(
-                color: active
+                color: _focused
+                    ? ZingColors.lime
+                    : _hovered
                     ? ZingColors.purpleBright.withValues(alpha: 0.74)
                     : Colors.transparent,
-                width: active ? 2 : 1,
+                width: _focused
+                    ? 3
+                    : _hovered
+                    ? 2
+                    : 1,
               ),
             ),
             child: InkWell(
               borderRadius: BorderRadius.circular(widget.tvMode ? 20 : 16),
-              onTap: widget.onTap,
+              canRequestFocus: false,
+              excludeFromSemantics: true,
+              onTap: widget.onOpen,
+              onSecondaryTapDown: (details) => showCatalogCollectionContextMenu(
+                context: context,
+                globalPosition: details.globalPosition,
+                keyPrefix: 'collection-related',
+                collection: widget.collection,
+                saved: widget.saved,
+                playing: widget.playing,
+                onOpen: widget.onOpen,
+                onPlay: widget.onPlay,
+                onToggleSaved: widget.onToggleSaved,
+                onShare: widget.onShare,
+              ),
               child: Padding(
                 padding: EdgeInsets.all(widget.tvMode ? 10 : 8),
                 child: Column(
@@ -363,25 +595,45 @@ class _CollectionCardState extends State<_CollectionCard> {
                             size: constraints.maxWidth,
                             borderRadius: widget.tvMode ? 16 : 13,
                           ),
-                          AnimatedOpacity(
-                            duration: const Duration(milliseconds: 140),
-                            opacity: active ? 1 : 0,
-                            child: Container(
-                              width: widget.tvMode ? 58 : 48,
-                              height: widget.tvMode ? 58 : 48,
-                              decoration: BoxDecoration(
-                                color: ZingColors.purpleBright,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.3),
-                                    blurRadius: 18,
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: AnimatedContainer(
+                                duration: overlayDuration,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(
+                                    widget.tvMode ? 16 : 13,
                                   ),
-                                ],
+                                  color: active
+                                      ? Colors.black.withValues(alpha: 0.22)
+                                      : Colors.transparent,
+                                ),
                               ),
-                              child: const Icon(
-                                Icons.arrow_forward_rounded,
-                                color: Colors.white,
+                            ),
+                          ),
+                          Positioned(
+                            left: widget.tvMode ? 12 : 2,
+                            right: widget.tvMode ? 12 : 2,
+                            bottom: widget.tvMode ? 12 : 9,
+                            child: IgnorePointer(
+                              ignoring: !actionsVisible,
+                              child: AnimatedOpacity(
+                                key: ValueKey(
+                                  'collection-related-actions-${widget.collection.id}',
+                                ),
+                                duration: overlayDuration,
+                                opacity: actionsVisible ? 1 : 0,
+                                child: CatalogCollectionActionDeck(
+                                  keyPrefix: 'collection-related',
+                                  collection: widget.collection,
+                                  tvMode: widget.tvMode,
+                                  active: active,
+                                  saved: widget.saved,
+                                  playing: widget.playing,
+                                  onOpen: widget.onOpen,
+                                  onPlay: widget.onPlay,
+                                  onToggleSaved: widget.onToggleSaved,
+                                  onShare: widget.onShare,
+                                ),
                               ),
                             ),
                           ),

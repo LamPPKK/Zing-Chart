@@ -134,6 +134,33 @@ class CatalogCollectionDetail {
 
   Duration get totalDuration =>
       songs.fold(Duration.zero, (total, song) => total + song.duration);
+
+  /// Artists credited by the collection endpoint followed by any additional
+  /// track-level contributors, preserving the first official occurrence.
+  ///
+  /// Some Zing album payloads expose only the primary artists at collection
+  /// level while individual tracks contain the complete participant list.
+  /// Keeping this merge local avoids extra network requests and still lets
+  /// collection detail mirror the public "Nghệ Sĩ Tham Gia" rail.
+  List<CatalogArtist> get participatingArtists {
+    final byId = <String, CatalogArtist>{};
+
+    void include(CatalogArtist artist) {
+      final id = artist.id.trim();
+      if (id.isEmpty || artist.name.trim().isEmpty) return;
+      byId.putIfAbsent(id, () => artist);
+    }
+
+    for (final artist in artists) {
+      include(artist);
+    }
+    for (final catalogSong in songs) {
+      for (final artist in catalogSong.artists) {
+        include(artist);
+      }
+    }
+    return List<CatalogArtist>.unmodifiable(byId.values);
+  }
 }
 
 class CatalogCollectionSection {

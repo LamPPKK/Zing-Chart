@@ -125,9 +125,12 @@ clients never call Zing upstream directly.
   prevent stale details from opening. Full results retain debouncing,
   All/Songs/Playlists-Albums/Artists/MV sections, Zing-style highlights,
   responsive in-shell artist and collection detail pages, and a local
-  #zingchart fallback. Collection detail also exposes the official like count
-  release date, distributor, genres, and official “Appears in”/“You may also
-  like” rails. From 1200 px, whenever the remaining content area is wide enough,
+  #zingchart fallback. Collection detail also exposes the official like count,
+  release date, distributor, and genres. After the track list, a circular
+  Participating Artists rail supports local follow and in-app profiles, followed
+  by official “Appears in”/“You may also like” rails whose cards share
+  Play/Save/More/Share actions, right-click parity, and keyboard/TV navigation.
+  From 1200 px, whenever the remaining content area is wide enough,
   collection detail becomes a Zing-style two-column workspace: artwork, title,
   artists, update date, and actions on the left; an expandable preface and track
   list on the right. Albums use Play All, numbered tracks, and no duplicated
@@ -379,7 +382,7 @@ historical binaries and contain no real user data.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="Official album in a Zing-style two-column workspace with artwork left and numbered tracks right"><br><sub><b>Official albums/playlists</b> · type-aware CTA, numbered album tracks or playlist Album column, fail-closed locked songs, and Local-First Saved state</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="Release information and related official collections on a collection detail page"><br><sub><b>Collection information</b> · release date, distributor, genres, and official “Appears in”/“You may also like” rails</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="Release information, participating artists, and related official collections on a collection detail page"><br><sub><b>Collection information</b> · compact metadata, locally followed participating artists, and related rails with Play/Save/Share</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-weekly-chart-desktop.png" alt="Weekly Chart with three regions, a period picker, and linked artist and album"><br><sub><b>Weekly Chart</b> · Vietnam/US-UK/K-Pop, in-app artist/album navigation, rank movement, duration, and a playable-only queue</sub></td>

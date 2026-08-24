@@ -348,6 +348,13 @@ Future<void> main() async {
               child: CollectionDetailCatalog(
                 detail: _docsCollectionDetail,
                 onCollectionTap: (_) {},
+                onArtistTap: (_) {},
+                onArtistToggleFollow: (_) {},
+                followedArtistIds: const {'mono'},
+                onCollectionPlay: (_) {},
+                onCollectionToggleSaved: (_) {},
+                onCollectionShare: (_) {},
+                savedCollectionIds: const {'best-of-vpop'},
               ),
             ),
           ),
@@ -1167,7 +1174,47 @@ const _artist = CatalogArtist(
   name: 'Sơn Tùng M-TP',
   aliasName: 'Son-Tung-M-TP',
   avatar: '',
+  totalFollow: 2655838,
 );
+
+const _docsCollectionArtists = [
+  _artist,
+  CatalogArtist(
+    id: 'mono',
+    name: 'MONO',
+    aliasName: 'MONO-Nguyen-Viet-Hoang',
+    avatar: '',
+    totalFollow: 1084200,
+  ),
+  CatalogArtist(
+    id: 'soobin',
+    name: 'SOOBIN',
+    aliasName: 'SOOBIN',
+    avatar: '',
+    totalFollow: 782400,
+  ),
+  CatalogArtist(
+    id: 'hieuthuhai',
+    name: 'HIEUTHUHAI',
+    aliasName: 'HIEUTHUHAI',
+    avatar: '',
+    totalFollow: 936700,
+  ),
+  CatalogArtist(
+    id: 'touliver',
+    name: 'Touliver',
+    aliasName: 'Touliver',
+    avatar: '',
+    totalFollow: 342800,
+  ),
+  CatalogArtist(
+    id: 'onionn',
+    name: 'Onionn.',
+    aliasName: 'Onionn',
+    avatar: '',
+    totalFollow: 185600,
+  ),
+];
 
 const _artistSongs = [
   Song(
@@ -1348,7 +1395,7 @@ final _artistDetail = CatalogArtistDetail(
 
 final _docsCollectionDetail = CatalogCollectionDetail(
   collection: _artistDetail.collectionSections.first.collections.first,
-  artists: const [_artist],
+  artists: _docsCollectionArtists,
   description:
       'Tuyển tập chính thức được lưu vào thư viện trên thiết bị, với metadata '
       'bài hát và điều hướng nghệ sĩ/album từ Zing MP3.',
@@ -1372,7 +1419,49 @@ final _docsCollectionDetail = CatalogCollectionDetail(
     CatalogCollectionSection(
       id: 'appears-in',
       title: 'Sơn Tùng M-TP Xuất Hiện Trong',
-      collections: _artistDetail.collectionSections.first.collections,
+      collections: [
+        ..._artistDetail.collectionSections.first.collections,
+        const CatalogCollection(
+          id: 'noi-nay-co-anh-collection',
+          title: 'Nơi Này Có Anh',
+          artist: 'Sơn Tùng M-TP',
+          thumbnail: '',
+          kind: CatalogCollectionKind.album,
+          externalUrl: '',
+        ),
+        const CatalogCollection(
+          id: 'hay-trao-cho-anh-collection',
+          title: 'Hãy Trao Cho Anh',
+          artist: 'Sơn Tùng M-TP, Snoop Dogg',
+          thumbnail: '',
+          kind: CatalogCollectionKind.album,
+          externalUrl: '',
+        ),
+        const CatalogCollection(
+          id: 'sky-tour-collection',
+          title: 'Sky Tour Selection',
+          artist: 'Sơn Tùng M-TP',
+          thumbnail: '',
+          kind: CatalogCollectionKind.playlist,
+          externalUrl: '',
+        ),
+        const CatalogCollection(
+          id: 'vpop-iconic-collection',
+          title: 'V-Pop Iconic',
+          artist: 'Nhiều nghệ sĩ',
+          thumbnail: '',
+          kind: CatalogCollectionKind.playlist,
+          externalUrl: '',
+        ),
+        const CatalogCollection(
+          id: 'chill-cung-son-tung',
+          title: 'Chill Cùng Sơn Tùng M-TP',
+          artist: 'Sơn Tùng M-TP',
+          thumbnail: '',
+          kind: CatalogCollectionKind.playlist,
+          externalUrl: '',
+        ),
+      ],
     ),
     CatalogCollectionSection(
       id: 'you-may-care',

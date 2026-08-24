@@ -2431,6 +2431,22 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     );
   }
 
+  void _toggleArtistFollowWithFeedback(
+    MusicPlayerController controller,
+    CatalogArtist artist,
+  ) {
+    final followed = controller.toggleArtistFollow(artist);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          followed
+              ? 'Đã quan tâm ${artist.name} trên thiết bị này.'
+              : 'Đã bỏ quan tâm ${artist.name}.',
+        ),
+      ),
+    );
+  }
+
   Future<void> _shareArtist(CatalogArtist artist) => shareOfficialContent(
     context,
     OfficialContentShare(
@@ -3199,20 +3215,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                     loading: _isArtistLoading,
                     tvMode: widget.tvMode,
                     isFollowed: controller.isArtistFollowed(effectiveArtist!),
-                    onToggleFollow: () {
-                      final followed = controller.toggleArtistFollow(
-                        effectiveArtist,
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            followed
-                                ? 'Đã quan tâm ${effectiveArtist.name} trên thiết bị này.'
-                                : 'Đã bỏ quan tâm ${effectiveArtist.name}.',
-                          ),
-                        ),
-                      );
-                    },
+                    onToggleFollow: () => _toggleArtistFollowWithFeedback(
+                      controller,
+                      effectiveArtist,
+                    ),
                     onShare: effectiveArtist.officialExternalUrl.isEmpty
                         ? null
                         : () => unawaited(_shareArtist(effectiveArtist)),
@@ -3976,6 +3982,22 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                     detail: _collectionDetail!,
                     onCollectionTap: (collection) =>
                         unawaited(_openCollection(collection)),
+                    onArtistTap: _openArtistFromCollectionHero,
+                    onArtistToggleFollow: (artist) =>
+                        _toggleArtistFollowWithFeedback(controller, artist),
+                    followedArtistIds: controller.followedArtists
+                        .map((artist) => artist.id)
+                        .toSet(),
+                    onCollectionPlay: (collection) =>
+                        unawaited(_quickPlayCollection(collection)),
+                    onCollectionToggleSaved: (collection) =>
+                        _toggleCollectionSaved(controller, collection),
+                    onCollectionShare: (collection) =>
+                        unawaited(_shareCollection(collection)),
+                    savedCollectionIds: controller.savedCollections
+                        .map((collection) => collection.id)
+                        .toSet(),
+                    quickPlayingCollectionId: _quickPlayingCollectionId,
                     tvMode: widget.tvMode,
                   ),
                 ),
@@ -4195,6 +4217,22 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                       detail: detail,
                       onCollectionTap: (target) =>
                           unawaited(_openCollection(target)),
+                      onArtistTap: _openArtistFromCollectionHero,
+                      onArtistToggleFollow: (artist) =>
+                          _toggleArtistFollowWithFeedback(controller, artist),
+                      followedArtistIds: controller.followedArtists
+                          .map((artist) => artist.id)
+                          .toSet(),
+                      onCollectionPlay: (target) =>
+                          unawaited(_quickPlayCollection(target)),
+                      onCollectionToggleSaved: (target) =>
+                          _toggleCollectionSaved(controller, target),
+                      onCollectionShare: (target) =>
+                          unawaited(_shareCollection(target)),
+                      savedCollectionIds: controller.savedCollections
+                          .map((collection) => collection.id)
+                          .toSet(),
+                      quickPlayingCollectionId: _quickPlayingCollectionId,
                     ),
                   ),
               ],
