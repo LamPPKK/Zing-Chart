@@ -53,10 +53,27 @@ void main() {
         addTearDown(controller.dispose);
 
         await _pumpChart(tester, controller, songs, tvMode: size.width == 1920);
-        await tester.tap(find.text('Dành cho bạn').first);
+        if (size.width < 720) {
+          await tester.tap(find.byKey(const ValueKey('mobile-nav-for-you')));
+        } else {
+          await tester.tap(find.byIcon(Icons.auto_awesome_outlined).first);
+        }
         await tester.pumpAndSettle();
 
         expect(find.byKey(const ValueKey('for-you-daily-mix')), findsOneWidget);
+        if (size.width < 720) {
+          expect(find.text('Cá nhân'), findsWidgets);
+          expect(
+            find.byKey(const ValueKey('mobile-personal-summary')),
+            findsOneWidget,
+          );
+        } else {
+          expect(find.text('Dành cho bạn'), findsWidgets);
+          expect(
+            find.byKey(const ValueKey('mobile-personal-summary')),
+            findsNothing,
+          );
+        }
         expect(find.text('Ba nhịp cho một ngày'), findsOneWidget);
         expect(find.byKey(const ValueKey('open-wrapped-card')), findsOneWidget);
         expect(tester.takeException(), isNull);
@@ -87,8 +104,6 @@ void main() {
     addTearDown(controller.dispose);
     await _pumpChart(tester, controller, songs);
 
-    await tester.tap(find.text('Tìm kiếm').first);
-    await tester.pump();
     await tester.tap(find.byTooltip('Tùy chọn bài hát').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Gắn mood Tập trung'));

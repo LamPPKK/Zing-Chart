@@ -2,7 +2,8 @@
 Type=Application
 Name=#zingChart
 Comment=Music chart player
-Exec=zingchart
+Exec=zingchart %u
 Icon=zingchart
 Terminal=false
 Categories=AudioVideo;Audio;Player;
+MimeType=x-scheme-handler/zingchart;

@@ -35,5 +35,11 @@ Name: "{autodesktop}\#zingChart"; Filename: "{app}\zmp3chart.exe"; Tasks: deskto
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"
 
+[Registry]
+Root: HKA; Subkey: "Software\Classes\zingchart"; ValueType: string; ValueData: "URL:#zingChart Official Link"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\zingchart"; ValueName: "URL Protocol"; ValueType: string; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\zingchart\DefaultIcon"; ValueType: string; ValueData: "{app}\zmp3chart.exe,0"
+Root: HKA; Subkey: "Software\Classes\zingchart\shell\open\command"; ValueType: string; ValueData: "\"{app}\zmp3chart.exe\" \"%1\""
+
 [Run]
 Filename: "{app}\zmp3chart.exe"; Description: "Launch #zingChart"; Flags: nowait postinstall skipifsilent

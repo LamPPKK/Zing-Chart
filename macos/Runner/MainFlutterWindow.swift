@@ -12,6 +12,7 @@ class MainFlutterWindow: NSWindow {
     self.setFrame(windowFrame, display: true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+    (NSApp.delegate as? AppDelegate)?.configureDeepLinkChannel(flutterViewController)
     let channel = FlutterMethodChannel(
       name: "software.baycho.zmp3chart/companion",
       binaryMessenger: flutterViewController.engine.binaryMessenger

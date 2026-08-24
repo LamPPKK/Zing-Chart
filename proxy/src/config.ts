@@ -4,14 +4,23 @@ export interface AppConfig {
   corsOrigins: string[];
   upstreamTimeoutMs: number;
   chartCacheTtlMs: number;
+  searchCacheTtlMs: number;
   rateLimitMax: number;
   rateLimitWindowMs: number;
   trustProxyHops: number;
   chartUrl: string;
+  searchUrl: string;
+  suggestionUrl: string;
   sourceUrl: string;
+  currentApiBaseUrl: string;
+  currentApiKey: string;
+  currentApiSigningKey: string;
+  currentApiVersion: string;
   publicBaseUrl: string;
   streamTokenSecret: string;
   streamTokenTtlSeconds: number;
+  liveRadioCacheTtlMs: number;
+  liveStreamTokenTtlSeconds: number;
   streamHosts: string[];
   isProduction: boolean;
 }
@@ -20,6 +29,11 @@ const DEFAULT_CHART_URL =
   'https://mp3.zing.vn/xhr/chart-realtime?songId=0&videoId=0&albumId=0&chart=song&time=-1';
 const DEFAULT_SOURCE_URL =
   'https://m.zingmp3.vn/xhr/media/get-source?type=audio&key=';
+const DEFAULT_SEARCH_URL =
+  'https://ac.zingmp3.vn/complete?type=artist,song,album&num=25';
+const DEFAULT_SUGGESTION_URL =
+  'https://ac.zingmp3.vn/v1/web/ac-suggestions';
+const DEFAULT_CURRENT_API_BASE_URL = 'https://zingmp3.vn';
 
 function positiveInt(value: string | undefined, fallback: number, name: string) {
   if (value === undefined || value.trim() === '') return fallback;
@@ -94,6 +108,45 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error('STREAM_HOSTS must contain valid comma-separated host suffixes');
   }
 
+  const currentApiKey = env.ZING_CURRENT_API_KEY?.trim() || '';
+  const currentApiSigningKey = env.ZING_CURRENT_API_SIGNING_KEY?.trim() || '';
+  if (Boolean(currentApiKey) !== Boolean(currentApiSigningKey)) {
+    throw new Error(
+      'ZING_CURRENT_API_KEY and ZING_CURRENT_API_SIGNING_KEY must be configured together',
+    );
+  }
+  const currentApiVersion = env.ZING_CURRENT_API_VERSION?.trim() || '1.20.1';
+  if (!/^\d+\.\d+\.\d+$/.test(currentApiVersion)) {
+    throw new Error('ZING_CURRENT_API_VERSION must use semantic numeric format');
+  }
+  const currentApiBaseUrl = url(
+    env.ZING_CURRENT_API_BASE_URL,
+    DEFAULT_CURRENT_API_BASE_URL,
+    'ZING_CURRENT_API_BASE_URL',
+  ).replace(/\/$/, '');
+  if (currentApiKey && new URL(currentApiBaseUrl).protocol !== 'https:') {
+    throw new Error('ZING_CURRENT_API_BASE_URL must use HTTPS when enabled');
+  }
+  const suggestionUrl = url(
+    env.ZING_SUGGESTION_URL,
+    DEFAULT_SUGGESTION_URL,
+    'ZING_SUGGESTION_URL',
+  );
+  const suggestionEndpoint = new URL(suggestionUrl);
+  if (suggestionEndpoint.protocol !== 'https:') {
+    throw new Error('ZING_SUGGESTION_URL must use HTTPS');
+  }
+  if (
+    suggestionEndpoint.username
+    || suggestionEndpoint.password
+    || suggestionEndpoint.search
+    || suggestionEndpoint.hash
+  ) {
+    throw new Error(
+      'ZING_SUGGESTION_URL must not contain credentials, query, or fragment',
+    );
+  }
+
   return {
     host: env.HOST?.trim() || '0.0.0.0',
     port: positiveInt(env.PORT, 8080, 'PORT'),
@@ -108,6 +161,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       60_000,
       'CHART_CACHE_TTL_MS',
     ),
+    searchCacheTtlMs: positiveInt(
+      env.SEARCH_CACHE_TTL_MS,
+      30_000,
+      'SEARCH_CACHE_TTL_MS',
+    ),
     rateLimitMax: positiveInt(env.RATE_LIMIT_MAX, 120, 'RATE_LIMIT_MAX'),
     rateLimitWindowMs: positiveInt(
       env.RATE_LIMIT_WINDOW_MS,
@@ -116,13 +174,29 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     ),
     trustProxyHops: nonNegativeInt(env.TRUST_PROXY_HOPS, 0, 'TRUST_PROXY_HOPS'),
     chartUrl: url(env.ZING_CHART_URL, DEFAULT_CHART_URL, 'ZING_CHART_URL'),
+    searchUrl: url(env.ZING_SEARCH_URL, DEFAULT_SEARCH_URL, 'ZING_SEARCH_URL'),
+    suggestionUrl,
     sourceUrl: url(env.ZING_SOURCE_URL, DEFAULT_SOURCE_URL, 'ZING_SOURCE_URL'),
+    currentApiBaseUrl,
+    currentApiKey,
+    currentApiSigningKey,
+    currentApiVersion,
     publicBaseUrl,
     streamTokenSecret,
     streamTokenTtlSeconds: positiveInt(
       env.STREAM_TOKEN_TTL_SECONDS,
       300,
       'STREAM_TOKEN_TTL_SECONDS',
+    ),
+    liveRadioCacheTtlMs: positiveInt(
+      env.LIVE_RADIO_CACHE_TTL_MS,
+      30_000,
+      'LIVE_RADIO_CACHE_TTL_MS',
+    ),
+    liveStreamTokenTtlSeconds: positiveInt(
+      env.LIVE_STREAM_TOKEN_TTL_SECONDS,
+      21_600,
+      'LIVE_STREAM_TOKEN_TTL_SECONDS',
     ),
     streamHosts,
     isProduction,

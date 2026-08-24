@@ -6,6 +6,7 @@
 
 // The application's name. By default this is also the title of the Flutter window.
 PRODUCT_NAME = "#zingChart"
+PRODUCT_MODULE_NAME = Runner
 
 // The application's bundle identifier
 PRODUCT_BUNDLE_IDENTIFIER = software.baycho.zmp3chart

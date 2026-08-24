@@ -15,4 +15,12 @@ class MusicPlayerScope extends InheritedNotifier<MusicPlayerController> {
     assert(scope != null, 'MusicPlayerScope is missing above this context.');
     return scope!.notifier!;
   }
+
+  /// Reads the player without rebuilding when high-frequency playback values
+  /// such as position or duration change.
+  static MusicPlayerController read(BuildContext context) {
+    final scope = context.getInheritedWidgetOfExactType<MusicPlayerScope>();
+    assert(scope != null, 'MusicPlayerScope is missing above this context.');
+    return scope!.notifier!;
+  }
 }

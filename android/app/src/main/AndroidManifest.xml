@@ -48,6 +48,9 @@
               android:name="io.flutter.embedding.android.SplashScreenDrawable"
               android:resource="@drawable/launch_background"
               />
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="true" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -55,6 +58,39 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="zingchart" android:host="open" />
+            </intent-filter>
+            <!-- Zing controls its own domain, so these links intentionally use
+                 the Android chooser instead of claiming verified ownership. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="zingmp3.vn" />
+                <data android:host="m.zingmp3.vn" />
+                <data android:pathPrefix="/bai-hat/" />
+                <data android:pathPrefix="/video-clip/" />
+                <data android:pathPrefix="/album/" />
+                <data android:pathPrefix="/playlist/" />
+                <data android:pathPrefix="/link/" />
+                <data android:pathPrefix="/nghe-si/" />
+                <data android:pathPrefix="/hub/" />
+                <data android:pathPrefix="/zing-chart" />
+                <data android:pathPrefix="/zing-chart-tuan/" />
+                <data android:pathPrefix="/moi-phat-hanh" />
+                <data android:pathPrefix="/new-release/" />
+                <data android:pathPrefix="/top100" />
+                <data android:pathPrefix="/radio" />
+                <!-- Root artist aliases (for example /Taylor-Swift) have no
+                     stable prefix. The Dart parser still rejects every unknown
+                     or malformed path before any proxy request. -->
+                <data android:pathPattern="/.*" />
             </intent-filter>
         </activity>
         <service

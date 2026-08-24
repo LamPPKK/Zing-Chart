@@ -109,6 +109,77 @@ void main() {
   });
 
   test(
+    'smart shuffle uses only current catalog, excludes queue and stays stable',
+    () async {
+      final analytics = ListeningAnalyticsService(
+        repository: MemoryListeningAnalyticsRepository(),
+        clock: () => now,
+        installationIdFactory: () => 'install-smart',
+      );
+      await analytics.initialize();
+      final engine = LocalMixEngine();
+      final queue = songs.take(3).toList(growable: false);
+
+      final first = engine.buildSmartShuffle(
+        queue: queue,
+        catalog: songs,
+        likedSongIds: {songs[7].id},
+        analytics: analytics,
+        now: now,
+      );
+      final second = engine.buildSmartShuffle(
+        queue: queue,
+        catalog: songs,
+        likedSongIds: {songs[7].id},
+        analytics: analytics,
+        now: now,
+      );
+
+      expect(first, hasLength(1));
+      expect(first.map((song) => song.id), second.map((song) => song.id));
+      expect(
+        first.map((song) => song.id).toSet().intersection({
+          ...queue.map((song) => song.id),
+        }),
+        isEmpty,
+      );
+      expect(songs.map((song) => song.id), contains(first.single.id));
+      analytics.dispose();
+    },
+  );
+
+  test(
+    'smart shuffle rejects catalog entries without a playable code',
+    () async {
+      final analytics = ListeningAnalyticsService(
+        repository: MemoryListeningAnalyticsRepository(),
+        clock: () => now,
+        installationIdFactory: () => 'install-smart-locked',
+      );
+      await analytics.initialize();
+      final locked = Song(
+        id: 'locked',
+        name: 'locked',
+        title: 'Bị giới hạn',
+        thumbnail: '',
+        artistsNames: 'Nghệ sĩ khóa',
+        code: '',
+      );
+
+      final suggestions = const LocalMixEngine().buildSmartShuffle(
+        queue: [songs.first],
+        catalog: [locked],
+        likedSongIds: const {},
+        analytics: analytics,
+        now: now,
+      );
+
+      expect(suggestions, isEmpty);
+      analytics.dispose();
+    },
+  );
+
+  test(
     'mood mix starts with explicit tags and expands positive artists',
     () async {
       final analytics = ListeningAnalyticsService(

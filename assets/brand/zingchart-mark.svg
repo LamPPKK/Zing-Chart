@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">#zingChart app mark</title>
+  <desc id="desc">A coral hash crossed by a lime audio pulse on a dark plum field.</desc>
+  <defs>
+    <radialGradient id="background" cx="72%" cy="22%" r="92%">
+      <stop offset="0" stop-color="#2E1834"/>
+      <stop offset="0.62" stop-color="#171319"/>
+      <stop offset="1" stop-color="#101113"/>
+    </radialGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#background)"/>
+  <g fill="none" stroke="#FF6B4A" stroke-linecap="round" stroke-width="74">
+    <path opacity=".18" filter="url(#glow)" stroke-width="132" d="M390 230L352 794M654 230L616 794M236 420L788 378M216 664L768 622"/>
+    <path d="M390 230L352 794M654 230L616 794"/>
+  </g>
+  <path fill="none" stroke="#FF8B6F" stroke-linecap="round" stroke-width="74" d="M236 420L788 378M216 664L768 622"/>
+  <path fill="none" stroke="#B8F43D" stroke-linecap="round" stroke-linejoin="round" stroke-width="46" d="M184 553H307L379 471L461 676L563 369L655 553H840"/>
+  <circle cx="840" cy="553" r="34" fill="#F5FFD2"/>
+</svg>

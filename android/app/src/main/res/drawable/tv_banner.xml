@@ -21,6 +21,13 @@
         android:strokeWidth="6" />
     <path
         android:fillColor="#00000000"
+        android:pathData="M22,91H29L34,84L39,102L46,77L52,91H57"
+        android:strokeColor="#B8F43D"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="3.5" />
+    <path
+        android:fillColor="#00000000"
         android:pathData="M60,70H82L60,110H82M92,70V110M102,110V70L122,110V70M150,77H132V105H150V94H142M176,76H158V106H176M184,70V110M202,70V110M184,90H202M210,110L220,70L230,110M214,96H226M238,110V70H254V90H238M246,90L258,110M264,70H288M276,70V110"
         android:strokeColor="#F5F0E8"
         android:strokeLineCap="square"

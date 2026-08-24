@@ -5,8 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:zmp3chart/data/library_repository.dart';
 import 'package:zmp3chart/data/listening_analytics_repository.dart';
 import 'package:zmp3chart/models/listening_analytics.dart';
+import 'package:zmp3chart/models/live_radio.dart';
 import 'package:zmp3chart/models/local_library.dart';
+import 'package:zmp3chart/models/catalog_search.dart';
+import 'package:zmp3chart/models/playback_origin.dart';
 import 'package:zmp3chart/models/song.dart';
+import 'package:zmp3chart/models/song_radio.dart';
 import 'package:zmp3chart/music_player_controller.dart';
 import 'package:zmp3chart/services/system_media_bridge.dart';
 
@@ -41,8 +45,127 @@ void main() {
       code: 'code-three',
     ),
   ];
+  const followedArtist = CatalogArtist(
+    id: 'artist-a',
+    name: 'Ca Sĩ A',
+    aliasName: 'Ca-Si-A',
+    avatar: 'https://photo-resize-zmp3.zmdcdn.me/w240/artist-a.jpg',
+    externalUrl: 'https://zingmp3.vn/nghe-si/Ca-Si-A',
+  );
+  const savedCollection = CatalogCollection(
+    id: 'collection-a',
+    title: 'Top Hits A',
+    artist: 'Ca Sĩ A',
+    thumbnail: '',
+    kind: CatalogCollectionKind.album,
+    externalUrl: 'https://zingmp3.vn/album/Top-Hits-A/collection-a.html',
+  );
+  const liveRoom = LiveRadioRoom(
+    id: 'vpop',
+    title: 'V-POP',
+    description: 'Nhạc Việt đang thịnh hành',
+    thumbnail: 'https://images.example.com/live.jpg',
+    listenerCount: 12500,
+    hostName: 'Zing MP3',
+    hostThumbnail: '',
+    program: LiveRadioProgram(
+      id: 'program-vpop',
+      title: 'Nhạc Việt hôm nay',
+      thumbnail: 'https://images.example.com/program.jpg',
+      description: 'Phát trực tiếp',
+      startTime: null,
+      endTime: null,
+    ),
+  );
 
   group('PlaybackService controls', () {
+    test('uses and restores the selected streaming quality', () async {
+      final repository = MemoryLibraryRepository();
+      final requested = <StreamingQualityPreference>[];
+      final controller = PlaybackService(
+        playbackAudioPlayer: FakePlaybackAudioPlayer(),
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        qualitySourceResolver: (code, quality) async {
+          requested.add(quality);
+          return 'https://audio.example.com/${quality.apiValue}/$code.mp3';
+        },
+        libraryRepository: repository,
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await controller.initialize();
+
+      controller.setStreamingQualityPreference(StreamingQualityPreference.high);
+      await controller.playSong(songs.first);
+      await _flushAsync();
+
+      expect(requested, [StreamingQualityPreference.high]);
+      expect(
+        repository.snapshot.streamingQualityPreferenceIndex,
+        StreamingQualityPreference.high.index,
+      );
+      controller.dispose();
+
+      final restored = PlaybackService(
+        playbackAudioPlayer: FakePlaybackAudioPlayer(),
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        libraryRepository: repository,
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await restored.initialize();
+      expect(
+        restored.streamingQualityPreference,
+        StreamingQualityPreference.high,
+      );
+      restored.dispose();
+    });
+
+    test(
+      'retries unavailable high quality with Auto and preserves the queue',
+      () async {
+        final audio = FakePlaybackAudioPlayer();
+        final requested = <StreamingQualityPreference>[];
+        final controller = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          qualitySourceResolver: (code, quality) async {
+            requested.add(quality);
+            if (quality == StreamingQualityPreference.high) {
+              throw StateError('Nguồn 320 kbps không khả dụng');
+            }
+            return 'https://audio.example.com/${quality.apiValue}/$code.mp3';
+          },
+          libraryRepository: MemoryLibraryRepository(),
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+        controller.setStreamingQualityPreference(
+          StreamingQualityPreference.high,
+        );
+
+        await controller.playSong(songs[1], queue: songs);
+        expect(controller.errorMessage, contains('320 kbps'));
+        expect(audio.playedSources, isEmpty);
+
+        await controller.retryPlayback(useAutomaticQuality: true);
+
+        expect(requested, [
+          StreamingQualityPreference.high,
+          StreamingQualityPreference.automatic,
+        ]);
+        expect(
+          controller.streamingQualityPreference,
+          StreamingQualityPreference.automatic,
+        );
+        expect(controller.currentSong, songs[1]);
+        expect(controller.queue, songs);
+        expect(controller.currentIndex, 1);
+        expect(controller.errorMessage, isNull);
+        expect(controller.isPlaying, isTrue);
+        expect(audio.playedSources, hasLength(1));
+        controller.dispose();
+      },
+    );
+
     test('plays, pauses, stops and replays the selected source', () async {
       final audio = FakePlaybackAudioPlayer();
       var resolveCalls = 0;
@@ -150,6 +273,214 @@ void main() {
       controller.dispose();
     });
 
+    test('extends the queue with Song Radio at its boundary', () async {
+      final audio = FakePlaybackAudioPlayer();
+      var radioCalls = 0;
+      final controller = PlaybackService(
+        playbackAudioPlayer: audio,
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        songRadioLoader: (code) async {
+          radioCalls++;
+          return SongRadio(
+            seedId: code,
+            recommendations: [_radioSong(songs[1]), _radioSong(songs[2])],
+          );
+        },
+        libraryRepository: MemoryLibraryRepository(),
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await controller.initialize();
+      await controller.playSong(songs.first, queue: [songs.first]);
+
+      await controller.next();
+
+      expect(radioCalls, 1);
+      expect(controller.currentSong, songs[1]);
+      expect(controller.queue.map((song) => song.id), ['one', 'two', 'three']);
+      expect(controller.isRadioSong(songs[1]), isTrue);
+      expect(controller.isRadioSong(songs[2]), isTrue);
+      expect(controller.playbackOrigin.kind, PlaybackOriginKind.songRadio);
+      expect(controller.playbackOrigin.label, 'Song Radio · Một Bài Hát');
+      expect(controller.radioErrorMessage, isNull);
+      controller.dispose();
+    });
+
+    test('coalesces concurrent radio loads and advances only once', () async {
+      final audio = FakePlaybackAudioPlayer();
+      final radioResult = Completer<SongRadio>();
+      var radioCalls = 0;
+      final controller = PlaybackService(
+        playbackAudioPlayer: audio,
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        songRadioLoader: (code) {
+          radioCalls++;
+          return radioResult.future;
+        },
+        libraryRepository: MemoryLibraryRepository(),
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await controller.initialize();
+      await controller.playSong(songs.first, queue: [songs.first]);
+
+      final firstNext = controller.next();
+      final secondNext = controller.next();
+      await Future<void>.delayed(Duration.zero);
+      expect(radioCalls, 1);
+      radioResult.complete(
+        SongRadio(
+          seedId: songs.first.code,
+          recommendations: [_radioSong(songs[1])],
+        ),
+      );
+      await Future.wait([firstNext, secondNext]);
+
+      expect(controller.currentSong, songs[1]);
+      expect(audio.playedSources, hasLength(2));
+      controller.dispose();
+    });
+
+    test('keeps the current queue usable when Song Radio fails', () async {
+      final audio = FakePlaybackAudioPlayer();
+      final controller = PlaybackService(
+        playbackAudioPlayer: audio,
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        songRadioLoader: (_) async => throw Exception('radio unavailable'),
+        libraryRepository: MemoryLibraryRepository(),
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await controller.initialize();
+      await controller.playSong(songs.first, queue: [songs.first]);
+
+      final count = await controller.startSongRadio();
+
+      expect(count, 0);
+      expect(controller.queue, [songs.first]);
+      expect(controller.radioErrorMessage, contains('radio unavailable'));
+      expect(controller.isRadioLoading, isFalse);
+      controller.dispose();
+    });
+
+    test(
+      'restores and persists the autoplay recommendation preference',
+      () async {
+        final repository = MemoryLibraryRepository(
+          const PlayerSnapshot(
+            queue: songs,
+            autoplayRecommendationsEnabled: false,
+            volume: 0.35,
+            radioSongIds: ['two'],
+          ),
+        );
+        final audio = FakePlaybackAudioPlayer();
+        final controller = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          songRadioLoader: (code) async => SongRadio.empty(code),
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+        expect(controller.autoplayRecommendationsEnabled, isFalse);
+        expect(controller.volume, 0.35);
+        expect(audio.volumeValues, [0.35]);
+        expect(controller.isRadioSong(songs[1]), isTrue);
+
+        controller.toggleAutoplayRecommendations();
+        await _flushAsync();
+
+        expect(controller.autoplayRecommendationsEnabled, isTrue);
+        expect(repository.snapshot.autoplayRecommendationsEnabled, isTrue);
+        controller.dispose();
+      },
+    );
+
+    test(
+      'persists playback origin and keeps it across queue navigation',
+      () async {
+        final repository = MemoryLibraryRepository();
+        final audio = FakePlaybackAudioPlayer();
+        final controller = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+        await controller.playSong(
+          songs.first,
+          queue: songs,
+          origin: const PlaybackOrigin(
+            kind: PlaybackOriginKind.collection,
+            label: '  Album   chính thức  ',
+          ),
+        );
+        await controller.next();
+        await _flushAsync();
+
+        expect(controller.currentSong, songs[1]);
+        expect(controller.playbackOrigin.kind, PlaybackOriginKind.collection);
+        expect(controller.playbackOrigin.label, 'Album chính thức');
+        expect(repository.snapshot.playbackOrigin.label, 'Album chính thức');
+        controller.dispose();
+
+        final restored = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await restored.initialize();
+        expect(restored.playbackOrigin.kind, PlaybackOriginKind.collection);
+        expect(restored.playbackOrigin.label, 'Album chính thức');
+        restored.dispose();
+      },
+    );
+
+    test(
+      'clears the queue without interrupting the current song or its origin',
+      () async {
+        final repository = MemoryLibraryRepository();
+        final audio = FakePlaybackAudioPlayer();
+        final controller = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+        await controller.playSong(
+          songs[1],
+          queue: songs,
+          origin: const PlaybackOrigin(
+            kind: PlaybackOriginKind.collection,
+            label: 'Album chính thức',
+          ),
+        );
+        audio.emitDuration(const Duration(minutes: 3));
+        audio.emitPosition(const Duration(seconds: 42));
+        await _flushAsync();
+        final playCalls = audio.playedSources.length;
+        final stopCalls = audio.stopCalls;
+
+        expect(controller.canClearPlaybackQueue, isTrue);
+        expect(controller.clearPlaybackQueue(), isTrue);
+        await _flushAsync();
+
+        expect(controller.queue, [songs[1]]);
+        expect(controller.currentSong, songs[1]);
+        expect(controller.currentIndex, 0);
+        expect(controller.position, const Duration(seconds: 42));
+        expect(controller.playbackOrigin.label, 'Album chính thức');
+        expect(audio.playedSources, hasLength(playCalls));
+        expect(audio.stopCalls, stopCalls);
+        expect(controller.canClearPlaybackQueue, isFalse);
+        expect(controller.clearPlaybackQueue(), isFalse);
+        expect(repository.snapshot.queue, [songs[1]]);
+        expect(repository.snapshot.playbackOrigin.label, 'Album chính thức');
+        controller.dispose();
+      },
+    );
+
     test('repeat-one completion replays, then repeat-all advances', () async {
       final audio = FakePlaybackAudioPlayer();
       final controller = _controller(audio);
@@ -237,6 +568,105 @@ void main() {
       );
       controller.dispose();
     });
+
+    test(
+      'plays LIVE without polluting history, analytics or restore',
+      () async {
+        final audio = FakePlaybackAudioPlayer();
+        final repository = MemoryLibraryRepository();
+        var sourceCalls = 0;
+        final controller = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (_) async => throw StateError('unused'),
+          liveRadioSourceResolver: (id) async {
+            sourceCalls++;
+            return 'https://proxy.example.com/v1/live-streams/$id-token';
+          },
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+
+        await controller.playLiveRadio(liveRoom);
+        audio.emitDuration(const Duration(hours: 1));
+        audio.emitPosition(const Duration(seconds: 40));
+        await _flushAsync();
+
+        expect(controller.isLiveRadio, isTrue);
+        expect(controller.currentLiveRadio, liveRoom);
+        expect(controller.currentSong?.displayTitle, 'V-POP');
+        expect(controller.currentSong?.artistsNames, 'Nhạc Việt hôm nay');
+        expect(controller.playbackOrigin.kind, PlaybackOriginKind.liveRadio);
+        expect(controller.playbackOrigin.label, 'V-POP · LIVE');
+        expect(controller.isPlaying, isTrue);
+        expect(controller.canGoNext, isFalse);
+        expect(controller.canGoPrevious, isFalse);
+        expect(controller.history, isEmpty);
+        expect(controller.hasAnalyticsActivity, isFalse);
+        expect(repository.snapshot.currentSong, isNull);
+        expect(repository.snapshot.queue, isEmpty);
+        expect(repository.snapshot.position, Duration.zero);
+
+        await controller.seek(const Duration(minutes: 5));
+        expect(audio.seekTargets, isEmpty);
+        await controller.stop();
+        await controller.togglePlayPause();
+        expect(
+          sourceCalls,
+          1,
+          reason: 'Nguồn LIVE đã tải được có thể dùng lại.',
+        );
+        expect(audio.playedSources, hasLength(2));
+        controller.dispose();
+      },
+    );
+
+    test(
+      'latest LIVE selection wins and a normal song exits LIVE mode',
+      () async {
+        final audio = FakePlaybackAudioPlayer();
+        final firstSource = Completer<String>();
+        final secondSource = Completer<String>();
+        const secondRoom = LiveRadioRoom(
+          id: 'kpop',
+          title: 'K-POP',
+          description: 'K-Pop LIVE',
+          thumbnail: '',
+          listenerCount: 500,
+          hostName: '',
+          hostThumbnail: '',
+        );
+        final controller = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          liveRadioSourceResolver: (id) =>
+              id == liveRoom.id ? firstSource.future : secondSource.future,
+          libraryRepository: MemoryLibraryRepository(),
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+
+        final firstPlay = controller.playLiveRadio(liveRoom);
+        await _flushAsync();
+        final secondPlay = controller.playLiveRadio(secondRoom);
+        secondSource.complete(
+          'https://proxy.example.com/v1/live-streams/kpop-token',
+        );
+        await secondPlay;
+        firstSource.complete(
+          'https://proxy.example.com/v1/live-streams/vpop-token',
+        );
+        await firstPlay;
+
+        expect(controller.currentLiveRadio, secondRoom);
+        expect(audio.playedSources, hasLength(1));
+        await controller.playSong(songs.first);
+        expect(controller.isLiveRadio, isFalse);
+        expect(controller.currentSong, songs.first);
+        expect(controller.playbackOrigin, const PlaybackOrigin.chart());
+        controller.dispose();
+      },
+    );
   });
 
   group('Queue, persistence and system controls', () {
@@ -292,6 +722,163 @@ void main() {
       expect(repository.snapshot.repeatModeIndex, PlayerRepeatMode.one.index);
       controller.dispose();
     });
+
+    test('applies and persists explicit settings selections', () async {
+      final repository = MemoryLibraryRepository();
+      final audio = FakePlaybackAudioPlayer();
+      final controller = PlaybackService(
+        playbackAudioPlayer: audio,
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        songRadioLoader: (code) async => SongRadio.empty(code),
+        libraryRepository: repository,
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await controller.initialize();
+
+      controller.setShuffleEnabled(true);
+      controller.setRepeatMode(PlayerRepeatMode.one);
+      controller.setAutoplayRecommendations(false);
+      controller.setThemePreference(AppThemePreference.dark);
+      controller.setAlwaysOpenFullscreenPlayer(true);
+      controller.setCarModeEnabled(true);
+      await controller.setVolume(0.42);
+      await controller.toggleMute();
+      expect(controller.isMuted, isTrue);
+      await controller.toggleMute();
+      await _flushAsync();
+
+      expect(controller.shuffleEnabled, isTrue);
+      expect(controller.repeatMode, PlayerRepeatMode.one);
+      expect(controller.autoplayRecommendationsEnabled, isFalse);
+      expect(controller.themePreference, AppThemePreference.dark);
+      expect(controller.alwaysOpenFullscreenPlayer, isTrue);
+      expect(controller.carModeEnabled, isTrue);
+      expect(controller.volume, closeTo(0.42, 0.001));
+      expect(controller.isMuted, isFalse);
+      expect(audio.volumeValues, [1, 0.42, 0, 0.42]);
+      expect(repository.snapshot.shuffleEnabled, isTrue);
+      expect(repository.snapshot.repeatModeIndex, PlayerRepeatMode.one.index);
+      expect(repository.snapshot.autoplayRecommendationsEnabled, isFalse);
+      expect(repository.snapshot.alwaysOpenFullscreenPlayer, isTrue);
+      expect(repository.snapshot.carModeEnabled, isTrue);
+      expect(repository.snapshot.volume, closeTo(0.42, 0.001));
+      expect(
+        repository.snapshot.themePreferenceIndex,
+        AppThemePreference.dark.index,
+      );
+      controller.dispose();
+    });
+
+    test('interleaves, marks and removes local Smart Shuffle songs', () async {
+      final repository = MemoryLibraryRepository();
+      final controller = PlaybackService(
+        playbackAudioPlayer: FakePlaybackAudioPlayer(),
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        libraryRepository: repository,
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await controller.initialize();
+      final baseQueue = [
+        ...songs,
+        const Song(
+          id: 'four',
+          name: 'bon',
+          title: 'Bài Bốn',
+          thumbnail: '',
+          artistsNames: 'Ca Sĩ D',
+          code: 'code-four',
+        ),
+      ];
+      final catalog = [
+        ...baseQueue,
+        for (var index = 0; index < 8; index++)
+          Song(
+            id: 'smart-$index',
+            name: 'smart-$index',
+            title: 'Gợi ý $index',
+            thumbnail: '',
+            artistsNames: 'Nghệ sĩ gợi ý $index',
+            code: 'smart-code-$index',
+          ),
+      ];
+      controller.updateCatalog(catalog);
+      await controller.playSong(baseQueue.first, queue: baseQueue);
+
+      expect(controller.setSmartShuffleEnabled(true), isTrue);
+      expect(controller.smartShuffleEnabled, isTrue);
+      expect(controller.shuffleEnabled, isTrue);
+      expect(controller.smartShuffleSongCount, 2);
+      expect(controller.queue, hasLength(6));
+      expect(controller.queue.take(3).map((song) => song.id), [
+        'one',
+        'two',
+        'three',
+      ]);
+      expect(controller.isSmartShuffleSong(controller.queue[3]), isTrue);
+      expect(controller.queue[4].id, 'four');
+      expect(controller.isSmartShuffleSong(controller.queue[5]), isTrue);
+
+      expect(controller.setSmartShuffleEnabled(false), isTrue);
+      expect(controller.smartShuffleEnabled, isFalse);
+      expect(controller.shuffleEnabled, isTrue);
+      expect(controller.queue.map((song) => song.id), [
+        'one',
+        'two',
+        'three',
+        'four',
+      ]);
+      controller.dispose();
+    });
+
+    test(
+      'persists Smart Shuffle markers and clears them with a new queue',
+      () async {
+        final repository = MemoryLibraryRepository();
+        final catalog = [
+          songs[0],
+          songs[1],
+          const Song(
+            id: 'smart-persisted',
+            name: 'smart-persisted',
+            title: 'Gợi ý đã lưu',
+            thumbnail: '',
+            artistsNames: 'Nghệ sĩ mới',
+            code: 'smart-persisted-code',
+          ),
+        ];
+        final source = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await source.initialize();
+        source.updateCatalog(catalog);
+        await source.playSong(songs.first, queue: songs.take(2).toList());
+        expect(source.setSmartShuffleEnabled(true), isTrue);
+        await _flushAsync();
+        expect(repository.snapshot.smartShuffleEnabled, isTrue);
+        expect(repository.snapshot.smartShuffleSongIds, ['smart-persisted']);
+        source.dispose();
+
+        final restored = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await restored.initialize();
+        expect(restored.smartShuffleEnabled, isTrue);
+        expect(restored.smartShuffleSongCount, 1);
+        expect(restored.shuffleEnabled, isTrue);
+
+        await restored.playSong(songs.last, queue: [songs.last]);
+        expect(restored.smartShuffleEnabled, isFalse);
+        expect(restored.smartShuffleSongCount, 0);
+        expect(restored.queue, [songs.last]);
+        restored.dispose();
+      },
+    );
 
     test('manages playlists, recent searches and queue ordering', () async {
       final audio = FakePlaybackAudioPlayer();
@@ -441,7 +1028,7 @@ void main() {
       },
     );
 
-    test('persists mood tags and analytics in backup v2', () async {
+    test('persists mood tags and analytics in backup v3', () async {
       final source = PlaybackService(
         playbackAudioPlayer: FakePlaybackAudioPlayer(),
         sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
@@ -522,6 +1109,8 @@ void main() {
       final source = _controller(FakePlaybackAudioPlayer());
       await source.initialize();
       source.toggleLike(songs.first);
+      source.toggleArtistFollow(followedArtist);
+      source.toggleCollectionSaved(savedCollection);
       final playlist = source.createPlaylist('Favorites 2026');
       source.addSongToPlaylist(playlist.id, songs.first);
       source.recordSearch('Một Bài Hát');
@@ -536,19 +1125,59 @@ void main() {
         BackupImportMode.merge,
       );
       expect(merged.likedSongs, 1);
+      expect(merged.followedArtists, 1);
+      expect(merged.savedCollections, 1);
       expect(
         target.likedSongs.map((song) => song.id),
         containsAll(['one', 'two']),
       );
       expect(target.playlists.single.name, 'Favorites 2026');
+      expect(target.followedArtists.single.id, followedArtist.id);
+      expect(target.savedCollections.single.id, savedCollection.id);
       expect(target.themePreference, AppThemePreference.light);
 
       await target.importLibraryJson(json, BackupImportMode.overwrite);
       expect(target.likedSongs.single.id, 'one');
+      expect(target.followedArtists.single.name, followedArtist.name);
+      expect(target.savedCollections.single.title, savedCollection.title);
       expect(target.recentSearches.single, 'Một Bài Hát');
       expect(target.themePreference, AppThemePreference.system);
       source.dispose();
       target.dispose();
+    });
+
+    test('restores followed artists after a local restart', () async {
+      final repository = MemoryLibraryRepository();
+      final source = PlaybackService(
+        playbackAudioPlayer: FakePlaybackAudioPlayer(),
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        libraryRepository: repository,
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await source.initialize();
+      expect(source.toggleArtistFollow(followedArtist), isTrue);
+      expect(source.toggleCollectionSaved(savedCollection), isTrue);
+      await _flushAsync();
+      expect(repository.snapshot.followedArtists.single.id, followedArtist.id);
+      expect(
+        repository.snapshot.savedCollections.single.id,
+        savedCollection.id,
+      );
+      source.dispose();
+
+      final restored = PlaybackService(
+        playbackAudioPlayer: FakePlaybackAudioPlayer(),
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        libraryRepository: repository,
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await restored.initialize();
+      expect(restored.isArtistFollowed(followedArtist), isTrue);
+      expect(restored.followedArtists.single.name, followedArtist.name);
+      expect(restored.isCollectionSaved(savedCollection), isTrue);
+      expect(restored.toggleArtistFollow(followedArtist), isFalse);
+      expect(restored.toggleCollectionSaved(savedCollection), isFalse);
+      restored.dispose();
     });
 
     test('stops after the current song when sleep timer requests it', () async {
@@ -568,6 +1197,13 @@ void main() {
     });
   });
 }
+
+CatalogSong _radioSong(Song song) => CatalogSong(
+  song: song,
+  duration: const Duration(minutes: 3),
+  externalUrl: 'https://zingmp3.vn/bai-hat/${song.id}',
+  playable: true,
+);
 
 PlaybackService _controller(FakePlaybackAudioPlayer audio) => PlaybackService(
   playbackAudioPlayer: audio,

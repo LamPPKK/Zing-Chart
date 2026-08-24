@@ -10,14 +10,19 @@ import MethodCall from '@ohos/flutter_ohos/src/main/ets/plugin/common/MethodCall
 import { GeneratedPluginRegistrant } from '../plugins/GeneratedPluginRegistrant';
 
 const CHANNEL = 'software.baycho.zmp3chart/companion';
+const DEEP_LINK_CHANNEL = 'software.baycho.zmp3chart/deep_link';
 const STORE = 'zingchart_companion';
 
 export default class EntryAbility extends FlutterAbility {
   private companionChannel?: MethodChannel;
+  private deepLinkChannel?: MethodChannel;
   private pendingCompanionAction?: string;
+  private pendingOfficialRoute?: string;
+  private dartDeepLinkReady: boolean = false;
 
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     this.pendingCompanionAction = want.parameters?.companionAction as string | undefined;
+    this.pendingOfficialRoute = want.uri;
     super.onCreate(want, launchParam);
   }
 
@@ -43,6 +48,27 @@ export default class EntryAbility extends FlutterAbility {
           .catch((error: Error) => result.error('snapshot_write_failed', error.message, null));
       }
     } as MethodCallHandler);
+    this.deepLinkChannel = new MethodChannel(
+      flutterEngine.dartExecutor.getBinaryMessenger(),
+      DEEP_LINK_CHANNEL
+    );
+    this.deepLinkChannel.setMethodCallHandler({
+      onMethodCall(call: MethodCall, result: MethodResult) {
+        if (call.method === 'getInitialRoute') {
+          const route = ability.pendingOfficialRoute;
+          ability.pendingOfficialRoute = undefined;
+          result.success(route ?? null);
+          return;
+        }
+        if (call.method === 'ready') {
+          ability.dartDeepLinkReady = true;
+          result.success(null);
+          ability.flushPendingOfficialRoute();
+          return;
+        }
+        result.notImplemented();
+      }
+    } as MethodCallHandler);
   }
 
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -52,6 +78,18 @@ export default class EntryAbility extends FlutterAbility {
       this.pendingCompanionAction = action;
       this.flushPendingCompanionAction();
     }
+    const route = want.uri;
+    if (route) {
+      this.pendingOfficialRoute = route;
+      this.flushPendingOfficialRoute();
+    }
+  }
+
+  private flushPendingOfficialRoute(): void {
+    const route = this.pendingOfficialRoute;
+    if (!route || !this.deepLinkChannel || !this.dartDeepLinkReady) return;
+    this.pendingOfficialRoute = undefined;
+    this.deepLinkChannel.invokeMethod('open', { route: route });
   }
 
   private flushPendingCompanionAction(): void {

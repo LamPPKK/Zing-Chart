@@ -5,6 +5,60 @@ import 'listening_analytics_service.dart';
 class LocalMixEngine {
   const LocalMixEngine();
 
+  List<Song> buildSmartShuffle({
+    required List<Song> queue,
+    required List<Song> catalog,
+    required Set<String> likedSongIds,
+    required ListeningAnalyticsService analytics,
+    DateTime? now,
+    int maxSuggestions = 10,
+  }) {
+    if (queue.isEmpty || maxSuggestions <= 0) return const [];
+    final today = now ?? DateTime.now();
+    final queueIds = queue.map((song) => song.id).toSet();
+    final queueArtists = queue
+        .expand(_artists)
+        .map((artist) => artist.toLowerCase())
+        .toSet();
+    final candidates = _uniqueSongs(
+      catalog.where(
+        (song) =>
+            song.id.isNotEmpty &&
+            song.code.trim().isNotEmpty &&
+            !queueIds.contains(song.id),
+      ),
+    );
+    if (candidates.isEmpty) return const [];
+
+    final profileSeed = _profileSeed(analytics, likedSongIds, today);
+    final queueSeed = queue.map((song) => song.id).join('|');
+    final scored =
+        candidates.map((song) {
+          final sharesQueueArtist = _artists(
+            song,
+          ).any((artist) => queueArtists.contains(artist.toLowerCase()));
+          return _ScoredSong(
+            song,
+            _score(
+                  song,
+                  liked: likedSongIds.contains(song.id),
+                  aggregate: analytics.aggregateForSong(song.id),
+                  now: today,
+                  dailySeed: 'smart|$profileSeed|$queueSeed',
+                ) +
+                (sharesQueueArtist ? 5 : 0),
+          );
+        }).toList()..sort((a, b) {
+          final byScore = b.score.compareTo(a.score);
+          return byScore != 0
+              ? byScore
+              : a.song.displayTitle.compareTo(b.song.displayTitle);
+        });
+
+    final desired = ((queue.length + 2) ~/ 3).clamp(1, maxSuggestions);
+    return _withArtistDiversity(scored, limit: desired);
+  }
+
   MixCollection buildDailyMix({
     required List<Song> candidates,
     required Set<String> likedSongIds,

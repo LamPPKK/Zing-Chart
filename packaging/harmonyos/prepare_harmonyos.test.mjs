@@ -22,6 +22,14 @@ test('prepares phone/tablet metadata and background audio permissions', async ()
   assert.match(app, /"vendor": "LamNDT"/);
   assert.match(app, /"versionCode": 42/);
   assert.match(app, /"versionName": "2\.3\.4"/);
+  assert.match(app, /"icon": "\$media:app_icon"/);
+  const appIcon = await readFile(
+    path.join(project, 'ohos/AppScope/resources/base/media/app_icon.png'),
+  );
+  assert.deepEqual([...appIcon.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+  assert.equal(appIcon.readUInt32BE(16), 1024);
+  assert.equal(appIcon.readUInt32BE(20), 1024);
+  assert.equal(appIcon[25], 2, 'HarmonyOS icon must be opaque RGB PNG');
 
   const module = await readFile(
     path.join(project, 'ohos/entry/src/main/module.json5'),
@@ -30,6 +38,8 @@ test('prepares phone/tablet metadata and background audio permissions', async ()
   assert.match(module, /"phone"/);
   assert.match(module, /"tablet"/);
   assert.match(module, /"backgroundModes": \["audioPlayback"\]/);
+  assert.match(module, /"scheme": "zingchart"/);
+  assert.match(module, /"host": "open"/);
   assert.match(module, /ohos\.permission\.INTERNET/);
   assert.match(module, /ohos\.permission\.KEEP_BACKGROUND_RUNNING/);
   assert.match(module, /\$string:background_running_reason/);
@@ -65,6 +75,12 @@ test('prepares phone/tablet metadata and background audio permissions', async ()
     'utf8',
   );
   assert.match(entryAbility, /software\.baycho\.zmp3chart\/companion/);
+  assert.match(entryAbility, /software\.baycho\.zmp3chart\/deep_link/);
+  assert.match(entryAbility, /pendingOfficialRoute = want\.uri/);
+  assert.match(entryAbility, /getInitialRoute/);
+  assert.match(entryAbility, /call\.method === 'ready'/);
+  assert.match(entryAbility, /dartDeepLinkReady/);
+  assert.match(entryAbility, /invokeMethod\('open', \{ route: route \}\)/);
   assert.match(entryAbility, /updateForm/);
   assert.match(entryAbility, /onCreate\(want: Want/);
   assert.match(entryAbility, /flushPendingCompanionAction/);
@@ -94,6 +110,10 @@ test('pins reviewed HarmonyOS plugin forks by immutable commit', async () => {
   assert.match(lock, /resolved-ref: a9a26269ea04d77355f0d0aaad089ce6ac526fe5/);
   assert.match(lock, /  file_selector:\n    dependency: "direct main"/);
   assert.match(lock, /  share_plus:\n    dependency: "direct main"/);
+  assert.match(lock, /  url_launcher:\n    dependency: "direct main"/);
+  assert.match(lock, /    version: "6\.3\.2"/);
+  assert.match(lock, /  url_launcher_platform_interface:/);
+  assert.match(lock, /  url_launcher_web:/);
   assert.match(lock, /  cross_file:/);
   assert.match(lock, /  file_selector_android:/);
   assert.match(lock, /  file_selector_ios:/);

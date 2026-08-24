@@ -22,6 +22,7 @@ dependencies:
   qr_flutter: ^4.1.0
   smtc_windows: ^1.1.0
   window_manager: ^0.5.2
+  url_launcher: ^6.3.2
   cupertino_icons: ^1.0.9
 
 dev_dependencies:

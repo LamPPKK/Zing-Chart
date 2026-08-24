@@ -2,6 +2,22 @@ import '../models/song.dart';
 
 enum AppThemePreference { system, light, dark }
 
+enum StreamingQualityPreference { automatic, standard, high }
+
+extension StreamingQualityPreferenceLabel on StreamingQualityPreference {
+  String get apiValue => switch (this) {
+    StreamingQualityPreference.automatic => 'auto',
+    StreamingQualityPreference.standard => '128',
+    StreamingQualityPreference.high => '320',
+  };
+
+  String get label => switch (this) {
+    StreamingQualityPreference.automatic => 'Tự động',
+    StreamingQualityPreference.standard => '128 kbps',
+    StreamingQualityPreference.high => '320 kbps',
+  };
+}
+
 enum BackupImportMode { merge, overwrite }
 
 class LocalPlaylist {
@@ -139,11 +155,15 @@ class ArtistListeningStat {
 class BackupImportResult {
   const BackupImportResult({
     required this.likedSongs,
+    this.followedArtists = 0,
+    this.savedCollections = 0,
     required this.playlists,
     required this.historyRecords,
   });
 
   final int likedSongs;
+  final int followedArtists;
+  final int savedCollections;
   final int playlists;
   final int historyRecords;
 }

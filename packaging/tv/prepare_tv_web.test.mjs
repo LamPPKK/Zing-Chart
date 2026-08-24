@@ -37,6 +37,11 @@ test('prepares a relative, remote-enabled Tizen TV project', async () => {
   assert.deepEqual([...icon.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
   assert.equal(icon.readUInt32BE(16), 117);
   assert.equal(icon.readUInt32BE(20), 117);
+  assert.equal(icon[25], 2, 'Tizen icon must be opaque RGB PNG');
+  assert.deepEqual(
+    icon,
+    await readFile(path.join(import.meta.dirname, 'assets/icon-117.png')),
+  );
 });
 
 test('prepares valid webOS metadata and required icon sizes', async () => {
@@ -54,6 +59,11 @@ test('prepares valid webOS metadata and required icon sizes', async () => {
   assert.equal(icon.readUInt32BE(20), 80);
   assert.equal(largeIcon.readUInt32BE(16), 130);
   assert.equal(largeIcon.readUInt32BE(20), 130);
+  assert.equal(icon[25], 2, 'webOS icon must be opaque RGB PNG');
+  assert.deepEqual(
+    largeIcon,
+    await readFile(path.join(import.meta.dirname, 'assets/icon-130.png')),
+  );
 });
 
 async function temporaryOutput() {

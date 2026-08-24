@@ -13,6 +13,8 @@ abstract interface class PlaybackAudioPlayer {
 
   Future<void> setReleaseMode(ReleaseMode releaseMode);
 
+  Future<void> setVolume(double volume);
+
   Future<void> play(Source source);
 
   Future<void> pause();
@@ -51,6 +53,9 @@ class AudioplayersPlaybackAudioPlayer implements PlaybackAudioPlayer {
   @override
   Future<void> setReleaseMode(ReleaseMode releaseMode) =>
       _player.setReleaseMode(releaseMode);
+
+  @override
+  Future<void> setVolume(double volume) => _player.setVolume(volume);
 
   @override
   Future<void> play(Source source) => _player.play(source);

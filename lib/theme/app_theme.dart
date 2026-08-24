@@ -1,33 +1,36 @@
 import 'package:flutter/material.dart';
 
 abstract final class ZingColors {
-  static const ink = Color(0xFF101113);
-  static const charcoal = Color(0xFF17181B);
-  static const panel = Color(0xFF202125);
-  static const paper = Color(0xFFF5F0E8);
-  static const coral = Color(0xFFFF6B4A);
-  static const lime = Color(0xFFB8F43D);
-  static const blue = Color(0xFF68A7FF);
+  static const ink = Color(0xFF170F23);
+  static const charcoal = Color(0xFF1F172A);
+  static const panel = Color(0xFF2A2138);
+  static const sidebar = Color(0xFF231B2E);
+  static const paper = Color(0xFFF7F5FA);
+  static const purple = Color(0xFF9B4DE0);
+  static const purpleBright = Color(0xFFB95CFF);
+  static const coral = Color(0xFFED2B91);
+  static const lime = Color(0xFF27C9A0);
+  static const blue = Color(0xFF4A90E2);
 }
 
 ThemeData buildZingDarkTheme({required bool tvMode}) {
   final scheme =
       ColorScheme.fromSeed(
-        seedColor: ZingColors.coral,
+        seedColor: ZingColors.purple,
         brightness: Brightness.dark,
         surface: ZingColors.ink,
       ).copyWith(
-        primary: ZingColors.coral,
-        secondary: ZingColors.lime,
+        primary: ZingColors.purple,
+        secondary: ZingColors.coral,
         surfaceContainer: ZingColors.panel,
       );
   return _baseTheme(scheme, tvMode: tvMode).copyWith(
     scaffoldBackgroundColor: ZingColors.ink,
     cardColor: ZingColors.charcoal,
     inputDecorationTheme: _inputTheme(
-      fill: const Color(0xFF1C1D20),
-      border: const Color(0xFF36373B),
-      hint: const Color(0xFF929296),
+      fill: const Color(0xFF2F2739),
+      border: const Color(0xFF463C52),
+      hint: const Color(0xFFA69EAF),
     ),
   );
 }
@@ -35,22 +38,22 @@ ThemeData buildZingDarkTheme({required bool tvMode}) {
 ThemeData buildZingLightTheme({required bool tvMode}) {
   final scheme =
       ColorScheme.fromSeed(
-        seedColor: ZingColors.coral,
+        seedColor: ZingColors.purple,
         brightness: Brightness.light,
         surface: ZingColors.paper,
       ).copyWith(
-        primary: const Color(0xFFD94429),
-        secondary: const Color(0xFF476500),
+        primary: const Color(0xFF7B2CBF),
+        secondary: const Color(0xFFC21872),
         onSurface: const Color(0xFF191A1D),
-        surfaceContainer: const Color(0xFFE9E3D9),
+        surfaceContainer: const Color(0xFFEDE7F3),
       );
   return _baseTheme(scheme, tvMode: tvMode).copyWith(
     scaffoldBackgroundColor: ZingColors.paper,
     cardColor: const Color(0xFFFFFBF4),
     inputDecorationTheme: _inputTheme(
-      fill: const Color(0xFFFFFBF4),
-      border: const Color(0xFFC9C1B5),
-      hint: const Color(0xFF6A665F),
+      fill: const Color(0xFFFFFFFF),
+      border: const Color(0xFFD4CBDD),
+      hint: const Color(0xFF6F6877),
     ),
   );
 }
@@ -108,7 +111,7 @@ ThemeData _baseTheme(ColorScheme scheme, {required bool tvMode}) {
     cardTheme: CardThemeData(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(14),
         side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.55)),
       ),
     ),
@@ -131,15 +134,15 @@ InputDecorationTheme _inputTheme({
   fillColor: fill,
   hintStyle: TextStyle(color: hint),
   border: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(18),
+    borderRadius: BorderRadius.circular(22),
     borderSide: BorderSide(color: border),
   ),
   enabledBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(18),
+    borderRadius: BorderRadius.circular(22),
     borderSide: BorderSide(color: border),
   ),
   focusedBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(18),
-    borderSide: const BorderSide(color: ZingColors.coral, width: 2),
+    borderRadius: BorderRadius.circular(22),
+    borderSide: const BorderSide(color: ZingColors.purple, width: 2),
   ),
 );

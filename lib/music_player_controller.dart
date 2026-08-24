@@ -5,9 +5,13 @@ import 'package:flutter/foundation.dart';
 
 import 'data/library_repository.dart';
 import 'data/listening_analytics_repository.dart';
+import 'models/catalog_search.dart';
 import 'models/listening_analytics.dart';
+import 'models/live_radio.dart';
 import 'models/local_library.dart';
+import 'models/playback_origin.dart';
 import 'models/song.dart';
+import 'models/song_radio.dart';
 import 'services/listening_analytics_service.dart';
 import 'services/local_mix_engine.dart';
 import 'services/companion_surface_bridge.dart';
@@ -16,6 +20,10 @@ import 'services/system_media_bridge.dart';
 import 'zing_mp3_api.dart';
 
 typedef SongSourceResolver = Future<String> Function(String code);
+typedef QualitySongSourceResolver =
+    Future<String> Function(String code, StreamingQualityPreference quality);
+typedef SongRadioLoader = Future<SongRadio> Function(String code);
+typedef LiveRadioSourceResolver = Future<String> Function(String id);
 
 enum PlayerRepeatMode { off, all, one }
 
@@ -24,6 +32,9 @@ class PlaybackService extends ChangeNotifier {
     AudioPlayer? audioPlayer,
     PlaybackAudioPlayer? playbackAudioPlayer,
     SongSourceResolver? sourceResolver,
+    QualitySongSourceResolver? qualitySourceResolver,
+    SongRadioLoader? songRadioLoader,
+    LiveRadioSourceResolver? liveRadioSourceResolver,
     LibraryRepository? libraryRepository,
     ListeningAnalyticsRepository? analyticsRepository,
     ListeningAnalyticsService? analyticsService,
@@ -35,6 +46,10 @@ class PlaybackService extends ChangeNotifier {
            playbackAudioPlayer ??
            AudioplayersPlaybackAudioPlayer(audioPlayer ?? AudioPlayer()),
        _sourceResolver = sourceResolver ?? ZingMP3API.getSongUrlByCode,
+       _qualitySourceResolver = qualitySourceResolver,
+       _songRadioLoader = songRadioLoader,
+       _liveRadioSourceResolver = liveRadioSourceResolver,
+       _autoplayRecommendationsEnabled = songRadioLoader != null,
        _libraryRepository =
            libraryRepository ?? SharedPreferencesLibraryRepository(),
        _analytics =
@@ -46,6 +61,9 @@ class PlaybackService extends ChangeNotifier {
 
   final PlaybackAudioPlayer _audioPlayer;
   final SongSourceResolver _sourceResolver;
+  final QualitySongSourceResolver? _qualitySourceResolver;
+  final SongRadioLoader? _songRadioLoader;
+  final LiveRadioSourceResolver? _liveRadioSourceResolver;
   final LibraryRepository _libraryRepository;
   final ListeningAnalyticsService _analytics;
   final LocalMixEngine _mixEngine;
@@ -55,25 +73,46 @@ class PlaybackService extends ChangeNotifier {
   Future<void> _playerCommandQueue = Future<void>.value();
 
   Song? _currentSong;
+  LiveRadioRoom? _currentLiveRadio;
   PlayerState _state = PlayerState.stopped;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   bool _isLoading = false;
   String? _errorMessage;
   String? _currentSource;
+  PlaybackOrigin _playbackOrigin = const PlaybackOrigin.chart();
   int _requestId = 0;
   int _activePlaybackRequestId = -1;
   String? _activePlaybackSongId;
   List<Song> _queue = const [];
   int _currentIndex = -1;
   bool _shuffleEnabled = false;
+  bool _smartShuffleEnabled = false;
+  Set<String> _smartShuffleSongIds = const {};
+  String? _smartShuffleMessage;
   PlayerRepeatMode _repeatMode = PlayerRepeatMode.off;
+  bool _autoplayRecommendationsEnabled;
+  bool _isRadioLoading = false;
+  String? _radioErrorMessage;
+  Set<String> _radioSongIds = const {};
+  int _radioRequestId = 0;
+  int _radioAdvanceRequestId = 0;
+  Future<int>? _radioLoadFuture;
+  String? _radioLoadSeedId;
   final Map<String, Song> _likedSongs = {};
+  final Map<String, CatalogArtist> _followedArtists = {};
+  final Map<String, CatalogCollection> _savedCollections = {};
   final Map<String, LocalPlaylist> _playlists = {};
   List<ListeningRecord> _history = const [];
   List<String> _recentSearches = const [];
   List<Song> _catalog = const [];
   AppThemePreference _themePreference = AppThemePreference.system;
+  bool _alwaysOpenFullscreenPlayer = false;
+  bool _carModeEnabled = false;
+  double _volume = 1;
+  double _volumeBeforeMute = 1;
+  StreamingQualityPreference _streamingQualityPreference =
+      StreamingQualityPreference.automatic;
   String? _activeHistoryRecordId;
   Duration _lastListeningPosition = Duration.zero;
   Timer? _sleepTimer;
@@ -89,11 +128,16 @@ class PlaybackService extends ChangeNotifier {
   CompanionPlayerSnapshot? _pendingCompanionSnapshot;
   bool _companionPublishScheduled = false;
   String? _lastCompanionPublishSignature;
+  final ValueNotifier<int> _catalogRevision = ValueNotifier<int>(0);
   Future<void> _snapshotSaveFuture = Future<void>.value();
   PlayerSnapshot? _pendingSnapshot;
   bool _snapshotSaveScheduled = false;
 
   Song? get currentSong => _currentSong;
+  PlaybackOrigin get playbackOrigin => _playbackOrigin;
+  LiveRadioRoom? get currentLiveRadio => _currentLiveRadio;
+  bool get isLiveRadio => _currentLiveRadio != null;
+  bool get liveRadioAvailable => _liveRadioSourceResolver != null;
   PlayerState get state => _state;
   Duration get position => _position;
   Duration get duration => _duration;
@@ -103,6 +147,12 @@ class PlaybackService extends ChangeNotifier {
   bool get hasSong => _currentSong != null;
   List<Song> get queue => List<Song>.unmodifiable(_queue);
   List<Song> get likedSongs => List<Song>.unmodifiable(_likedSongs.values);
+  List<CatalogArtist> get followedArtists => List<CatalogArtist>.unmodifiable(
+    _followedArtists.values.toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase())),
+  );
+  List<CatalogCollection> get savedCollections =>
+      List<CatalogCollection>.unmodifiable(_savedCollections.values);
   List<LocalPlaylist> get playlists => List<LocalPlaylist>.unmodifiable(
     _playlists.values.toList()
       ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt)),
@@ -111,17 +161,43 @@ class PlaybackService extends ChangeNotifier {
       List<ListeningRecord>.unmodifiable(_history);
   List<String> get recentSearches => List<String>.unmodifiable(_recentSearches);
   AppThemePreference get themePreference => _themePreference;
+  bool get alwaysOpenFullscreenPlayer => _alwaysOpenFullscreenPlayer;
+  bool get carModeEnabled => _carModeEnabled;
+  double get volume => _volume;
+  bool get isMuted => _volume <= 0.001;
+  StreamingQualityPreference get streamingQualityPreference =>
+      _streamingQualityPreference;
   Duration? get sleepTimerRemaining => _sleepTimerRemaining;
   bool get sleepAfterCurrentSong => _sleepAfterCurrentSong;
   bool get hasSleepTimer =>
       _sleepTimerRemaining != null || _sleepAfterCurrentSong;
   int get currentIndex => _currentIndex;
   bool get shuffleEnabled => _shuffleEnabled;
+  bool get smartShuffleEnabled => _smartShuffleEnabled;
+  int get smartShuffleSongCount => _smartShuffleSongIds.length;
+  String? get smartShuffleMessage => _smartShuffleMessage;
   PlayerRepeatMode get repeatMode => _repeatMode;
-  bool get canGoNext => _queue.length > 1;
-  bool get canGoPrevious => _queue.length > 1;
+  bool get songRadioAvailable => _songRadioLoader != null;
+  bool get autoplayRecommendationsEnabled =>
+      _autoplayRecommendationsEnabled && _songRadioLoader != null;
+  bool get isRadioLoading => _isRadioLoading;
+  String? get radioErrorMessage => _radioErrorMessage;
+  int get radioSongCount => _radioSongIds.length;
+  bool get canGoNext =>
+      !isLiveRadio &&
+      _currentSong != null &&
+      (_shuffleEnabled && _queue.length > 1 ||
+          _currentIndex + 1 < _queue.length ||
+          _repeatMode == PlayerRepeatMode.all ||
+          autoplayRecommendationsEnabled);
+  bool get canGoPrevious => !isLiveRadio && _queue.length > 1;
+  bool get canClearPlaybackQueue =>
+      !isLiveRadio &&
+      _currentSong != null &&
+      (_queue.length != 1 || _queue.first.id != _currentSong!.id);
   ListeningAnalyticsSnapshot get analyticsSnapshot => _analytics.snapshot;
   bool get hasAnalyticsActivity => _analytics.hasActivity;
+  ValueListenable<int> get catalogChanges => _catalogRevision;
 
   Duration get totalListeningTime =>
       _history.fold(Duration.zero, (total, record) => total + record.listened);
@@ -266,6 +342,7 @@ class PlaybackService extends ChangeNotifier {
           if (_shuffleEnabled != enabled) toggleShuffle();
         },
         setRepeatMode: (mode) {
+          if (isLiveRadio) return;
           final target = switch (mode) {
             SystemRepeatMode.none => PlayerRepeatMode.off,
             SystemRepeatMode.all => PlayerRepeatMode.all,
@@ -305,6 +382,11 @@ class PlaybackService extends ChangeNotifier {
       AudioContextConfig(stayAwake: true).build(),
     );
     await _audioPlayer.setReleaseMode(ReleaseMode.stop);
+    try {
+      await _audioPlayer.setVolume(_volume);
+    } catch (_) {
+      // Volume control is optional on a few embedded playback backends.
+    }
 
     _subscriptions
       ..add(
@@ -316,21 +398,23 @@ class PlaybackService extends ChangeNotifier {
       ..add(
         _audioPlayer.onDurationChanged.listen((duration) {
           _duration = duration;
-          _analytics.updateDuration(duration);
-          _notifyPlaybackChanged();
+          if (!isLiveRadio) _analytics.updateDuration(duration);
+          _notifyPlaybackChanged(catalogChanged: false);
         }),
       )
       ..add(
         _audioPlayer.onPositionChanged.listen((position) {
-          _recordListeningProgress(position);
-          _analytics.recordProgress(position);
-          _position = position;
-          _notifyPlaybackChanged();
-          final bucket = position.inSeconds ~/ 5;
-          if (bucket != _lastSavedPositionBucket) {
-            _lastSavedPositionBucket = bucket;
-            unawaited(_saveSnapshot());
+          if (!isLiveRadio) {
+            _recordListeningProgress(position);
+            _analytics.recordProgress(position);
+            final bucket = position.inSeconds ~/ 5;
+            if (bucket != _lastSavedPositionBucket) {
+              _lastSavedPositionBucket = bucket;
+              unawaited(_saveSnapshot());
+            }
           }
+          _position = position;
+          _notifyPlaybackChanged(catalogChanged: false);
         }),
       )
       ..add(
@@ -342,7 +426,7 @@ class PlaybackService extends ChangeNotifier {
               completedSongId != _currentSong?.id) {
             return;
           }
-          _analytics.completeSession();
+          if (!isLiveRadio) _analytics.completeSession();
           _state = PlayerState.completed;
           _position = _duration;
           _notifyPlaybackChanged();
@@ -352,9 +436,26 @@ class PlaybackService extends ChangeNotifier {
     _notifyPlaybackChanged();
   }
 
-  Future<void> playSong(Song song, {List<Song>? queue}) async {
+  Future<void> playSong(
+    Song song, {
+    List<Song>? queue,
+    PlaybackOrigin? origin,
+  }) async {
     _analytics.finishSession(earlySkip: true);
+    final wasLiveRadio = isLiveRadio;
+    _currentLiveRadio = null;
+    _cancelRadioLoad(clearError: true);
+    if (origin != null) {
+      final label = PlaybackOrigin.sanitizeLabel(origin.label);
+      _playbackOrigin = label.isEmpty
+          ? const PlaybackOrigin.chart()
+          : PlaybackOrigin(kind: origin.kind, label: label);
+    } else if (wasLiveRadio) {
+      _playbackOrigin = const PlaybackOrigin.chart();
+    }
     if (queue != null && queue.isNotEmpty) {
+      _radioSongIds = const {};
+      _clearSmartShuffleState();
       _queue = List<Song>.unmodifiable(queue);
       _currentIndex = _queue.indexWhere((item) => item.id == song.id);
     } else if (_queue.isEmpty) {
@@ -387,7 +488,7 @@ class PlaybackService extends ChangeNotifier {
     unawaited(_saveSnapshot());
 
     try {
-      final source = await _sourceResolver(song.code);
+      final source = await _resolveSongSource(song.code);
       if (requestId != _requestId) return;
       _currentSource = source;
       await _runPlayerCommand(() async {
@@ -422,20 +523,103 @@ class PlaybackService extends ChangeNotifier {
     }
   }
 
+  Future<void> playLiveRadio(LiveRadioRoom room) async {
+    final resolver = _liveRadioSourceResolver;
+    if (resolver == null) return;
+    _analytics.finishSession(earlySkip: true);
+    _cancelRadioLoad(clearError: true);
+    _playbackOrigin = PlaybackOrigin(
+      kind: PlaybackOriginKind.liveRadio,
+      label: PlaybackOrigin.sanitizeLabel('${room.title} · LIVE'),
+    );
+    final requestId = ++_requestId;
+    _activePlaybackRequestId = -1;
+    _activePlaybackSongId = null;
+    _activeHistoryRecordId = null;
+    _lastListeningPosition = Duration.zero;
+    _sleepAfterCurrentSong = false;
+    await _runPlayerCommand(_audioPlayer.stop);
+    if (requestId != _requestId) return;
+
+    final artwork = room.program?.thumbnail.trim().isNotEmpty == true
+        ? room.program!.thumbnail
+        : room.thumbnail;
+    final subtitle = room.program?.title.trim().isNotEmpty == true
+        ? room.program!.title
+        : room.hostName.trim().isNotEmpty
+        ? room.hostName
+        : 'Phòng Nhạc LIVE';
+    final liveSong = Song(
+      id: 'live:${room.id}',
+      name: room.title,
+      title: room.title,
+      thumbnail: artwork,
+      artistsNames: subtitle,
+      code: room.id,
+    );
+    _currentLiveRadio = room;
+    _currentSong = liveSong;
+    _queue = [liveSong];
+    _currentIndex = 0;
+    _radioSongIds = const {};
+    _clearSmartShuffleState();
+    _state = PlayerState.stopped;
+    _position = Duration.zero;
+    _duration = Duration.zero;
+    _currentSource = null;
+    _errorMessage = null;
+    _isLoading = true;
+    _notifyPlaybackChanged();
+    unawaited(_saveSnapshot());
+
+    try {
+      final source = await resolver(room.id);
+      if (requestId != _requestId || _currentLiveRadio?.id != room.id) return;
+      _currentSource = source;
+      await _runPlayerCommand(() async {
+        if (requestId != _requestId || _currentLiveRadio?.id != room.id) {
+          return;
+        }
+        _activePlaybackRequestId = requestId;
+        _activePlaybackSongId = liveSong.id;
+        await _audioPlayer.play(UrlSource(source));
+        if (requestId != _requestId || _currentLiveRadio?.id != room.id) {
+          await _audioPlayer.stop();
+        }
+      });
+    } catch (error) {
+      if (requestId != _requestId || _currentLiveRadio?.id != room.id) return;
+      _state = PlayerState.stopped;
+      await _runPlayerCommand(_audioPlayer.stop);
+      _currentSource = null;
+      _errorMessage = error.toString();
+    } finally {
+      if (requestId == _requestId && _currentLiveRadio?.id == room.id) {
+        _isLoading = false;
+        _notifyPlaybackChanged();
+        unawaited(_saveSnapshot());
+      }
+    }
+  }
+
   Future<void> togglePlayPause() async {
     if (_currentSong == null || _isLoading) return;
     _errorMessage = null;
     try {
       if (isPlaying) {
         await _runPlayerCommand(_audioPlayer.pause);
+      } else if (isLiveRadio && _state == PlayerState.completed) {
+        await playLiveRadio(_currentLiveRadio!);
       } else if (_state == PlayerState.completed) {
         await _runPlayerCommand(() async {
           await _audioPlayer.seek(Duration.zero);
           await _audioPlayer.resume();
         });
-        _recordPlaybackStarted(_currentSong!);
-        _analytics.startSession(_currentSong!);
-        _analytics.updateDuration(_duration);
+        if (!isLiveRadio) {
+          _recordPlaybackStarted(_currentSong!);
+          _analytics.startSession(_currentSong!);
+          _analytics.updateDuration(_duration);
+        }
       } else if (_state == PlayerState.stopped && _currentSource != null) {
         final requestId = ++_requestId;
         await _runPlayerCommand(() async {
@@ -443,11 +627,17 @@ class PlaybackService extends ChangeNotifier {
           _activePlaybackSongId = _currentSong!.id;
           await _audioPlayer.play(UrlSource(_currentSource!));
         });
-        _recordPlaybackStarted(_currentSong!);
-        _analytics.startSession(_currentSong!);
-        _analytics.updateDuration(_duration);
+        if (!isLiveRadio) {
+          _recordPlaybackStarted(_currentSong!);
+          _analytics.startSession(_currentSong!);
+          _analytics.updateDuration(_duration);
+        }
       } else if (_state == PlayerState.stopped) {
-        await playSong(_currentSong!);
+        if (isLiveRadio) {
+          await playLiveRadio(_currentLiveRadio!);
+        } else {
+          await playSong(_currentSong!);
+        }
       } else {
         await _runPlayerCommand(_audioPlayer.resume);
       }
@@ -459,6 +649,7 @@ class PlaybackService extends ChangeNotifier {
 
   Future<void> stop() async {
     _analytics.finishSession(earlySkip: false);
+    _cancelRadioLoad();
     _requestId++;
     _activePlaybackRequestId = -1;
     _activePlaybackSongId = null;
@@ -473,6 +664,7 @@ class PlaybackService extends ChangeNotifier {
   }
 
   Future<void> next() async {
+    if (isLiveRadio) return;
     if (_queue.isEmpty || _currentSong == null) return;
     final nextIndex = _shuffleEnabled && _queue.length > 1
         ? _randomIndexExcluding(_currentIndex)
@@ -480,6 +672,27 @@ class PlaybackService extends ChangeNotifier {
     if (nextIndex >= _queue.length) {
       if (_repeatMode == PlayerRepeatMode.all) {
         await _playQueueIndex(0);
+      } else if (autoplayRecommendationsEnabled) {
+        final advanceRequestId = ++_radioAdvanceRequestId;
+        final seedSongId = _currentSong!.id;
+        final endingIndex = _currentIndex;
+        final appended = await _appendRadioRecommendations(_currentSong!);
+        if (appended > 0 &&
+            advanceRequestId == _radioAdvanceRequestId &&
+            seedSongId == _currentSong?.id &&
+            endingIndex + 1 < _queue.length) {
+          _playbackOrigin = PlaybackOrigin(
+            kind: PlaybackOriginKind.songRadio,
+            label: PlaybackOrigin.sanitizeLabel(
+              'Song Radio · ${_currentSong!.displayTitle}',
+            ),
+          );
+          await _playQueueIndex(endingIndex + 1);
+        } else if (advanceRequestId == _radioAdvanceRequestId &&
+            seedSongId == _currentSong?.id) {
+          _analytics.finishSession(earlySkip: true);
+          await stop();
+        }
       } else {
         _analytics.finishSession(earlySkip: true);
         await stop();
@@ -490,6 +703,7 @@ class PlaybackService extends ChangeNotifier {
   }
 
   Future<void> previous() async {
+    if (isLiveRadio) return;
     if (_queue.isEmpty || _currentSong == null) return;
     if (_position > const Duration(seconds: 4)) {
       await seek(Duration.zero);
@@ -501,20 +715,147 @@ class PlaybackService extends ChangeNotifier {
     await _playQueueIndex(previousIndex);
   }
 
-  void toggleShuffle() {
-    _shuffleEnabled = !_shuffleEnabled;
+  void setShuffleEnabled(bool enabled) {
+    if (isLiveRadio) return;
+    if (!enabled && _smartShuffleEnabled) {
+      _removeSmartShuffleSongs();
+      _clearSmartShuffleState();
+    }
+    if (_shuffleEnabled == enabled && !_smartShuffleEnabled) return;
+    _shuffleEnabled = enabled;
+    _notifyPlaybackChanged();
+    unawaited(_saveSnapshot());
+  }
+
+  void toggleShuffle() => setShuffleEnabled(!_shuffleEnabled);
+
+  bool isSmartShuffleSong(Song song) => _smartShuffleSongIds.contains(song.id);
+
+  bool setSmartShuffleEnabled(bool enabled) {
+    if (isLiveRadio) return false;
+    if (!enabled) {
+      if (!_smartShuffleEnabled && _smartShuffleSongIds.isEmpty) return true;
+      _removeSmartShuffleSongs();
+      _clearSmartShuffleState();
+      _notifyPlaybackChanged();
+      unawaited(_saveSnapshot());
+      return true;
+    }
+    if (_smartShuffleEnabled) return true;
+    if (_queue.isEmpty || _currentSong == null) {
+      _smartShuffleMessage = 'Hãy chọn một bài trước khi bật Smart Shuffle.';
+      _notifyPlaybackChanged();
+      return false;
+    }
+
+    _removeSmartShuffleSongs();
+    final suggestions = _mixEngine.buildSmartShuffle(
+      queue: _queue,
+      catalog: _catalog,
+      likedSongIds: _likedSongs.keys.toSet(),
+      analytics: _analytics,
+    );
+    if (suggestions.isEmpty) {
+      _smartShuffleMessage =
+          'Catalog hiện tại chưa có bài phù hợp để thêm thông minh.';
+      _notifyPlaybackChanged();
+      return false;
+    }
+
+    _queue = List<Song>.unmodifiable(
+      _interleaveSmartShuffleSuggestions(_queue, suggestions),
+    );
+    _smartShuffleSongIds = Set<String>.unmodifiable(
+      suggestions.map((song) => song.id),
+    );
+    _currentIndex = _queue.indexWhere((song) => song.id == _currentSong?.id);
+    _smartShuffleEnabled = true;
+    _shuffleEnabled = true;
+    _smartShuffleMessage =
+        'Đã thêm ${suggestions.length} bài từ catalog hiện tại.';
+    _notifyPlaybackChanged();
+    unawaited(_saveSnapshot());
+    return true;
+  }
+
+  bool refreshSmartShuffle() {
+    if (isLiveRadio || _queue.isEmpty || _currentSong == null) return false;
+    _removeSmartShuffleSongs();
+    _clearSmartShuffleState();
+    return setSmartShuffleEnabled(true);
+  }
+
+  void setRepeatMode(PlayerRepeatMode mode) {
+    if (isLiveRadio) return;
+    if (_repeatMode == mode) return;
+    _repeatMode = mode;
     _notifyPlaybackChanged();
     unawaited(_saveSnapshot());
   }
 
   void cycleRepeatMode() {
-    _repeatMode = switch (_repeatMode) {
+    final next = switch (_repeatMode) {
       PlayerRepeatMode.off => PlayerRepeatMode.all,
       PlayerRepeatMode.all => PlayerRepeatMode.one,
       PlayerRepeatMode.one => PlayerRepeatMode.off,
     };
+    setRepeatMode(next);
+  }
+
+  void setAutoplayRecommendations(bool enabled) {
+    final next = enabled && _songRadioLoader != null;
+    if (_autoplayRecommendationsEnabled == next) return;
+    _autoplayRecommendationsEnabled = next;
+    if (!next) _cancelRadioLoad(clearError: true);
     _notifyPlaybackChanged();
     unawaited(_saveSnapshot());
+  }
+
+  void toggleAutoplayRecommendations() =>
+      setAutoplayRecommendations(!autoplayRecommendationsEnabled);
+
+  bool isRadioSong(Song song) => _radioSongIds.contains(song.id);
+
+  Future<int> startSongRadio([Song? seed]) async {
+    final seedSong = seed ?? _currentSong;
+    if (seedSong == null || seedSong.code.trim().isEmpty) {
+      _radioErrorMessage = 'Bài hát này chưa hỗ trợ Song Radio.';
+      _notifyPlaybackChanged();
+      return 0;
+    }
+    if (_songRadioLoader == null) {
+      _radioErrorMessage = 'Song Radio chưa được cấu hình trên thiết bị này.';
+      _notifyPlaybackChanged();
+      return 0;
+    }
+    if (_currentSong?.id != seedSong.id) {
+      await playSong(
+        seedSong,
+        queue: [seedSong],
+        origin: PlaybackOrigin(
+          kind: PlaybackOriginKind.songRadio,
+          label: 'Song Radio · ${seedSong.displayTitle}',
+        ),
+      );
+    }
+    if (_smartShuffleEnabled || _smartShuffleSongIds.isNotEmpty) {
+      _removeSmartShuffleSongs();
+      _clearSmartShuffleState();
+      _currentIndex = _queue.indexWhere((song) => song.id == _currentSong?.id);
+    }
+    setAutoplayRecommendations(true);
+    final appended = await _appendRadioRecommendations(seedSong);
+    if (appended > 0) {
+      _playbackOrigin = PlaybackOrigin(
+        kind: PlaybackOriginKind.songRadio,
+        label: PlaybackOrigin.sanitizeLabel(
+          'Song Radio · ${seedSong.displayTitle}',
+        ),
+      );
+      _notifyPlaybackChanged();
+      unawaited(_saveSnapshot());
+    }
+    return appended;
   }
 
   void toggleLike(Song song) {
@@ -528,22 +869,46 @@ class PlaybackService extends ChangeNotifier {
 
   bool isLiked(Song song) => _likedSongs.containsKey(song.id);
 
+  bool isArtistFollowed(CatalogArtist artist) =>
+      _followedArtists.containsKey(artist.id);
+
+  bool toggleArtistFollow(CatalogArtist artist) {
+    final wasFollowed = _followedArtists.remove(artist.id) != null;
+    if (!wasFollowed) _followedArtists[artist.id] = artist;
+    _notifyLibraryChanged();
+    return !wasFollowed;
+  }
+
+  bool isCollectionSaved(CatalogCollection collection) =>
+      _savedCollections.containsKey(collection.id);
+
+  bool toggleCollectionSaved(CatalogCollection collection) {
+    final wasSaved = _savedCollections.remove(collection.id) != null;
+    if (!wasSaved) _savedCollections[collection.id] = collection;
+    _notifyLibraryChanged();
+    return !wasSaved;
+  }
+
   void updateCatalog(List<Song> songs) {
     final nextIds = songs.map((song) => song.id).join('|');
     final currentIds = _catalog.map((song) => song.id).join('|');
     if (nextIds == currentIds) return;
     _catalog = List<Song>.unmodifiable(songs);
+    _notifyCatalogChanged();
     notifyListeners();
   }
 
   bool toggleMood(Song song, MoodTag mood) {
     final added = _analytics.toggleMood(song, mood);
+    _notifyCatalogChanged();
     notifyListeners();
     return added;
   }
 
   bool addToQueue(Song song) {
     if (song.id == _currentSong?.id) return false;
+
+    _promoteSmartShuffleSong(song.id);
 
     final updatedQueue = [..._queue];
     final existingIndex = updatedQueue.indexWhere((item) => item.id == song.id);
@@ -572,9 +937,34 @@ class PlaybackService extends ChangeNotifier {
     final index = _queue.indexWhere((item) => item.id == song.id);
     if (index < 0 || song.id == _currentSong?.id) return;
     _queue = [..._queue]..removeAt(index);
+    _radioSongIds = Set<String>.unmodifiable(
+      _radioSongIds.where((id) => id != song.id),
+    );
+    _smartShuffleSongIds = Set<String>.unmodifiable(
+      _smartShuffleSongIds.where((id) => id != song.id),
+    );
+    if (_smartShuffleSongIds.isEmpty) _smartShuffleEnabled = false;
     if (index < _currentIndex) _currentIndex--;
     _notifyPlaybackChanged();
     unawaited(_saveSnapshot());
+  }
+
+  /// Removes every queued item except the song that is currently playing.
+  ///
+  /// Native playback, progress, listening analytics and the playback origin
+  /// remain untouched. Any in-flight radio expansion is cancelled so the
+  /// cleared queue cannot be repopulated by an older request.
+  bool clearPlaybackQueue() {
+    final current = _currentSong;
+    if (isLiveRadio || current == null || !canClearPlaybackQueue) return false;
+    _cancelRadioLoad(clearError: true);
+    _queue = List<Song>.unmodifiable([current]);
+    _currentIndex = 0;
+    _radioSongIds = const {};
+    _clearSmartShuffleState();
+    _notifyPlaybackChanged();
+    unawaited(_saveSnapshot());
+    return true;
   }
 
   void reorderQueue(int oldIndex, int newIndex) {
@@ -704,17 +1094,83 @@ class PlaybackService extends ChangeNotifier {
     _notifyLibraryChanged();
   }
 
+  void setThemePreference(AppThemePreference preference) {
+    if (_themePreference == preference) return;
+    _themePreference = preference;
+    _notifyLibraryChanged();
+  }
+
+  void setAlwaysOpenFullscreenPlayer(bool enabled) {
+    if (_alwaysOpenFullscreenPlayer == enabled) return;
+    _alwaysOpenFullscreenPlayer = enabled;
+    _notifyLibraryChanged();
+  }
+
+  void setCarModeEnabled(bool enabled) {
+    if (_carModeEnabled == enabled) return;
+    _carModeEnabled = enabled;
+    _notifyLibraryChanged();
+  }
+
+  Future<void> setVolume(double value) async {
+    final safeVolume = value.isFinite ? value.clamp(0, 1).toDouble() : 1.0;
+    if ((_volume - safeVolume).abs() < 0.001) return;
+    _volume = safeVolume;
+    if (safeVolume > 0.001) _volumeBeforeMute = safeVolume;
+    _notifyPlaybackChanged(catalogChanged: false);
+    unawaited(_saveSnapshot());
+    try {
+      await _runPlayerCommand(() => _audioPlayer.setVolume(safeVolume));
+    } catch (_) {
+      // Keep playback usable when a platform backend has no volume surface.
+    }
+  }
+
+  Future<void> toggleMute() =>
+      setVolume(isMuted ? _volumeBeforeMute.clamp(0.05, 1) : 0);
+
+  void setStreamingQualityPreference(StreamingQualityPreference preference) {
+    if (_streamingQualityPreference == preference) return;
+    _streamingQualityPreference = preference;
+    _notifyPlaybackChanged(catalogChanged: false);
+    unawaited(_saveSnapshot());
+  }
+
+  Future<void> retryPlayback({bool useAutomaticQuality = false}) async {
+    if (_isLoading) return;
+    final liveRadio = _currentLiveRadio;
+    if (liveRadio != null) {
+      await playLiveRadio(liveRadio);
+      return;
+    }
+    final song = _currentSong;
+    if (song == null) return;
+    if (useAutomaticQuality) {
+      setStreamingQualityPreference(StreamingQualityPreference.automatic);
+    }
+    await playSong(song, queue: _queue);
+  }
+
+  Future<String> _resolveSongSource(String code) {
+    final resolver = _qualitySourceResolver;
+    return resolver == null
+        ? _sourceResolver(code)
+        : resolver(code, _streamingQualityPreference);
+  }
+
   void cycleThemePreference() {
-    _themePreference = switch (_themePreference) {
+    final next = switch (_themePreference) {
       AppThemePreference.system => AppThemePreference.light,
       AppThemePreference.light => AppThemePreference.dark,
       AppThemePreference.dark => AppThemePreference.system,
     };
-    _notifyLibraryChanged();
+    setThemePreference(next);
   }
 
   String exportLibraryJson() => LibraryBackupData(
     likedSongs: likedSongs,
+    followedArtists: followedArtists,
+    savedCollections: savedCollections,
     playlists: playlists,
     history: history,
     recentSearches: recentSearches,
@@ -731,6 +1187,18 @@ class PlaybackService extends ChangeNotifier {
       _likedSongs
         ..clear()
         ..addEntries(backup.likedSongs.map((song) => MapEntry(song.id, song)));
+      _followedArtists
+        ..clear()
+        ..addEntries(
+          backup.followedArtists.map((artist) => MapEntry(artist.id, artist)),
+        );
+      _savedCollections
+        ..clear()
+        ..addEntries(
+          backup.savedCollections.map(
+            (collection) => MapEntry(collection.id, collection),
+          ),
+        );
       _playlists
         ..clear()
         ..addEntries(
@@ -743,6 +1211,12 @@ class PlaybackService extends ChangeNotifier {
     } else {
       for (final song in backup.likedSongs) {
         _likedSongs.putIfAbsent(song.id, () => song);
+      }
+      for (final artist in backup.followedArtists) {
+        _followedArtists.putIfAbsent(artist.id, () => artist);
+      }
+      for (final collection in backup.savedCollections) {
+        _savedCollections.putIfAbsent(collection.id, () => collection);
       }
       for (final incoming in backup.playlists) {
         final current = _playlists[incoming.id];
@@ -789,10 +1263,13 @@ class PlaybackService extends ChangeNotifier {
             AppThemePreference.values.length - 1,
           )];
     }
+    _notifyCatalogChanged();
     notifyListeners();
     await _saveSnapshot();
     return BackupImportResult(
       likedSongs: backup.likedSongs.length,
+      followedArtists: backup.followedArtists.length,
+      savedCollections: backup.savedCollections.length,
       playlists: backup.playlists.length,
       historyRecords: backup.history.length,
     );
@@ -839,6 +1316,7 @@ class PlaybackService extends ChangeNotifier {
   }
 
   Future<void> seek(Duration target) async {
+    if (isLiveRadio) return;
     if (_duration == Duration.zero) return;
     final safeTarget = target < Duration.zero
         ? Duration.zero
@@ -865,8 +1343,82 @@ class PlaybackService extends ChangeNotifier {
     _activeHistoryRecordId = null;
     _lastListeningPosition = Duration.zero;
     await _analytics.clearActivity();
+    _notifyCatalogChanged();
     notifyListeners();
     await _saveSnapshot();
+  }
+
+  Future<int> _appendRadioRecommendations(Song seed) {
+    final pending = _radioLoadFuture;
+    if (pending != null && _radioLoadSeedId == seed.id) return pending;
+
+    late final Future<int> operation;
+    operation = _loadRadioRecommendations(seed).whenComplete(() {
+      if (identical(_radioLoadFuture, operation)) {
+        _radioLoadFuture = null;
+        _radioLoadSeedId = null;
+      }
+    });
+    _radioLoadSeedId = seed.id;
+    _radioLoadFuture = operation;
+    return operation;
+  }
+
+  Future<int> _loadRadioRecommendations(Song seed) async {
+    final loader = _songRadioLoader;
+    if (loader == null) return 0;
+    final requestId = ++_radioRequestId;
+    _isRadioLoading = true;
+    _radioErrorMessage = null;
+    _notifyPlaybackChanged();
+    try {
+      final radio = await loader(seed.code);
+      if (requestId != _radioRequestId || _currentSong?.id != seed.id) {
+        return 0;
+      }
+      final seedIndex = _queue.indexWhere((song) => song.id == seed.id);
+      final prefix = seedIndex < 0
+          ? <Song>[seed]
+          : _queue.take(seedIndex + 1).toList(growable: false);
+      final seen = prefix.map((song) => song.id).toSet();
+      final appended = radio.songs
+          .where((song) => song.code.isNotEmpty && seen.add(song.id))
+          .take(30)
+          .toList(growable: false);
+      if (appended.isEmpty) {
+        _radioErrorMessage = 'Chưa tìm thấy bài tương tự phù hợp.';
+        return 0;
+      }
+      _queue = List<Song>.unmodifiable([...prefix, ...appended]);
+      _currentIndex = _queue.indexWhere((song) => song.id == _currentSong?.id);
+      final retainedIds = prefix.map((song) => song.id).toSet();
+      _radioSongIds = Set<String>.unmodifiable({
+        ..._radioSongIds.where(retainedIds.contains),
+        ...appended.map((song) => song.id),
+      });
+      _radioErrorMessage = null;
+      unawaited(_saveSnapshot());
+      return appended.length;
+    } catch (error) {
+      if (requestId == _radioRequestId) {
+        _radioErrorMessage = error.toString();
+      }
+      return 0;
+    } finally {
+      if (requestId == _radioRequestId) {
+        _isRadioLoading = false;
+        _notifyPlaybackChanged();
+      }
+    }
+  }
+
+  void _cancelRadioLoad({bool clearError = false}) {
+    _radioRequestId++;
+    _radioAdvanceRequestId++;
+    _radioLoadFuture = null;
+    _radioLoadSeedId = null;
+    _isRadioLoading = false;
+    if (clearError) _radioErrorMessage = null;
   }
 
   Future<void> _runPlayerCommand(Future<void> Function() command) {
@@ -891,6 +1443,7 @@ class PlaybackService extends ChangeNotifier {
         completedSongId != _currentSong?.id) {
       return;
     }
+    if (isLiveRadio) return;
     if (_repeatMode == PlayerRepeatMode.one) {
       if (_sleepAfterCurrentSong) {
         cancelSleepTimer();
@@ -921,13 +1474,72 @@ class PlaybackService extends ChangeNotifier {
     return index;
   }
 
+  List<Song> _interleaveSmartShuffleSuggestions(
+    List<Song> queue,
+    List<Song> suggestions,
+  ) {
+    final result = <Song>[];
+    var suggestionIndex = 0;
+    for (var index = 0; index < queue.length; index++) {
+      result.add(queue[index]);
+      final closesGroup = (index + 1) % 3 == 0 || index == queue.length - 1;
+      if (closesGroup && suggestionIndex < suggestions.length) {
+        result.add(suggestions[suggestionIndex++]);
+      }
+    }
+    while (suggestionIndex < suggestions.length) {
+      result.add(suggestions[suggestionIndex++]);
+    }
+    return result;
+  }
+
+  void _removeSmartShuffleSongs() {
+    if (_smartShuffleSongIds.isEmpty) return;
+    final currentId = _currentSong?.id;
+    _queue = List<Song>.unmodifiable(
+      _queue.where(
+        (song) =>
+            song.id == currentId || !_smartShuffleSongIds.contains(song.id),
+      ),
+    );
+    _currentIndex = _queue.indexWhere((song) => song.id == currentId);
+  }
+
+  void _clearSmartShuffleState() {
+    _smartShuffleEnabled = false;
+    _smartShuffleSongIds = const {};
+    _smartShuffleMessage = null;
+  }
+
+  void _promoteSmartShuffleSong(String songId) {
+    if (!_smartShuffleSongIds.contains(songId)) return;
+    _smartShuffleSongIds = Set<String>.unmodifiable(
+      _smartShuffleSongIds.where((id) => id != songId),
+    );
+    if (_smartShuffleSongIds.isEmpty) _smartShuffleEnabled = false;
+  }
+
   Future<void> _restoreSnapshot() async {
+    _currentLiveRadio = null;
     final snapshot = await _libraryRepository.load();
     _likedSongs
       ..clear()
       ..addEntries(snapshot.likedSongs.map((song) => MapEntry(song.id, song)));
+    _followedArtists
+      ..clear()
+      ..addEntries(
+        snapshot.followedArtists.map((artist) => MapEntry(artist.id, artist)),
+      );
+    _savedCollections
+      ..clear()
+      ..addEntries(
+        snapshot.savedCollections.map(
+          (collection) => MapEntry(collection.id, collection),
+        ),
+      );
     _queue = List<Song>.unmodifiable(snapshot.queue);
     _currentSong = snapshot.currentSong;
+    _playbackOrigin = snapshot.playbackOrigin;
     _currentIndex =
         snapshot.currentIndex >= 0 && snapshot.currentIndex < _queue.length
         ? snapshot.currentIndex
@@ -935,12 +1547,31 @@ class PlaybackService extends ChangeNotifier {
     _position = snapshot.position;
     _restoredPosition = snapshot.position;
     _restoredSongId = snapshot.currentSong?.id;
-    _shuffleEnabled = snapshot.shuffleEnabled;
+    final restoredQueueIds = _queue.map((song) => song.id).toSet();
+    _smartShuffleSongIds = Set<String>.unmodifiable(
+      snapshot.smartShuffleSongIds.where(restoredQueueIds.contains),
+    );
+    _smartShuffleEnabled =
+        snapshot.smartShuffleEnabled && _smartShuffleSongIds.isNotEmpty;
+    _shuffleEnabled = snapshot.shuffleEnabled || _smartShuffleEnabled;
     _repeatMode =
         PlayerRepeatMode.values[snapshot.repeatModeIndex.clamp(
           0,
           PlayerRepeatMode.values.length - 1,
         )];
+    _autoplayRecommendationsEnabled =
+        _songRadioLoader != null && snapshot.autoplayRecommendationsEnabled;
+    _alwaysOpenFullscreenPlayer = snapshot.alwaysOpenFullscreenPlayer;
+    _carModeEnabled = snapshot.carModeEnabled;
+    _volume = snapshot.volume;
+    _volumeBeforeMute = _volume > 0.001 ? _volume : 1;
+    _streamingQualityPreference =
+        StreamingQualityPreference.values[snapshot
+            .streamingQualityPreferenceIndex
+            .clamp(0, StreamingQualityPreference.values.length - 1)];
+    _radioSongIds = Set<String>.unmodifiable(
+      snapshot.radioSongIds.where(restoredQueueIds.contains),
+    );
     _playlists
       ..clear()
       ..addEntries(
@@ -956,14 +1587,32 @@ class PlaybackService extends ChangeNotifier {
   }
 
   Future<void> _saveSnapshot() {
+    final persistPlayback = !isLiveRadio;
     _pendingSnapshot = PlayerSnapshot(
       likedSongs: likedSongs,
-      queue: queue,
-      currentSong: currentSong,
-      currentIndex: currentIndex,
-      position: position,
+      followedArtists: followedArtists,
+      savedCollections: savedCollections,
+      queue: persistPlayback ? queue : const [],
+      currentSong: persistPlayback ? currentSong : null,
+      playbackOrigin: persistPlayback
+          ? playbackOrigin
+          : const PlaybackOrigin.chart(),
+      currentIndex: persistPlayback ? currentIndex : -1,
+      position: persistPlayback ? position : Duration.zero,
       shuffleEnabled: shuffleEnabled,
+      smartShuffleEnabled: persistPlayback && smartShuffleEnabled,
+      smartShuffleSongIds: persistPlayback
+          ? _smartShuffleSongIds.toList(growable: false)
+          : const [],
       repeatModeIndex: repeatMode.index,
+      autoplayRecommendationsEnabled: autoplayRecommendationsEnabled,
+      alwaysOpenFullscreenPlayer: alwaysOpenFullscreenPlayer,
+      carModeEnabled: carModeEnabled,
+      volume: volume,
+      streamingQualityPreferenceIndex: streamingQualityPreference.index,
+      radioSongIds: persistPlayback
+          ? _radioSongIds.toList(growable: false)
+          : const [],
       playlists: playlists,
       history: history,
       recentSearches: recentSearches,
@@ -991,7 +1640,8 @@ class PlaybackService extends ChangeNotifier {
     _snapshotSaveScheduled = false;
   }
 
-  void _notifyPlaybackChanged() {
+  void _notifyPlaybackChanged({bool catalogChanged = true}) {
+    if (catalogChanged) _notifyCatalogChanged();
     notifyListeners();
     _publishCompanionSnapshot();
     final bridge = _systemMediaBridge;
@@ -1022,8 +1672,13 @@ class PlaybackService extends ChangeNotifier {
   }
 
   void _notifyLibraryChanged() {
+    _notifyCatalogChanged();
     notifyListeners();
     unawaited(_saveSnapshot());
+  }
+
+  void _notifyCatalogChanged() {
+    _catalogRevision.value++;
   }
 
   void _recordPlaybackStarted(Song song) {
@@ -1125,6 +1780,7 @@ class PlaybackService extends ChangeNotifier {
     final companionBridge = _companionSurfaceBridge;
     if (companionBridge != null) unawaited(companionBridge.dispose());
     _analytics.dispose();
+    _catalogRevision.dispose();
     unawaited(_audioPlayer.dispose());
     super.dispose();
   }

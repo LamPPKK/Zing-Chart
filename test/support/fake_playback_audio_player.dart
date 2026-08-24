@@ -11,6 +11,7 @@ class FakePlaybackAudioPlayer implements PlaybackAudioPlayer {
 
   final List<Source> playedSources = [];
   final List<Duration> seekTargets = [];
+  final List<double> volumeValues = [];
   int pauseCalls = 0;
   int stopCalls = 0;
   int resumeCalls = 0;
@@ -39,6 +40,11 @@ class FakePlaybackAudioPlayer implements PlaybackAudioPlayer {
   @override
   Future<void> setReleaseMode(ReleaseMode releaseMode) async {
     this.releaseMode = releaseMode;
+  }
+
+  @override
+  Future<void> setVolume(double volume) async {
+    volumeValues.add(volume);
   }
 
   @override

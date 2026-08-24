@@ -25,6 +25,7 @@ class ForYouHub extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localNow = now ?? DateTime.now();
+    final mobilePersonalMode = MediaQuery.sizeOf(context).width < 720;
     final daily = controller.dailyMixCollection;
     final moods = MoodTag.values
         .map(controller.moodMix)
@@ -34,6 +35,15 @@ class ForYouHub extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (mobilePersonalMode) ...[
+            _LocalProfileSummary(
+              likedSongs: controller.likedSongs.length,
+              playlists: controller.playlists.length,
+              followedArtists: controller.followedArtists.length,
+              onOpenAnalytics: onOpenAnalytics,
+            ),
+            const SizedBox(height: 18),
+          ],
           _DailyMixHero(
             mix: daily,
             now: localNow,
@@ -88,6 +98,171 @@ class ForYouHub extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LocalProfileSummary extends StatelessWidget {
+  const _LocalProfileSummary({
+    required this.likedSongs,
+    required this.playlists,
+    required this.followedArtists,
+    required this.onOpenAnalytics,
+  });
+
+  final int likedSongs;
+  final int playlists;
+  final int followedArtists;
+  final VoidCallback onOpenAnalytics;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      label:
+          'Cá nhân trên thiết bị, $likedSongs bài thích, '
+          '$playlists playlist, $followedArtists nghệ sĩ. Mở thống kê.',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Card(
+          key: const ValueKey('mobile-personal-summary'),
+          margin: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onOpenAnalytics,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 12, 14),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [ZingColors.purpleBright, ZingColors.coral],
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.person_rounded,
+                          color: Colors.white,
+                          size: 30,
+                        ),
+                      ),
+                      const SizedBox(width: 13),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'CÁ NHÂN TRÊN THIẾT BỊ',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: ZingColors.lime,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.25,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Không cần đăng nhập',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.6,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Mix và lịch sử chỉ lưu cục bộ',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Divider(
+                    height: 1,
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _LocalProfileStat(
+                          key: const ValueKey('personal-liked-stat'),
+                          value: likedSongs,
+                          label: 'Bài thích',
+                        ),
+                      ),
+                      Expanded(
+                        child: _LocalProfileStat(
+                          key: const ValueKey('personal-playlist-stat'),
+                          value: playlists,
+                          label: 'Playlist',
+                        ),
+                      ),
+                      Expanded(
+                        child: _LocalProfileStat(
+                          key: const ValueKey('personal-artist-stat'),
+                          value: followedArtists,
+                          label: 'Nghệ sĩ',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LocalProfileStat extends StatelessWidget {
+  const _LocalProfileStat({
+    super.key,
+    required this.value,
+    required this.label,
+  });
+
+  final int value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Text(
+        '$value',
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+      ),
+      const SizedBox(height: 2),
+      Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
+    ],
+  );
 }
 
 class _DailyMixHero extends StatelessWidget {

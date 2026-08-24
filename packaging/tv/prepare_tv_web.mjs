@@ -1,5 +1,4 @@
 import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { deflateSync } from 'node:zlib';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -61,8 +60,8 @@ if (platform === 'webos') {
     path.join(outputDirectory, 'appinfo.json'),
     JSON.stringify(appInfo, null, 2) + '\n',
   );
-  await writePng(path.join(outputDirectory, 'icon.png'), 80, 80);
-  await writePng(path.join(outputDirectory, 'largeIcon.png'), 130, 130);
+  await copyBrandIcon('icon-80.png', 'icon.png');
+  await copyBrandIcon('icon-130.png', 'largeIcon.png');
 } else {
   let config = await readFile(
     path.join(import.meta.dirname, 'tizen', 'config.xml'),
@@ -70,67 +69,14 @@ if (platform === 'webos') {
   );
   config = config.replace('version="1.0.0"', `version="${version}"`);
   await writeFile(path.join(outputDirectory, 'config.xml'), config);
-  await writePng(path.join(outputDirectory, 'icon.png'), 117, 117);
+  await copyBrandIcon('icon-117.png', 'icon.png');
 }
 
-async function writePng(filePath, width, height) {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  const stride = width * 4 + 1;
-  const raw = Buffer.alloc(stride * height);
-  for (let y = 0; y < height; y++) {
-    const row = y * stride;
-    raw[row] = 0;
-    for (let x = 0; x < width; x++) {
-      const offset = row + 1 + x * 4;
-      const nx = x / width;
-      const ny = y / height;
-      let color = [23, 24, 27, 255];
-      if (nx + ny > 0.55 && nx + ny < 0.72 && nx < 0.72) {
-        color = [255, 107, 74, 255];
-      }
-      if (nx > 0.45 && nx < 0.55 && ny > 0.48 && ny < 0.78) {
-        color = [184, 244, 61, 255];
-      }
-      if (nx > 0.59 && nx < 0.69 && ny > 0.38 && ny < 0.78) {
-        color = [184, 244, 61, 255];
-      }
-      if (nx > 0.73 && nx < 0.83 && ny > 0.27 && ny < 0.78) {
-        color = [184, 244, 61, 255];
-      }
-      raw.set(color, offset);
-    }
-  }
-  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(width, 0);
-  header.writeUInt32BE(height, 4);
-  header.set([8, 6, 0, 0, 0], 8);
-  const png = Buffer.concat([
-    signature,
-    chunk('IHDR', header),
-    chunk('IDAT', deflateSync(raw, { level: 9 })),
-    chunk('IEND', Buffer.alloc(0)),
-  ]);
-  await writeFile(filePath, png);
-}
-
-function chunk(type, data) {
-  const name = Buffer.from(type, 'ascii');
-  const result = Buffer.alloc(data.length + 12);
-  result.writeUInt32BE(data.length, 0);
-  name.copy(result, 4);
-  data.copy(result, 8);
-  result.writeUInt32BE(crc32(Buffer.concat([name, data])), data.length + 8);
-  return result;
-}
-
-function crc32(buffer) {
-  let crc = 0xffffffff;
-  for (const byte of buffer) {
-    crc ^= byte;
-    for (let bit = 0; bit < 8; bit++) {
-      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
-    }
-  }
-  return (crc ^ 0xffffffff) >>> 0;
+async function copyBrandIcon(sourceName, destinationName) {
+  const destination = path.join(outputDirectory, destinationName);
+  await mkdir(path.dirname(destination), { recursive: true });
+  await copyFile(
+    path.join(import.meta.dirname, 'assets', sourceName),
+    destination,
+  );
 }

@@ -28,4 +28,22 @@ describe('stream production config', () => {
       loadConfig({ ...production, CORS_ORIGINS: 'not-an-origin' }),
     ).toThrow('CORS_ORIGINS must be an absolute URL');
   });
+
+  it('requires current API credentials as a complete HTTPS pair', () => {
+    expect(() => loadConfig({
+      ...production,
+      ZING_CURRENT_API_KEY: 'authorized-key',
+    })).toThrow('must be configured together');
+    expect(() => loadConfig({
+      ...production,
+      ZING_CURRENT_API_KEY: 'authorized-key',
+      ZING_CURRENT_API_SIGNING_KEY: 'authorized-signing-key',
+      ZING_CURRENT_API_BASE_URL: 'http://zing.example.test',
+    })).toThrow('must use HTTPS');
+    expect(loadConfig({
+      ...production,
+      ZING_CURRENT_API_KEY: 'authorized-key',
+      ZING_CURRENT_API_SIGNING_KEY: 'authorized-signing-key',
+    }).currentApiKey).toBe('authorized-key');
+  });
 });

@@ -1,4 +1,4 @@
-import { cp, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -20,6 +20,7 @@ if (!/^[1-9]\d*$/.test(buildNumber) || Number(buildNumber) > 2147483647) {
 
 await updatePubspec();
 await updateApplicationMetadata();
+await installBrandAssets();
 await updateModule();
 await updateStrings();
 await installServiceWidget();
@@ -63,7 +64,34 @@ async function updateApplicationMetadata() {
     `"versionName": "${version}"`,
     'HarmonyOS versionName',
   );
+  if (/"icon"\s*:/.test(source)) {
+    source = source.replace(
+      /"icon"\s*:\s*"[^"]*"/,
+      '"icon": "$media:app_icon"',
+    );
+  } else {
+    source = replaceRequired(
+      source,
+      /("versionName"\s*:\s*"[^"]*")\s*,?/,
+      '$1,\n    "icon": "$media:app_icon"',
+      'HarmonyOS app icon insertion point',
+    );
+  }
   await writeFile(file, source);
+}
+
+async function installBrandAssets() {
+  const source = path.join(import.meta.dirname, 'app_icon.png');
+  const mediaDirectory = path.join(
+    projectDirectory,
+    'ohos',
+    'AppScope',
+    'resources',
+    'base',
+    'media',
+  );
+  await mkdir(mediaDirectory, { recursive: true });
+  await copyFile(source, path.join(mediaDirectory, 'app_icon.png'));
 }
 
 async function updateModule() {
@@ -88,6 +116,25 @@ async function updateModule() {
       /("exported"\s*:\s*true,)/,
       '$1\n        "backgroundModes": ["audioPlayback"],',
       'HarmonyOS EntryAbility',
+    );
+  }
+  if (!source.includes('"scheme": "zingchart"')) {
+    source = replaceRequired(
+      source,
+      /"skills"\s*:\s*\[\s*\]/,
+      `"skills": [
+          {
+            "entities": ["entity.system.browsable"],
+            "actions": ["ohos.want.action.viewData"],
+            "uris": [
+              {
+                "scheme": "zingchart",
+                "host": "open"
+              }
+            ]
+          }
+        ]`,
+      'HarmonyOS zingchart URL skill',
     );
   }
   if (!source.includes('ohos.permission.KEEP_BACKGROUND_RUNNING')) {
