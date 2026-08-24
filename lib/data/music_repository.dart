@@ -1116,7 +1116,9 @@ class ProxyMusicRepository implements MusicRepository {
         throw const FormatException('Invalid collection sections');
       }
       final collection = _collectionFromJson(data);
-      if (collection.id.isEmpty || collection.title.isEmpty) {
+      if (collection.id.isEmpty ||
+          collection.id != normalizedId ||
+          collection.title.isEmpty) {
         throw const FormatException('Invalid collection metadata');
       }
       final songs = rawSongs

@@ -2065,7 +2065,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('BÀI HÁT · 3'), findsOneWidget);
-      expect(find.textContaining('CẬP NHẬT: 01/04/2017'), findsOneWidget);
+      expect(find.textContaining('Cập nhật: 01/04/2017'), findsOneWidget);
       expect(
         tester.getRect(desktopHero).right,
         lessThanOrEqualTo(tester.getRect(desktopOverview).left),

@@ -2099,12 +2099,12 @@ void main() {
       likeCount: 2200000,
       genres: const ['V-Pop'],
       songs: [
-        for (final item in _artistDetail.songs)
+        for (var index = 0; index < _artistDetail.songs.length; index++)
           CatalogSong(
-            song: item.song,
-            duration: item.duration,
-            externalUrl: item.externalUrl,
-            playable: item.playable,
+            song: _artistDetail.songs[index].song,
+            duration: _artistDetail.songs[index].duration,
+            externalUrl: _artistDetail.songs[index].externalUrl,
+            playable: index != 1 && _artistDetail.songs[index].playable,
             artists: const [_artist],
             album: collection,
           ),

@@ -344,6 +344,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   bool _isArtistLoading = false;
   CatalogCollection? _selectedCollection;
   CatalogCollectionDetail? _collectionDetail;
+  String? _collectionErrorMessage;
   CatalogArtist? _collectionOriginArtist;
   CatalogArtistDetail? _collectionOriginArtistDetail;
   CatalogSearchResult? _collectionOriginArtistResult;
@@ -779,6 +780,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _isArtistLoading = false;
       _selectedCollection = target.selectedCollection;
       _collectionDetail = target.collectionDetail;
+      _collectionErrorMessage = null;
       _collectionOriginArtist = target.collectionOriginArtist;
       _collectionOriginArtistDetail = target.collectionOriginArtistDetail;
       _collectionOriginArtistResult = target.collectionOriginArtistResult;
@@ -1783,6 +1785,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _isArtistLoading = false;
       _selectedCollection = null;
       _collectionDetail = null;
+      _collectionErrorMessage = null;
       _collectionOriginArtist = null;
       _collectionOriginArtistDetail = null;
       _collectionOriginArtistResult = null;
@@ -1848,6 +1851,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _isArtistLoading = false;
         _selectedCollection = null;
         _collectionDetail = null;
+        _collectionErrorMessage = null;
         _collectionOriginArtist = null;
         _collectionOriginArtistDetail = null;
         _collectionOriginArtistResult = null;
@@ -2130,18 +2134,30 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _isArtistLoading = false;
       _selectedCollection = collection;
       if (!preserveDetail) _collectionDetail = null;
+      _collectionErrorMessage = null;
       _isCollectionLoading = true;
     });
     if (!preserveDetail) _scrollContentToStart();
     try {
       final detail = await widget.loadCollection(collection.id);
       if (!mounted || requestId != _searchRequestId) return;
-      setState(() => _collectionDetail = detail);
+      if (detail.collection.id != collection.id) {
+        throw const FormatException(
+          'Phản hồi tuyển tập không khớp nội dung được yêu cầu.',
+        );
+      }
+      setState(() {
+        _collectionDetail = detail;
+        _selectedCollection = detail.collection;
+        _collectionErrorMessage = null;
+      });
     } catch (error) {
       if (!mounted || requestId != _searchRequestId) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Chưa tải được ${collection.title}: $error')),
-      );
+      setState(() {
+        _collectionErrorMessage =
+            'Không thể tải dữ liệu chính thức của ${collection.title}. '
+            'Hãy kiểm tra kết nối rồi thử lại.';
+      });
     } finally {
       if (mounted && requestId == _searchRequestId) {
         setState(() => _isCollectionLoading = false);
@@ -2155,6 +2171,11 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     try {
       final detail = await widget.loadCollection(collection.id);
       if (!mounted || requestId != _quickPlayCollectionRequestId) return;
+      if (detail.collection.id != collection.id) {
+        throw const FormatException(
+          'Phản hồi tuyển tập không khớp nội dung được yêu cầu.',
+        );
+      }
       final queue = detail.catalogPlaybackEnabled
           ? detail.songs
                 .where((item) => item.playable)
@@ -2200,6 +2221,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     setState(() {
       _selectedCollection = null;
       _collectionDetail = null;
+      _collectionErrorMessage = null;
       _selectedArtist = originArtist;
       _artistDetail = originDetail;
       _artistResult = originResult;
@@ -2214,7 +2236,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   }
 
   void _openHighlightedSong(CatalogSong item) {
-    if (!item.playable) {
+    if (!item.playable ||
+        (_selectedCollection != null &&
+            _collectionDetail?.catalogPlaybackEnabled != true)) {
       _showUnavailable(item.song);
       return;
     }
@@ -2229,7 +2253,12 @@ class _ZingChartScreenState extends State<ZingChartScreen>
               _artistDetail?.songs ??
               const <CatalogSong>[];
     final queue = sourceSongs
-        .where((song) => song.playable)
+        .where(
+          (song) =>
+              song.playable &&
+              (_selectedCollection == null ||
+                  _collectionDetail?.catalogPlaybackEnabled == true),
+        )
         .map((song) => song.song)
         .toList(growable: false);
     _selectSong(item.song, queue.isEmpty ? [item.song] : queue);
@@ -2593,6 +2622,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     setState(() {
       _selectedCollection = null;
       _collectionDetail = null;
+      _collectionErrorMessage = null;
       _collectionOriginArtist = null;
       _collectionOriginArtistDetail = null;
       _collectionOriginArtistResult = null;
@@ -2700,7 +2730,14 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                           child: Row(
                             children: [
                               Expanded(
-                                child: _buildContent(controller, visibleSongs),
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) =>
+                                      _buildContent(
+                                        controller,
+                                        visibleSongs,
+                                        contentWidth: constraints.maxWidth,
+                                      ),
+                                ),
                               ),
                               if (showDesktopQueue)
                                 DesktopPlaybackQueuePanel(
@@ -2943,8 +2980,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
 
   Widget _buildContent(
     MusicPlayerController controller,
-    List<Song> visibleSongs,
-  ) {
+    List<Song> visibleSongs, {
+    required double contentWidth,
+  }) {
     final pinCatalogToolbar =
         !widget.tvMode && MediaQuery.sizeOf(context).width >= 720;
     final dark = Theme.of(context).brightness == Brightness.dark;
@@ -2955,8 +2993,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _collectionDetail?.collection ?? selectedCollection;
     final desktopCollectionWorkspace =
         !widget.tvMode &&
-        MediaQuery.sizeOf(context).width >= 1320 &&
+        MediaQuery.sizeOf(context).width >= 1200 &&
+        contentWidth >= 820 &&
         effectiveCollection != null;
+    final compactContentSongRows = !widget.tvMode && contentWidth < 980;
     final collectionCatalogSongs =
         _collectionDetail?.songs ?? const <CatalogSong>[];
     final fallbackArtistSongs = selectedArtist == null
@@ -3084,32 +3124,67 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                   controller,
                   effectiveCollection,
                   visibleSongs,
+                  availableWidth: contentWidth,
                 )
               else if (_selectedTab == _discoveryTab &&
                   effectiveCollection != null)
-                SliverToBoxAdapter(
-                  child: CollectionDetailHero(
-                    collection: effectiveCollection,
-                    detail: _collectionDetail,
-                    loading: _isCollectionLoading,
-                    tvMode: widget.tvMode,
-                    isSaved: controller.isCollectionSaved(effectiveCollection),
-                    onToggleSave: () =>
-                        _toggleCollectionSaved(controller, effectiveCollection),
-                    onShare: effectiveCollection.externalUrl.isEmpty
-                        ? null
-                        : () =>
-                              unawaited(_shareCollection(effectiveCollection)),
-                    onArtistTap: _openArtistFromCollectionHero,
-                    onPlay: collectionCatalogSongs.any((song) => song.playable)
-                        ? () {
-                            final playable = collectionCatalogSongs
-                                .where((song) => song.playable)
-                                .toList(growable: false);
-                            _openHighlightedSong(playable.first);
-                          }
-                        : null,
-                  ),
+                SliverMainAxisGroup(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: CollectionDetailHero(
+                        collection: effectiveCollection,
+                        detail: _collectionDetail,
+                        loading: _isCollectionLoading,
+                        tvMode: widget.tvMode,
+                        isSaved: controller.isCollectionSaved(
+                          effectiveCollection,
+                        ),
+                        onToggleSave: _collectionDetail == null
+                            ? null
+                            : () => _toggleCollectionSaved(
+                                controller,
+                                effectiveCollection,
+                              ),
+                        onShare: effectiveCollection.externalUrl.isEmpty
+                            ? null
+                            : () => unawaited(
+                                _shareCollection(effectiveCollection),
+                              ),
+                        onArtistTap: _openArtistFromCollectionHero,
+                        shufflePlay:
+                            effectiveCollection.kind ==
+                            CatalogCollectionKind.playlist,
+                        onPlay:
+                            _collectionDetail?.catalogPlaybackEnabled == true &&
+                                collectionCatalogSongs.any(
+                                  (song) => song.playable,
+                                )
+                            ? () {
+                                controller.setShuffleEnabled(
+                                  effectiveCollection.kind ==
+                                      CatalogCollectionKind.playlist,
+                                );
+                                final playable = collectionCatalogSongs
+                                    .where((song) => song.playable)
+                                    .toList(growable: false);
+                                _openHighlightedSong(playable.first);
+                              }
+                            : null,
+                      ),
+                    ),
+                    if (_collectionDetail != null &&
+                        _collectionErrorMessage != null)
+                      SliverToBoxAdapter(
+                        child: _CollectionErrorState(
+                          message: _collectionErrorMessage!,
+                          compact: true,
+                          onRetry: () => _openCollection(
+                            effectiveCollection,
+                            preserveDetail: true,
+                          ),
+                        ),
+                      ),
+                  ],
                 )
               else if (_selectedTab == _discoveryTab && selectedArtist != null)
                 SliverToBoxAdapter(
@@ -3731,6 +3806,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                 ),
               if (_selectedTab == _discoveryTab &&
                   selectedCollection != null &&
+                  _collectionErrorMessage == null &&
                   !desktopCollectionWorkspace)
                 SliverToBoxAdapter(
                   child: _buildCollectionSongSectionHeader(visibleSongs.length),
@@ -3784,6 +3860,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                   showSearchSongList &&
                   visibleSongs.isEmpty &&
                   !(selectedCollection != null && _isCollectionLoading) &&
+                  !(selectedCollection != null &&
+                      _collectionErrorMessage != null) &&
                   !(selectedArtist != null && _isArtistLoading) &&
                   !(_selectedTab == _discoveryTab && _isSearching) &&
                   !(_selectedTab == _discoveryTab &&
@@ -3847,9 +3925,27 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                             color: Theme.of(context).colorScheme.outlineVariant
                                 .withValues(alpha: 0.24),
                           ),
-                          itemBuilder: (context, index) =>
-                              _buildSongTile(controller, visibleSongs, index),
+                          itemBuilder: (context, index) => _buildSongTile(
+                            controller,
+                            visibleSongs,
+                            index,
+                            compactMetadata: compactContentSongRows,
+                          ),
                         ),
+                ),
+              if (_selectedTab == _discoveryTab &&
+                  selectedCollection != null &&
+                  !desktopCollectionWorkspace &&
+                  _collectionDetail == null &&
+                  _collectionErrorMessage != null)
+                SliverToBoxAdapter(
+                  child: _CollectionErrorState(
+                    message: _collectionErrorMessage!,
+                    onRetry: () => _openCollection(
+                      selectedCollection,
+                      preserveDetail: true,
+                    ),
+                  ),
                 ),
               if (_selectedTab == _discoveryTab &&
                   hasSearchQuery &&
@@ -3971,19 +4067,32 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   Widget _buildDesktopCollectionWorkspace(
     MusicPlayerController controller,
     CatalogCollection collection,
-    List<Song> visibleSongs,
-  ) {
+    List<Song> visibleSongs, {
+    required double availableWidth,
+  }) {
     final detail = _collectionDetail;
     final catalogSongs = detail?.songs ?? const <CatalogSong>[];
-    final playable = catalogSongs
-        .where((song) => song.playable)
-        .toList(growable: false);
+    final playbackEnabled = detail?.catalogPlaybackEnabled == true;
+    final playable = playbackEnabled
+        ? catalogSongs.where((song) => song.playable).toList(growable: false)
+        : const <CatalogSong>[];
+    final shuffleCollection = collection.kind == CatalogCollectionKind.playlist;
+    final showAlbumColumn = collection.kind == CatalogCollectionKind.playlist;
+    final horizontalPadding = availableWidth < 900 ? 16.0 : 20.0;
+    final workspaceWidth = availableWidth - horizontalPadding * 2;
+    final sidebarWidth = workspaceWidth >= 1120
+        ? 320.0
+        : workspaceWidth >= 900
+        ? 280.0
+        : 250.0;
+    final songTableWidth = workspaceWidth - sidebarWidth;
+    final compactRows = songTableWidth < 780;
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 36),
+      padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 36),
       sliver: SliverCrossAxisGroup(
         slivers: [
           SliverConstrainedCrossAxis(
-            maxExtent: 320,
+            maxExtent: sidebarWidth,
             sliver: SliverToBoxAdapter(
               child: CollectionDetailHero(
                 collection: collection,
@@ -3991,15 +4100,20 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                 loading: _isCollectionLoading,
                 layout: CollectionDetailHeroLayout.sidebar,
                 isSaved: controller.isCollectionSaved(collection),
-                onToggleSave: () =>
-                    _toggleCollectionSaved(controller, collection),
+                onToggleSave: detail == null
+                    ? null
+                    : () => _toggleCollectionSaved(controller, collection),
                 onShare: collection.externalUrl.isEmpty
                     ? null
                     : () => unawaited(_shareCollection(collection)),
                 onArtistTap: _openArtistFromCollectionHero,
+                shufflePlay: shuffleCollection,
                 onPlay: playable.isEmpty
                     ? null
-                    : () => _openHighlightedSong(playable.first),
+                    : () {
+                        controller.setShuffleEnabled(shuffleCollection);
+                        _openHighlightedSong(playable.first);
+                      },
               ),
             ),
           ),
@@ -4007,18 +4121,40 @@ class _ZingChartScreenState extends State<ZingChartScreen>
             flex: 1,
             sliver: SliverMainAxisGroup(
               slivers: [
-                SliverToBoxAdapter(
-                  child: CollectionDetailDesktopOverview(
-                    detail: detail,
-                    loading: _isCollectionLoading,
+                if (_collectionErrorMessage == null || detail != null)
+                  SliverToBoxAdapter(
+                    child: CollectionDetailDesktopOverview(
+                      detail: detail,
+                      loading: _isCollectionLoading,
+                    ),
                   ),
-                ),
-                SliverToBoxAdapter(
-                  child: _buildDesktopCollectionSongTableHeader(
-                    visibleSongs.length,
+                if (detail != null && _collectionErrorMessage != null)
+                  SliverToBoxAdapter(
+                    child: _CollectionErrorState(
+                      message: _collectionErrorMessage!,
+                      compact: true,
+                      onRetry: () =>
+                          _openCollection(collection, preserveDetail: true),
+                    ),
                   ),
-                ),
-                if (_isCollectionLoading && detail == null)
+                if ((_collectionErrorMessage == null || detail != null) &&
+                    !(_isCollectionLoading && detail == null))
+                  SliverToBoxAdapter(
+                    child: _buildDesktopCollectionSongTableHeader(
+                      visibleSongs.length,
+                      compact: compactRows,
+                      showAlbum: showAlbumColumn,
+                    ),
+                  ),
+                if (detail == null && _collectionErrorMessage != null)
+                  SliverToBoxAdapter(
+                    child: _CollectionErrorState(
+                      message: _collectionErrorMessage!,
+                      onRetry: () =>
+                          _openCollection(collection, preserveDetail: true),
+                    ),
+                  )
+                else if (_isCollectionLoading && detail == null)
                   const SliverToBoxAdapter(
                     child: SizedBox(
                       height: 180,
@@ -4044,8 +4180,14 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                         context,
                       ).colorScheme.outlineVariant.withValues(alpha: 0.24),
                     ),
-                    itemBuilder: (context, index) =>
-                        _buildSongTile(controller, visibleSongs, index),
+                    itemBuilder: (context, index) => _buildSongTile(
+                      controller,
+                      visibleSongs,
+                      index,
+                      compactMetadata: compactRows,
+                      hideAlbumMetadata: !showAlbumColumn,
+                      plainTrackNumber: showAlbumColumn ? null : index + 1,
+                    ),
                   ),
                 if (detail != null)
                   SliverToBoxAdapter(
@@ -4063,7 +4205,11 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     );
   }
 
-  Widget _buildDesktopCollectionSongTableHeader(int songCount) {
+  Widget _buildDesktopCollectionSongTableHeader(
+    int songCount, {
+    required bool compact,
+    required bool showAlbum,
+  }) {
     final scheme = Theme.of(context).colorScheme;
     final labelStyle = TextStyle(
       color: scheme.onSurfaceVariant,
@@ -4077,8 +4223,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       child: Row(
         children: [
           Expanded(child: Text('BÀI HÁT · $songCount', style: labelStyle)),
-          SizedBox(width: 220, child: Text('ALBUM', style: labelStyle)),
-          const SizedBox(width: 14),
+          if (!compact && showAlbum) ...[
+            SizedBox(width: 220, child: Text('ALBUM', style: labelStyle)),
+            const SizedBox(width: 14),
+          ],
           SizedBox(
             width: 44,
             child: Text(
@@ -4087,7 +4235,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
               style: labelStyle,
             ),
           ),
-          const SizedBox(width: 144),
+          SizedBox(width: compact ? 104 : 144),
         ],
       ),
     );
@@ -4099,6 +4247,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     int index, {
     bool tvMode = false,
     bool compactMetadata = false,
+    bool hideAlbumMetadata = false,
+    int? plainTrackNumber,
   }) {
     final song = visibleSongs[index];
     final catalogSong = _catalogSongFor(song);
@@ -4123,7 +4273,21 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _catalogBrowseView == _CatalogBrowseView.discovery &&
         (_searchSection == CatalogSearchSection.all ||
             _searchSection == CatalogSearchSection.songs);
-    final canPlay = catalogSong?.playable ?? true;
+    final collectionPlaybackEnabled = _selectedCollection == null
+        ? true
+        : _collectionDetail?.catalogPlaybackEnabled == true;
+    final collectionKind =
+        _collectionDetail?.collection.kind ?? _selectedCollection?.kind;
+    final effectiveHideAlbumMetadata =
+        hideAlbumMetadata || collectionKind == CatalogCollectionKind.album;
+    final effectiveTrackNumber =
+        plainTrackNumber ??
+        (collectionKind == CatalogCollectionKind.album ? index + 1 : null);
+    final canPlay =
+        collectionPlaybackEnabled &&
+        (_selectedCollection == null
+            ? catalogSong?.playable ?? true
+            : catalogSong?.playable == true);
     final chartIndex = _songs.indexWhere((item) => item.id == song.id);
     final chartMetadata = _selectedTab == _chartTab
         ? _chartSnapshot.songMetadata[song.id]
@@ -4160,9 +4324,13 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     final playableQueue = _selectedTab == _chartTab
         ? _songs
         : catalogSong == null
-        ? visibleSongs
+        ? (collectionPlaybackEnabled ? visibleSongs : const <Song>[])
         : visibleSongs
-              .where((item) => _catalogSongFor(item)?.playable ?? true)
+              .where(
+                (item) =>
+                    collectionPlaybackEnabled &&
+                    (_catalogSongFor(item)?.playable ?? true),
+              )
               .toList(growable: false);
     void addToQueue() {
       if (!canPlay) {
@@ -4241,6 +4409,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
           : () => _showUnavailable(song),
       tvMode: tvMode,
       compactMetadata: compactMetadata,
+      hideAlbumMetadata: effectiveHideAlbumMetadata,
+      plainTrackNumber: effectiveTrackNumber,
       autofocus: tvMode && index == 0,
     );
     if (tvMode) return tile;
@@ -4623,6 +4793,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _isArtistLoading = false;
       _selectedCollection = null;
       _collectionDetail = null;
+      _collectionErrorMessage = null;
       _collectionOriginArtist = null;
       _collectionOriginArtistDetail = null;
       _collectionOriginArtistResult = null;
@@ -6175,6 +6346,8 @@ class _SongTile extends StatefulWidget {
     this.onAlbumTap,
     this.tvMode = false,
     this.compactMetadata = false,
+    this.hideAlbumMetadata = false,
+    this.plainTrackNumber,
     this.autofocus = false,
   });
 
@@ -6206,6 +6379,8 @@ class _SongTile extends StatefulWidget {
   final VoidCallback? onAlbumTap;
   final bool tvMode;
   final bool compactMetadata;
+  final bool hideAlbumMetadata;
+  final int? plainTrackNumber;
   final bool autofocus;
 
   @override
@@ -6312,6 +6487,27 @@ class _SongTileState extends State<_SongTile> {
                               Icons.graphic_eq_rounded,
                               color: ZingColors.purpleBright,
                             )
+                          : widget.plainTrackNumber != null
+                          ? Semantics(
+                              key: ValueKey(
+                                'collection-track-number-${widget.song.id}',
+                              ),
+                              label: 'Bài số ${widget.plainTrackNumber}',
+                              child: ExcludeSemantics(
+                                child: Text(
+                                  widget.plainTrackNumber!.toString(),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: scheme.onSurfaceVariant,
+                                    fontSize: widget.tvMode ? 18 : 14,
+                                    fontWeight: FontWeight.w700,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
                           : widget.leadingLabel != null
                           ? Semantics(
                               label: 'Bài hát gợi ý',
@@ -6352,7 +6548,7 @@ class _SongTileState extends State<_SongTile> {
                     isCurrent: widget.isCurrent,
                     canPlay: widget.canPlay,
                   ),
-                  const SizedBox(width: 13),
+                  SizedBox(width: compactSongRow ? 10 : 13),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -6464,21 +6660,25 @@ class _SongTileState extends State<_SongTile> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  if (showDesktopMetadata && widget.albumTitle.isNotEmpty) ...[
+                  if (showDesktopMetadata && !widget.hideAlbumMetadata) ...[
                     SizedBox(
                       width: 220,
-                      child: _CatalogMetadataLink(
-                        key: ValueKey('song-album-link-${widget.song.id}'),
-                        text: widget.albumTitle,
-                        semanticLabel: widget.onAlbumTap == null
-                            ? null
-                            : 'Mở album ${widget.albumTitle}',
-                        onTap: widget.onAlbumTap,
-                        style: TextStyle(
-                          color: scheme.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
-                      ),
+                      child: widget.albumTitle.isEmpty
+                          ? const SizedBox.shrink()
+                          : _CatalogMetadataLink(
+                              key: ValueKey(
+                                'song-album-link-${widget.song.id}',
+                              ),
+                              text: widget.albumTitle,
+                              semanticLabel: widget.onAlbumTap == null
+                                  ? null
+                                  : 'Mở album ${widget.albumTitle}',
+                              onTap: widget.onAlbumTap,
+                              style: TextStyle(
+                                color: scheme.onSurfaceVariant,
+                                fontSize: 12,
+                              ),
+                            ),
                     ),
                     const SizedBox(width: 14),
                   ],
@@ -6498,22 +6698,25 @@ class _SongTileState extends State<_SongTile> {
                     ),
                     const SizedBox(width: 12),
                   ],
-                  if ((showDesktopMetadata || widget.compactMetadata) &&
-                      widget.duration > Duration.zero) ...[
+                  if (showDesktopMetadata || widget.compactMetadata) ...[
                     SizedBox(
                       width: 44,
-                      child: Text(
-                        _durationLabel(
-                          widget.duration,
-                          padMinutes: widget.padDurationMinutes,
-                        ),
-                        textAlign: TextAlign.end,
-                        style: TextStyle(
-                          color: scheme.onSurfaceVariant,
-                          fontSize: 12,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
+                      child: widget.duration <= Duration.zero
+                          ? const SizedBox.shrink()
+                          : Text(
+                              _durationLabel(
+                                widget.duration,
+                                padMinutes: widget.padDurationMinutes,
+                              ),
+                              textAlign: TextAlign.end,
+                              style: TextStyle(
+                                color: scheme.onSurfaceVariant,
+                                fontSize: 12,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
+                            ),
                     ),
                     const SizedBox(width: 8),
                   ],
@@ -6873,6 +7076,123 @@ class _CatalogToolbarDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(covariant _CatalogToolbarDelegate oldDelegate) =>
       oldDelegate.child != child || oldDelegate.extent != extent;
+}
+
+class _CollectionErrorState extends StatelessWidget {
+  const _CollectionErrorState({
+    required this.message,
+    required this.onRetry,
+    this.compact = false,
+  });
+
+  final String message;
+  final Future<void> Function() onRetry;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final title = compact
+        ? 'Không làm mới được tuyển tập'
+        : 'Chưa tải được tuyển tập';
+    return Semantics(
+      key: const ValueKey('collection-load-error'),
+      liveRegion: true,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 16 : 24,
+          vertical: compact ? 10 : 42,
+        ),
+        child: compact
+            ? DecoratedBox(
+                decoration: BoxDecoration(
+                  color: scheme.errorContainer.withValues(alpha: 0.34),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: scheme.error.withValues(alpha: 0.28),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.cloud_off_rounded,
+                        size: 24,
+                        color: scheme.error,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              message,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: scheme.onSurfaceVariant,
+                                fontSize: 12,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        key: const ValueKey('collection-retry-button'),
+                        onPressed: onRetry,
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: const Text('THỬ LẠI'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.cloud_off_rounded, size: 48, color: scheme.error),
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      height: 1.45,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    key: const ValueKey('collection-retry-button'),
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('THỬ LẠI'),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
 }
 
 class _ErrorState extends StatelessWidget {

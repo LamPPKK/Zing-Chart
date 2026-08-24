@@ -288,6 +288,41 @@ void main() {
       expect(source, 'https://proxy.example.com/v1/streams/signed-token');
     });
 
+    test('rejects a collection response whose id mismatches the request', () async {
+      final adapter = _StaticAdapter(
+        body:
+            '{"id":"collection-b","title":"Playlist B",'
+            '"artist":"Nghệ sĩ B","thumbnail":"",'
+            '"kind":"playlist",'
+            '"externalUrl":"https://zingmp3.vn/album/playlist-b/collection-b.html",'
+            '"artists":[],"description":"Playlist hợp lệ",'
+            '"year":"2026","releasedAt":0,"distributor":"",'
+            '"likeCount":0,"genres":[],"sections":[], '
+            '"catalogPlaybackEnabled":true,"songs":['
+            '{"id":"song-one","code":"source-one",'
+            '"title":"Bài hát hợp lệ","artist":"Nghệ sĩ B",'
+            '"albumCover":"","durationSeconds":200,'
+            '"externalUrl":"https://zingmp3.vn/bai-hat/bai-hat-hop-le/song-one.html",'
+            '"playable":true}]}',
+      );
+      final repository = _repository(adapter);
+
+      await expectLater(
+        repository.getCollection('collection-a'),
+        throwsA(
+          isA<MusicRepositoryException>().having(
+            (error) => error.message,
+            'message',
+            contains('playlist/album không hợp lệ'),
+          ),
+        ),
+      );
+      expect(
+        adapter.lastOptions?.path,
+        endsWith('/v1/collections/collection-a'),
+      );
+    });
+
     test('accepts only the configured first-party stream relay', () async {
       final localRepository = _repository(
         _StaticAdapter(

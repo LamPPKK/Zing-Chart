@@ -127,11 +127,14 @@ clients never call Zing upstream directly.
   responsive in-shell artist and collection detail pages, and a local
   #zingchart fallback. Collection detail also exposes the official like count
   release date, distributor, genres, and official “Appears in”/“You may also
-  like” rails. From 1320 px, collection detail becomes a Zing-style two-column
-  workspace: artwork, title, artists, update date, and actions on the left;
-  an expandable preface, Song/Album/Duration header, and track list on the
-  right. Phone/tablet retain the adaptive hero and TV keeps its focus-friendly
-  layout. From 1180 px, artist profiles use a full-width Zing OA-style purple
+  like” rails. From 1200 px, whenever the remaining content area is wide enough,
+  collection detail becomes a Zing-style two-column workspace: artwork, title,
+  artists, update date, and actions on the left; an expandable preface and track
+  list on the right. Albums use Play All, numbered tracks, and no duplicated
+  Album column; playlists use Shuffle Play and retain the Album column. Opening
+  queue/lyrics switches the table from actual content constraints into compact
+  mode instead of overflowing. Phone/tablet retain the adaptive hero and TV
+  keeps its focus-friendly layout. From 1180 px, artist profiles use a full-width Zing OA-style purple
   hero with a circular avatar, oversized name, circular Play, follower count,
   Follow, and Share. Directly below it, wide layouts pair Latest Release with
   three Featured Songs in the same two-column hierarchy as the official artist
@@ -373,7 +376,7 @@ historical binaries and contain no real user data.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="Artist profile with an on-device Following state"><br><sub><b>Follow artists</b> · account-free OA following, restored by backup v3 and reopened from Library</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="Official album in a Zing-style two-column workspace with artwork left and the song table right"><br><sub><b>Official albums/playlists</b> · artwork and actions on the left; preface, artist, album, duration, and track list on the right; Saved state remains local-first</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="Official album in a Zing-style two-column workspace with artwork left and numbered tracks right"><br><sub><b>Official albums/playlists</b> · type-aware CTA, numbered album tracks or playlist Album column, fail-closed locked songs, and Local-First Saved state</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="Release information and related official collections on a collection detail page"><br><sub><b>Collection information</b> · release date, distributor, genres, and official “Appears in”/“You may also like” rails</sub></td>

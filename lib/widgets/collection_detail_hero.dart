@@ -20,6 +20,7 @@ class CollectionDetailHero extends StatelessWidget {
     this.isSaved = false,
     this.tvMode = false,
     this.layout = CollectionDetailHeroLayout.standard,
+    this.shufflePlay = false,
   });
 
   final CatalogCollection collection;
@@ -32,6 +33,7 @@ class CollectionDetailHero extends StatelessWidget {
   final bool isSaved;
   final bool tvMode;
   final CollectionDetailHeroLayout layout;
+  final bool shufflePlay;
 
   @override
   Widget build(BuildContext context) {
@@ -126,6 +128,7 @@ class CollectionDetailHero extends StatelessWidget {
                   compact: compact,
                   tvMode: tvMode,
                   sidebar: false,
+                  shufflePlay: shufflePlay,
                 );
                 if (compact) {
                   return Column(
@@ -211,11 +214,50 @@ class CollectionDetailHero extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: AlbumArt(
-                    imageUrl: effectiveCollection.thumbnail,
-                    semanticLabel: 'Ảnh ${effectiveCollection.title}',
-                    size: artworkSize,
-                    borderRadius: 8,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      AlbumArt(
+                        imageUrl: effectiveCollection.thumbnail,
+                        semanticLabel: 'Ảnh ${effectiveCollection.title}',
+                        size: artworkSize,
+                        borderRadius: 8,
+                      ),
+                      if (onPlay != null)
+                        Semantics(
+                          button: true,
+                          label: shufflePlay
+                              ? 'Phát ngẫu nhiên ${effectiveCollection.title}'
+                              : 'Phát ${effectiveCollection.title}',
+                          onTap: onPlay,
+                          child: ExcludeSemantics(
+                            child: IconButton.filled(
+                              key: const ValueKey(
+                                'collection-artwork-play-button',
+                              ),
+                              tooltip: shufflePlay
+                                  ? 'Phát ngẫu nhiên'
+                                  : 'Phát tuyển tập',
+                              onPressed: onPlay,
+                              style: IconButton.styleFrom(
+                                minimumSize: const Size.square(58),
+                                backgroundColor: Colors.black.withValues(
+                                  alpha: 0.58,
+                                ),
+                                foregroundColor: Colors.white,
+                                side: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.72),
+                                  width: 2,
+                                ),
+                              ),
+                              icon: const Icon(
+                                Icons.play_arrow_rounded,
+                                size: 34,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               );
@@ -236,6 +278,7 @@ class CollectionDetailHero extends StatelessWidget {
             compact: true,
             tvMode: false,
             sidebar: true,
+            shufflePlay: shufflePlay,
           ),
         ],
       ),
@@ -274,7 +317,6 @@ class _CollectionDetailDesktopOverviewState
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final description = widget.detail?.description.trim() ?? '';
-    final expandable = description.length > 180;
     return Container(
       key: const ValueKey('collection-desktop-overview'),
       constraints: const BoxConstraints(minHeight: 92),
@@ -288,48 +330,61 @@ class _CollectionDetailDesktopOverviewState
       ),
       child: widget.loading && widget.detail == null
           ? const _CollectionOverviewSkeleton()
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  description.isEmpty
-                      ? 'Thông tin chính thức của tuyển tập sẽ được cập nhật khi nguồn Zing MP3 cung cấp.'
-                      : description,
-                  maxLines: _expanded ? null : 4,
-                  overflow: _expanded
-                      ? TextOverflow.visible
-                      : TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: scheme.onSurface.withValues(
-                      alpha: description.isEmpty ? 0.62 : 0.88,
-                    ),
-                    fontSize: 14,
-                    height: 1.55,
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                final text = description.isEmpty
+                    ? 'Thông tin chính thức của tuyển tập sẽ được cập nhật khi nguồn Zing MP3 cung cấp.'
+                    : description;
+                final style = TextStyle(
+                  color: scheme.onSurface.withValues(
+                    alpha: description.isEmpty ? 0.62 : 0.88,
                   ),
-                ),
-                if (expandable) ...[
-                  const SizedBox(height: 2),
-                  TextButton(
-                    key: const ValueKey('collection-description-toggle'),
-                    onPressed: () => setState(() => _expanded = !_expanded),
-                    style: TextButton.styleFrom(
-                      foregroundColor: scheme.onSurface,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 0,
-                        vertical: 6,
-                      ),
-                      minimumSize: const Size(72, 40),
-                      alignment: Alignment.centerLeft,
-                      textStyle: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.7,
-                      ),
+                  fontSize: 14,
+                  height: 1.55,
+                );
+                final painter = TextPainter(
+                  text: TextSpan(text: text, style: style),
+                  maxLines: 4,
+                  textDirection: Directionality.of(context),
+                  textScaler: MediaQuery.textScalerOf(context),
+                )..layout(maxWidth: constraints.maxWidth);
+                final expandable = painter.didExceedMaxLines || _expanded;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      text,
+                      maxLines: _expanded ? null : 4,
+                      overflow: _expanded
+                          ? TextOverflow.visible
+                          : TextOverflow.ellipsis,
+                      style: style,
                     ),
-                    child: Text(_expanded ? 'RÚT GỌN' : 'XEM THÊM'),
-                  ),
-                ],
-              ],
+                    if (expandable) ...[
+                      const SizedBox(height: 2),
+                      TextButton(
+                        key: const ValueKey('collection-description-toggle'),
+                        onPressed: () => setState(() => _expanded = !_expanded),
+                        style: TextButton.styleFrom(
+                          foregroundColor: scheme.onSurface,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 0,
+                            vertical: 6,
+                          ),
+                          minimumSize: const Size(72, 40),
+                          alignment: Alignment.centerLeft,
+                          textStyle: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.7,
+                          ),
+                        ),
+                        child: Text(_expanded ? 'RÚT GỌN' : 'XEM THÊM'),
+                      ),
+                    ],
+                  ],
+                );
+              },
             ),
     );
   }
@@ -370,6 +425,87 @@ class _CollectionOverviewSkeleton extends StatelessWidget {
   }
 }
 
+class _ExpandableHeroDescription extends StatefulWidget {
+  const _ExpandableHeroDescription({
+    required this.text,
+    required this.textAlign,
+    required this.fontSize,
+  });
+
+  final String text;
+  final TextAlign textAlign;
+  final double fontSize;
+
+  @override
+  State<_ExpandableHeroDescription> createState() =>
+      _ExpandableHeroDescriptionState();
+}
+
+class _ExpandableHeroDescriptionState
+    extends State<_ExpandableHeroDescription> {
+  bool _expanded = false;
+
+  @override
+  void didUpdateWidget(covariant _ExpandableHeroDescription oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text) _expanded = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextStyle(
+      color: Colors.white.withValues(alpha: 0.7),
+      fontSize: widget.fontSize,
+      height: 1.4,
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final painter = TextPainter(
+          text: TextSpan(text: widget.text, style: style),
+          maxLines: 2,
+          textAlign: widget.textAlign,
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        )..layout(maxWidth: constraints.maxWidth);
+        final expandable = painter.didExceedMaxLines || _expanded;
+        return Column(
+          crossAxisAlignment: widget.textAlign == TextAlign.center
+              ? CrossAxisAlignment.center
+              : CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.text,
+              maxLines: _expanded ? null : 2,
+              overflow: _expanded
+                  ? TextOverflow.visible
+                  : TextOverflow.ellipsis,
+              textAlign: widget.textAlign,
+              style: style,
+            ),
+            if (expandable)
+              TextButton(
+                key: const ValueKey('collection-hero-description-toggle'),
+                onPressed: () => setState(() => _expanded = !_expanded),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  minimumSize: const Size(72, 40),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  textStyle: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.65,
+                  ),
+                ),
+                child: Text(_expanded ? 'RÚT GỌN' : 'XEM THÊM'),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _CollectionDetails extends StatelessWidget {
   const _CollectionDetails({
     required this.collection,
@@ -385,6 +521,7 @@ class _CollectionDetails extends StatelessWidget {
     required this.compact,
     required this.tvMode,
     required this.sidebar,
+    required this.shufflePlay,
   });
 
   final CatalogCollection collection;
@@ -400,6 +537,7 @@ class _CollectionDetails extends StatelessWidget {
   final bool compact;
   final bool tvMode;
   final bool sidebar;
+  final bool shufflePlay;
 
   @override
   Widget build(BuildContext context) {
@@ -440,7 +578,9 @@ class _CollectionDetails extends StatelessWidget {
             fontSize: tvMode
                 ? 48
                 : compact
-                ? 30
+                ? sidebar
+                      ? 25
+                      : 30
                 : 42,
             height: 1.04,
             fontWeight: FontWeight.w900,
@@ -471,115 +611,119 @@ class _CollectionDetails extends StatelessWidget {
         ],
         if (!sidebar && description.isNotEmpty) ...[
           const SizedBox(height: 10),
-          Text(
-            description,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          _ExpandableHeroDescription(
+            text: description,
             textAlign: compact ? TextAlign.center : TextAlign.start,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.66),
-              fontSize: tvMode ? 15 : 12,
-              height: 1.35,
-            ),
+            fontSize: tvMode ? 15 : 12,
           ),
         ],
         const SizedBox(height: 12),
         Text(
-          loading ? 'ĐANG TẢI DANH SÁCH BÀI HÁT…' : meta.toUpperCase(),
+          loading
+              ? 'ĐANG TẢI DANH SÁCH BÀI HÁT…'
+              : sidebar
+              ? meta
+              : meta.toUpperCase(),
           textAlign: compact ? TextAlign.center : TextAlign.start,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.68),
-            fontSize: tvMode ? 14 : 10,
+            fontSize: tvMode
+                ? 14
+                : sidebar
+                ? 11
+                : 10,
             fontWeight: FontWeight.w900,
-            letterSpacing: 1.1,
+            letterSpacing: sidebar ? 0.25 : 1.1,
           ),
         ),
         SizedBox(height: tvMode ? 26 : 20),
         if (sidebar) ...[
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              key: const ValueKey('collection-play-button'),
-              onPressed: onPlay,
-              style: FilledButton.styleFrom(
-                backgroundColor: ZingColors.purpleBright,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(
-                  horizontal: tvMode ? 26 : 20,
-                  vertical: tvMode ? 18 : 14,
-                ),
-              ),
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text(
-                'PHÁT TẤT CẢ',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.7,
-                ),
+          Center(
+            child: SizedBox(
+              width: 228,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  FilledButton.icon(
+                    key: const ValueKey('collection-play-button'),
+                    onPressed: onPlay,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: ZingColors.purpleBright,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: tvMode ? 26 : 20,
+                        vertical: tvMode ? 18 : 14,
+                      ),
+                    ),
+                    icon: Icon(
+                      shufflePlay
+                          ? Icons.shuffle_rounded
+                          : Icons.play_arrow_rounded,
+                    ),
+                    label: Text(
+                      shufflePlay ? 'PHÁT NGẪU NHIÊN' : 'PHÁT TẤT CẢ',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.7,
+                      ),
+                    ),
+                  ),
+                  if (onToggleSave != null || onShare != null) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (onToggleSave != null)
+                          Semantics(
+                            toggled: isSaved,
+                            button: true,
+                            onTap: onToggleSave,
+                            label: isSaved
+                                ? 'Bỏ lưu ${collection.title}'
+                                : 'Lưu ${collection.title} vào thư viện',
+                            child: ExcludeSemantics(
+                              child: IconButton.outlined(
+                                key: const ValueKey('collection-save-button'),
+                                tooltip: isSaved ? 'Bỏ lưu' : 'Lưu thư viện',
+                                onPressed: onToggleSave,
+                                style: IconButton.styleFrom(
+                                  minimumSize: const Size.square(44),
+                                  foregroundColor: Colors.white,
+                                  side: BorderSide(
+                                    color: Colors.white.withValues(alpha: 0.42),
+                                  ),
+                                ),
+                                icon: Icon(
+                                  isSaved
+                                      ? Icons.favorite_rounded
+                                      : Icons.favorite_border_rounded,
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (onToggleSave != null && onShare != null)
+                          const SizedBox(width: 10),
+                        if (onShare != null)
+                          IconButton.outlined(
+                            key: const ValueKey('collection-share-button'),
+                            tooltip: 'Chia sẻ',
+                            onPressed: onShare,
+                            style: IconButton.styleFrom(
+                              minimumSize: const Size.square(44),
+                              foregroundColor: Colors.white,
+                              side: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.42),
+                              ),
+                            ),
+                            icon: const Icon(Icons.ios_share_rounded),
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
-          if (onToggleSave != null || onShare != null) ...[
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                if (onToggleSave != null)
-                  Expanded(
-                    child: Semantics(
-                      toggled: isSaved,
-                      button: true,
-                      onTap: onToggleSave,
-                      label: isSaved
-                          ? 'Bỏ lưu ${collection.title}'
-                          : 'Lưu ${collection.title} vào thư viện',
-                      child: ExcludeSemantics(
-                        child: OutlinedButton.icon(
-                          key: const ValueKey('collection-save-button'),
-                          onPressed: onToggleSave,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.42),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                          ),
-                          icon: Icon(
-                            isSaved
-                                ? Icons.check_rounded
-                                : Icons.library_add_rounded,
-                          ),
-                          label: Text(
-                            isSaved ? 'ĐÃ LƯU' : 'LƯU',
-                            style: const TextStyle(fontWeight: FontWeight.w900),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                if (onToggleSave != null && onShare != null)
-                  const SizedBox(width: 10),
-                if (onShare != null)
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      key: const ValueKey('collection-share-button'),
-                      onPressed: onShare,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.42),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                      ),
-                      icon: const Icon(Icons.ios_share_rounded),
-                      label: const Text(
-                        'CHIA SẺ',
-                        style: TextStyle(fontWeight: FontWeight.w900),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
         ] else
           Wrap(
             alignment: compact ? WrapAlignment.center : WrapAlignment.start,
@@ -597,10 +741,14 @@ class _CollectionDetails extends StatelessWidget {
                     vertical: tvMode ? 18 : 14,
                   ),
                 ),
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: const Text(
-                  'PHÁT TẤT CẢ',
-                  style: TextStyle(
+                icon: Icon(
+                  shufflePlay
+                      ? Icons.shuffle_rounded
+                      : Icons.play_arrow_rounded,
+                ),
+                label: Text(
+                  shufflePlay ? 'PHÁT NGẪU NHIÊN' : 'PHÁT TẤT CẢ',
+                  style: const TextStyle(
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0.7,
                   ),

@@ -126,9 +126,12 @@ proxy Node/TypeScript do người triển khai tự host.
   chi tiết playlist/album responsive ngay trong app. “Phát tất cả” dựng đúng
   queue từ các bài có nguồn được phép; detail hiển thị số người yêu thích chính
   thức, ngày phát hành, đơn vị cung cấp, thể loại và các rail “Xuất hiện trong”/
-  “Có thể bạn quan tâm”. Từ 1320 px, trang detail dùng workspace hai cột như
-  Zing: artwork, tiêu đề, nghệ sĩ, ngày cập nhật và hành động ở trái; lời tựa
-  có Xem thêm/Rút gọn, header Bài hát/Album/Thời gian và track list ở phải.
+  “Có thể bạn quan tâm”. Từ 1200 px và khi vùng nội dung còn đủ rộng, trang
+  detail dùng workspace hai cột như Zing: artwork, tiêu đề, nghệ sĩ, ngày cập
+  nhật và hành động ở trái; lời tựa có Xem thêm/Rút gọn và track list ở phải.
+  Album dùng “Phát tất cả”, đánh số track và bỏ cột Album lặp lại; playlist dùng
+  “Phát ngẫu nhiên” cùng cột Album. Khi mở queue/lyrics, bảng tự chuyển compact
+  theo chiều rộng thực thay vì theo viewport nên không tràn.
   Mobile/tablet tiếp tục dùng hero dọc/ngang, còn TV giữ bố cục focus-friendly;
   hồ sơ nghệ sĩ desktop từ 1180 px dùng hero tím tràn chiều ngang giống Zing OA,
   với avatar tròn, tên lớn, nút Play tròn, số người quan tâm và hành động
@@ -393,7 +396,7 @@ không chứa dữ liệu người dùng thật.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="Hồ sơ nghệ sĩ với trạng thái Đang quan tâm được lưu cục bộ"><br><sub><b>Quan tâm nghệ sĩ</b> · theo dõi OA không cần tài khoản, khôi phục qua backup v3 và mở lại từ Thư viện</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="Album chính thức trong workspace hai cột kiểu Zing với artwork bên trái và bảng bài hát bên phải"><br><sub><b>Album/playlist chính thức</b> · artwork và hành động bên trái; lời tựa, nghệ sĩ, album, thời lượng và track list bên phải; trạng thái lưu vẫn local-first</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="Album chính thức trong workspace hai cột kiểu Zing với artwork trái và danh sách track đánh số bên phải"><br><sub><b>Album/playlist chính thức</b> · CTA theo loại nội dung, track đánh số hoặc cột Album, bài khóa fail-closed và trạng thái lưu vẫn local-first</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="Thông tin phát hành và các album playlist liên quan trong trang chi tiết bộ sưu tập"><br><sub><b>Thông tin bộ sưu tập</b> · ngày phát hành, đơn vị cung cấp, thể loại và các rail chính thức “Xuất hiện trong”/“Có thể bạn quan tâm”</sub></td>

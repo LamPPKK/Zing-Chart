@@ -1363,7 +1363,7 @@ final _docsCollectionDetail = CatalogCollectionDetail(
         song: _artistSongs[index],
         duration: Duration(seconds: 238 + index * 11),
         externalUrl: '',
-        playable: true,
+        playable: index != 1,
         artists: const [_artist],
         album: _artistDetail.collectionSections.first.collections.first,
       ),

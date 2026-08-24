@@ -87,9 +87,11 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   歌单-专辑/歌手/MV”分类、Zing 风格精选卡片、自适应应用内歌手主页和歌单/专辑详情页，并保留 #zingchart
   本地回退。歌单/专辑详情会显示官方收藏量，经过验证的艺人身份支持 hover/focus
   并打开应用内艺人主页；页面还展示发行日期、发行方、流派及官方“出现于”/
-  “你可能也喜欢”内容栏，同时可保存到设备内音乐库。宽度达到 1320 px 时，详情页切换为
-  类似 Zing 的双栏工作区：左侧显示封面、标题、艺人、更新日期与操作；右侧显示可展开/收起的
-  简介、“歌曲/专辑/时长”表头和歌曲列表。艺人主页在 1180 px 起使用贴近 Zing OA 的
+  “你可能也喜欢”内容栏，同时可保存到设备内音乐库。宽度达到 1200 px 且实际内容区域足够时，
+  详情页切换为类似 Zing 的双栏工作区：左侧显示封面、标题、艺人、更新日期与操作；右侧显示
+  可展开/收起的简介和歌曲列表。专辑使用“播放全部”、曲目编号且不重复显示专辑列；歌单使用
+  “随机播放”并保留专辑列。打开队列/歌词面板后，表格会按实际内容宽度切换为紧凑模式，避免溢出。
+  艺人主页在 1180 px 起使用贴近 Zing OA 的
   横向全宽紫色 Hero，包含圆形头像、超大艺人名、圆形 Play、关注人数以及关注/分享操作；
   Hero 下方会像官方艺人页一样，把“最新发行”与三首“热门歌曲”并排展示；内容区域受限时
   自动改为上下排列并隐藏次要 metadata，避免溢出。手机/平板/电视继续保留合适的触控密度与焦点目标。
@@ -285,7 +287,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="显示本地已关注状态的艺人主页"><br><sub><b>关注艺人</b> · 无需账号，使用 backup v3 恢复，并可从音乐库重新打开</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="类似 Zing 的双栏官方专辑页面，左侧封面，右侧歌曲表格"><br><sub><b>官方专辑/歌单</b> · 左侧封面与操作；右侧简介、艺人、专辑、时长和歌曲列表；收藏状态继续保持本地优先</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="类似 Zing 的双栏官方专辑页面，左侧封面，右侧编号曲目"><br><sub><b>官方专辑/歌单</b> · 按内容类型显示 CTA、专辑编号或歌单专辑列、受限歌曲 fail-closed，收藏状态继续保持本地优先</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="歌单专辑详情页中的发行信息与官方相关内容"><br><sub><b>歌单/专辑信息</b> · 发行日期、发行方、流派，以及官方“出现于”/“你可能也喜欢”内容栏</sub></td>
