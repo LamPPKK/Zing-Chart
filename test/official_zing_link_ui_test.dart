@@ -489,7 +489,10 @@ void main() {
       'https://zingmp3.vn/Taylor-Swift',
       const ValueKey('artist-profile-route'),
     );
-    expect(find.text('BÀI HÁT NỔI BẬT'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('artist-featured-songs-section-title')),
+      findsOneWidget,
+    );
     expect(find.text(_featuredArtistSong.displayTitle), findsWidgets);
     expect(find.text(_fullArtistSong.displayTitle), findsNothing);
     expect(
@@ -500,7 +503,9 @@ void main() {
       find.byKey(const ValueKey('artist-videos-show-all')),
       findsOneWidget,
     );
-    await tester.tap(find.byKey(const ValueKey('artist-songs-show-all')));
+    await tester.tap(
+      find.byKey(const ValueKey('artist-desktop-songs-show-all')),
+    );
     await tester.pumpAndSettle();
     expect(find.text('TẤT CẢ BÀI HÁT'), findsOneWidget);
     expect(find.text(_fullArtistSong.displayTitle), findsWidgets);

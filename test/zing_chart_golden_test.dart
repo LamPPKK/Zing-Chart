@@ -1981,12 +1981,22 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byKey(const ValueKey('artist-profile-hero')), findsOneWidget);
     expect(
+      find.byKey(const ValueKey('artist-desktop-overview')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('artist-latest-release-single-one')),
+      findsOneWidget,
+    );
+    expect(find.text('Mới Phát Hành'), findsOneWidget);
+    expect(find.text('Bài Hát Nổi Bật'), findsOneWidget);
+    expect(
       find.byKey(const ValueKey('artist-link-artist-son-tung')),
       findsWidgets,
     );
     expect(
       find.byKey(const ValueKey('song-album-link-artist-one')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.descendant(
@@ -3104,6 +3114,14 @@ const _artistDetail = CatalogArtistDetail(
     CatalogSong(
       song: _artistSongTwo,
       duration: Duration(minutes: 4, seconds: 8),
+      externalUrl: '',
+      playable: true,
+      artists: [_artist],
+      album: _artistTrackAlbum,
+    ),
+    CatalogSong(
+      song: _artistSongThree,
+      duration: Duration(minutes: 4, seconds: 2),
       externalUrl: '',
       playable: true,
       artists: [_artist],

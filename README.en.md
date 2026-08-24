@@ -127,13 +127,16 @@ clients never call Zing upstream directly.
   responsive in-shell artist and collection detail pages, and a local
   #zingchart fallback. Collection detail also exposes the official like count
   release date, distributor, genres, and official “Appears in”/“You may also
-  like” rails. From 1180 px, collection detail becomes a Zing-style two-column
+  like” rails. From 1320 px, collection detail becomes a Zing-style two-column
   workspace: artwork, title, artists, update date, and actions on the left;
   an expandable preface, Song/Album/Duration header, and track list on the
   right. Phone/tablet retain the adaptive hero and TV keeps its focus-friendly
   layout. From 1180 px, artist profiles use a full-width Zing OA-style purple
   hero with a circular avatar, oversized name, circular Play, follower count,
-  Follow, and Share; mobile/tablet/TV keep appropriate touch and focus targets.
+  Follow, and Share. Directly below it, wide layouts pair Latest Release with
+  three Featured Songs in the same two-column hierarchy as the official artist
+  page; constrained content stacks the sections and hides secondary metadata
+  instead of overflowing. Mobile/tablet/TV keep appropriate touch and focus targets.
   Validated artist identities remain hover/focus links into in-app profiles and
   an on-device Save-to-Library action. “Play all” builds a
   queue from every authorized track. While results load, an adaptive skeleton
@@ -364,7 +367,7 @@ historical binaries and contain no real user data.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-release-catalog-desktop.png" alt="New Releases with per-track artist album duration and market filters"><br><sub><b>New Releases</b> · each song exposes navigable artist/album and duration metadata, plus the Albums tab, market filters, release time, and fail-closed playback</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Zing OA-style artist profile with a full-width purple hero circular avatar large name and Play button"><br><sub><b>Artist/OA</b> · full-width Play, Follow, and Share hero; ALL opens up to 50 songs, Single & EP, or MV inside the app</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Zing OA-style artist profile with a purple hero and Latest Release beside Featured Songs"><br><sub><b>Artist/OA</b> · full-width hero plus two-column Latest Release/Featured Songs; ALL opens up to 50 songs, Single & EP, or MV inside the app</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="Artist profile with an on-device Following state"><br><sub><b>Follow artists</b> · account-free OA following, restored by backup v3 and reopened from Library</sub></td>

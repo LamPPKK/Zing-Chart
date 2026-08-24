@@ -126,13 +126,16 @@ proxy Node/TypeScript do người triển khai tự host.
   chi tiết playlist/album responsive ngay trong app. “Phát tất cả” dựng đúng
   queue từ các bài có nguồn được phép; detail hiển thị số người yêu thích chính
   thức, ngày phát hành, đơn vị cung cấp, thể loại và các rail “Xuất hiện trong”/
-  “Có thể bạn quan tâm”. Từ 1180 px, trang detail dùng workspace hai cột như
+  “Có thể bạn quan tâm”. Từ 1320 px, trang detail dùng workspace hai cột như
   Zing: artwork, tiêu đề, nghệ sĩ, ngày cập nhật và hành động ở trái; lời tựa
   có Xem thêm/Rút gọn, header Bài hát/Album/Thời gian và track list ở phải.
   Mobile/tablet tiếp tục dùng hero dọc/ngang, còn TV giữ bố cục focus-friendly;
   hồ sơ nghệ sĩ desktop từ 1180 px dùng hero tím tràn chiều ngang giống Zing OA,
   với avatar tròn, tên lớn, nút Play tròn, số người quan tâm và hành động
-  Quan tâm/Chia sẻ; mobile/tablet/TV vẫn giữ mật độ và touch/focus target phù hợp.
+  Quan tâm/Chia sẻ. Ngay dưới hero, màn hình rộng ghép “Mới Phát Hành” với ba
+  “Bài Hát Nổi Bật” thành workspace hai cột như trang nghệ sĩ chính thức; khi
+  vùng nội dung hẹp do panel phát nhạc, hai cụm tự xếp dọc và ẩn metadata phụ để
+  không tràn. Mobile/tablet/TV vẫn giữ mật độ và touch/focus target phù hợp.
   Nghệ sĩ có định danh trở thành link hover/focus mở hồ sơ nội bộ và
   album/playlist có thể lưu vào Thư viện local. Fallback cục bộ từ
   #zingchart vẫn hoạt động khi proxy tìm kiếm gián đoạn. Trong lúc
@@ -384,7 +387,7 @@ không chứa dữ liệu người dùng thật.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-release-catalog-desktop.png" alt="Mới Phát Hành với nghệ sĩ album thời lượng và bộ lọc khu vực"><br><sub><b>Mới Phát Hành</b> · từng bài hiện nghệ sĩ/album điều hướng nội bộ và thời lượng; kèm tab Album, lọc thị trường, thời điểm ra mắt và playback fail-closed</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Hồ sơ nghệ sĩ kiểu Zing OA với hero tím tràn ngang avatar tròn tên lớn và nút Play"><br><sub><b>Nghệ sĩ/OA</b> · hero full-width với Play, Quan tâm và Chia sẻ; TẤT CẢ mở tối đa 50 bài, Single & EP hoặc MV ngay trong app</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Hồ sơ nghệ sĩ kiểu Zing OA với hero tím và workspace Mới Phát Hành cạnh Bài Hát Nổi Bật"><br><sub><b>Nghệ sĩ/OA</b> · hero full-width cùng Mới Phát Hành/Bài Hát Nổi Bật hai cột; TẤT CẢ mở tối đa 50 bài, Single & EP hoặc MV ngay trong app</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="Hồ sơ nghệ sĩ với trạng thái Đang quan tâm được lưu cục bộ"><br><sub><b>Quan tâm nghệ sĩ</b> · theo dõi OA không cần tài khoản, khôi phục qua backup v3 và mở lại từ Thư viện</sub></td>

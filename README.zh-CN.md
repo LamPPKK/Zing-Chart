@@ -87,11 +87,12 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   歌单-专辑/歌手/MV”分类、Zing 风格精选卡片、自适应应用内歌手主页和歌单/专辑详情页，并保留 #zingchart
   本地回退。歌单/专辑详情会显示官方收藏量，经过验证的艺人身份支持 hover/focus
   并打开应用内艺人主页；页面还展示发行日期、发行方、流派及官方“出现于”/
-  “你可能也喜欢”内容栏，同时可保存到设备内音乐库。宽度达到 1180 px 时，详情页切换为
+  “你可能也喜欢”内容栏，同时可保存到设备内音乐库。宽度达到 1320 px 时，详情页切换为
   类似 Zing 的双栏工作区：左侧显示封面、标题、艺人、更新日期与操作；右侧显示可展开/收起的
   简介、“歌曲/专辑/时长”表头和歌曲列表。艺人主页在 1180 px 起使用贴近 Zing OA 的
   横向全宽紫色 Hero，包含圆形头像、超大艺人名、圆形 Play、关注人数以及关注/分享操作；
-  手机/平板/电视继续保留合适的触控密度与焦点目标。
+  Hero 下方会像官方艺人页一样，把“最新发行”与三首“热门歌曲”并排展示；内容区域受限时
+  自动改为上下排列并隐藏次要 metadata，避免溢出。手机/平板/电视继续保留合适的触控密度与焦点目标。
   等待结果时，自适应骨架屏会在手机、平板、桌面和 TV 上保留
   `精选 → 歌单` 的内容层级；系统启用“减少动态效果”时，进度指示会改为静态。
   “全部”页按 Zing 官方顺序展示
@@ -278,7 +279,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-release-catalog-desktop.png" alt="带每首歌曲歌手专辑及时长和地区筛选的最新发行页面"><br><sub><b>最新发行</b> · 每首歌曲显示可导航的歌手/专辑及时长，并提供专辑标签、市场筛选、发行时间与默认拒绝播放策略</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Zing OA 风格艺人主页，采用全宽紫色 Hero、圆形头像、大号名称和 Play 按钮"><br><sub><b>艺人/OA</b> · 全宽 Play、关注与分享 Hero；“全部”可在应用内打开最多 50 首歌曲、Single & EP 或 MV</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Zing OA 风格艺人主页，紫色 Hero 下方并排显示最新发行与热门歌曲"><br><sub><b>艺人/OA</b> · 全宽 Hero 与双栏最新发行/热门歌曲；“全部”可在应用内打开最多 50 首歌曲、Single & EP 或 MV</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="显示本地已关注状态的艺人主页"><br><sub><b>关注艺人</b> · 无需账号，使用 backup v3 恢复，并可从音乐库重新打开</sub></td>

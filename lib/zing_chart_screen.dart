@@ -29,6 +29,7 @@ import 'services/library_backup_file_service.dart';
 import 'services/official_content_share_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/album_art.dart';
+import 'widgets/artist_desktop_overview.dart';
 import 'widgets/artist_profile_hero.dart';
 import 'widgets/artist_profile_catalog.dart';
 import 'widgets/app_settings_sheet.dart';
@@ -545,9 +546,50 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     return filterSongs(source, _searchController.text);
   }
 
+  ({CatalogCollection collection, String sectionLabel})? _artistLatestRelease(
+    CatalogArtistDetail detail,
+  ) {
+    for (final section in detail.collectionSections) {
+      final sectionName = section.title.trim();
+      final normalized = sectionName.toLowerCase();
+      final isReleaseSection =
+          normalized.contains('single') ||
+          RegExp(r'(^|[^a-z])ep([^a-z]|$)').hasMatch(normalized) ||
+          normalized.contains('album') ||
+          normalized.contains('phát hành') ||
+          normalized.contains('mới');
+      if (!isReleaseSection) continue;
+      for (final collection in section.collections) {
+        if (collection.kind == CatalogCollectionKind.album) {
+          return (
+            collection: collection,
+            sectionLabel: sectionName.isEmpty ? 'Phát hành mới' : sectionName,
+          );
+        }
+      }
+    }
+    return null;
+  }
+
+  List<Song> _desktopArtistFeaturedSongs(CatalogArtistDetail detail) {
+    final songsById = <String, Song>{};
+    final source = detail.featuredSongs.isNotEmpty
+        ? detail.featuredSongs
+        : detail.songs;
+    for (final item in source) {
+      songsById.putIfAbsent(item.song.id, () => item.song);
+      if (songsById.length == 3) break;
+    }
+    return songsById.values.toList(growable: false);
+  }
+
   CatalogSong? _catalogSongFor(Song song) {
     if (_selectedArtist != null) {
-      for (final item in _artistDetail?.songs ?? const <CatalogSong>[]) {
+      final detail = _artistDetail;
+      for (final item in <CatalogSong>[
+        ...?detail?.featuredSongs,
+        ...?detail?.songs,
+      ]) {
         if (item.song.id == song.id) return item;
       }
     }
@@ -2770,6 +2812,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   }
 
   void _handleBack(double width) {
+    if (!widget.tvMode && width >= 1100 && _desktopPlayerVisible) {
+      setState(() => _desktopPlayerVisible = false);
+      return;
+    }
     if (_selectedCollection != null) {
       _navigateBackOr(_closeCollection);
       return;
@@ -2801,9 +2847,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _navigateBack();
       return;
     }
-    if (width >= 1100 && _desktopPlayerVisible) {
-      setState(() => _desktopPlayerVisible = false);
-    } else if (Navigator.of(context).canPop()) {
+    if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
   }
@@ -2911,7 +2955,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _collectionDetail?.collection ?? selectedCollection;
     final desktopCollectionWorkspace =
         !widget.tvMode &&
-        MediaQuery.sizeOf(context).width >= 1180 &&
+        MediaQuery.sizeOf(context).width >= 1320 &&
         effectiveCollection != null;
     final collectionCatalogSongs =
         _collectionDetail?.songs ?? const <CatalogSong>[];
@@ -2924,6 +2968,21 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                   .toList(growable: false) ??
               const <CatalogSong>[];
     final fullArtistSongs = _artistDetail?.songs ?? fallbackArtistSongs;
+    final artistDetail = _artistDetail;
+    final artistLatestRelease = artistDetail == null
+        ? null
+        : _artistLatestRelease(artistDetail);
+    final desktopArtistSongs = artistDetail == null
+        ? const <Song>[]
+        : _desktopArtistFeaturedSongs(artistDetail);
+    final desktopArtistOverview =
+        !widget.tvMode &&
+        MediaQuery.sizeOf(context).width >= 1180 &&
+        selectedArtist != null &&
+        artistDetail != null &&
+        _artistSection == OfficialArtistSection.profile &&
+        artistLatestRelease != null &&
+        desktopArtistSongs.isNotEmpty;
     final artistSongView =
         selectedArtist != null &&
         (_artistSection == OfficialArtistSection.profile ||
@@ -3634,6 +3693,26 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                         unawaited(_loadSongs(silent: _songs.isNotEmpty)),
                   ),
                 ),
+              if (desktopArtistOverview)
+                SliverToBoxAdapter(
+                  child: ArtistDesktopOverview(
+                    latestRelease: artistLatestRelease.collection,
+                    releaseLabel: artistLatestRelease.sectionLabel,
+                    featuredSongs: desktopArtistSongs,
+                    totalSongCount: artistDetail.songs.length,
+                    songBuilder: (context, index) => _buildSongTile(
+                      controller,
+                      desktopArtistSongs,
+                      index,
+                      compactMetadata: true,
+                    ),
+                    onReleaseTap: () => unawaited(
+                      _openCollection(artistLatestRelease.collection),
+                    ),
+                    onShowAllSongs: () =>
+                        _showArtistSection(OfficialArtistSection.songs),
+                  ),
+                ),
               if (!_isLoading &&
                   _errorMessage == null &&
                   _selectedTab == _chartTab &&
@@ -3656,7 +3735,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                 SliverToBoxAdapter(
                   child: _buildCollectionSongSectionHeader(visibleSongs.length),
                 )
-              else if (_selectedTab == _discoveryTab && artistSongView)
+              else if (_selectedTab == _discoveryTab &&
+                  artistSongView &&
+                  !desktopArtistOverview)
                 SliverToBoxAdapter(
                   child: _buildArtistSongSectionHeader(
                     visibleSongs.length,
@@ -3699,6 +3780,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                 )
               else if (_selectedTab != _forYouTab &&
                   !desktopCollectionWorkspace &&
+                  !desktopArtistOverview &&
                   showSearchSongList &&
                   visibleSongs.isEmpty &&
                   !(selectedCollection != null && _isCollectionLoading) &&
@@ -3720,6 +3802,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                 )
               else if (_selectedTab != _forYouTab &&
                   !desktopCollectionWorkspace &&
+                  !desktopArtistOverview &&
                   showSearchSongList)
                 SliverPadding(
                   padding: EdgeInsets.fromLTRB(
@@ -4015,6 +4098,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     List<Song> visibleSongs,
     int index, {
     bool tvMode = false,
+    bool compactMetadata = false,
   }) {
     final song = visibleSongs[index];
     final catalogSong = _catalogSongFor(song);
@@ -4156,6 +4240,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
           ? () => _selectSong(song, playableQueue)
           : () => _showUnavailable(song),
       tvMode: tvMode,
+      compactMetadata: compactMetadata,
       autofocus: tvMode && index == 0,
     );
     if (tvMode) return tile;
@@ -6089,6 +6174,7 @@ class _SongTile extends StatefulWidget {
     this.onArtistTap,
     this.onAlbumTap,
     this.tvMode = false,
+    this.compactMetadata = false,
     this.autofocus = false,
   });
 
@@ -6119,6 +6205,7 @@ class _SongTile extends StatefulWidget {
   final ValueChanged<CatalogArtist>? onArtistTap;
   final VoidCallback? onAlbumTap;
   final bool tvMode;
+  final bool compactMetadata;
   final bool autofocus;
 
   @override
@@ -6142,7 +6229,9 @@ class _SongTileState extends State<_SongTile> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final showDesktopMetadata =
-        !widget.tvMode && MediaQuery.sizeOf(context).width >= 1180;
+        !widget.tvMode &&
+        !widget.compactMetadata &&
+        MediaQuery.sizeOf(context).width >= 1180;
     final compactSongRow =
         !widget.tvMode && MediaQuery.sizeOf(context).width < 480;
     final releaseLabel = widget.releasedAt == null
@@ -6409,7 +6498,7 @@ class _SongTileState extends State<_SongTile> {
                     ),
                     const SizedBox(width: 12),
                   ],
-                  if (showDesktopMetadata &&
+                  if ((showDesktopMetadata || widget.compactMetadata) &&
                       widget.duration > Duration.zero) ...[
                     SizedBox(
                       width: 44,

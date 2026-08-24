@@ -24,6 +24,8 @@ import 'package:zmp3chart/music_player_controller.dart';
 import 'package:zmp3chart/music_player_scope.dart';
 import 'package:zmp3chart/services/official_content_share_service.dart';
 import 'package:zmp3chart/services/system_media_bridge.dart';
+import 'package:zmp3chart/theme/app_theme.dart';
+import 'package:zmp3chart/widgets/artist_desktop_overview.dart';
 import 'package:zmp3chart/widgets/collection_detail_hero.dart';
 import 'package:zmp3chart/widgets/desktop_catalog_sidebar.dart';
 import 'package:zmp3chart/widgets/discovery_home_hub.dart';
@@ -987,6 +989,7 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
         final controller = PlaybackService(
           playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
           libraryRepository: MemoryLibraryRepository(),
           systemMediaBridge: NoopSystemMediaBridge(),
         );
@@ -1434,6 +1437,7 @@ void main() {
 
   for (final configuration in [
     (size: const Size(768, 1024), tvMode: false),
+    (size: const Size(1180, 900), tvMode: false),
     (size: const Size(1440, 900), tvMode: false),
     (size: const Size(1920, 1080), tvMode: true),
   ]) {
@@ -1494,15 +1498,38 @@ void main() {
           find.byKey(const ValueKey('artist-profile-hero')),
           findsOneWidget,
         );
-        if (configuration.size.width == 1440 && !configuration.tvMode) {
+        if (configuration.size.width >= 1180 && !configuration.tvMode) {
           final hero = find.byKey(const ValueKey('artist-profile-hero'));
           final heroRect = tester.getRect(hero);
+          expect(
+            find.byKey(const ValueKey('artist-desktop-overview')),
+            findsOneWidget,
+          );
+          expect(
+            find.byKey(
+              const ValueKey('artist-latest-release-responsive-album'),
+            ),
+            findsOneWidget,
+          );
+          expect(find.text('Mới Phát Hành'), findsOneWidget);
+          expect(find.text('Bài Hát Nổi Bật'), findsOneWidget);
+          expect(
+            find.descendant(
+              of: find.byKey(
+                const ValueKey('artist-latest-release-responsive-album'),
+              ),
+              matching: find.text('Single & EP'),
+            ),
+            findsOneWidget,
+          );
           expect(
             find.byKey(const ValueKey('artist-desktop-title-row')),
             findsOneWidget,
           );
-          expect(heroRect.left, closeTo(238, 1));
-          expect(heroRect.right, closeTo(1440, 1));
+          if (configuration.size.width == 1440) {
+            expect(heroRect.left, closeTo(238, 1));
+            expect(heroRect.right, closeTo(1440, 1));
+          }
           final playButton = find.byKey(const ValueKey('artist-play-button'));
           expect(tester.getSize(playButton), const Size.square(56));
           expect(
@@ -1510,7 +1537,105 @@ void main() {
             findsNothing,
           );
           expect(find.textContaining('2.7 TR người quan tâm'), findsOneWidget);
+          if (configuration.size.width == 1440) {
+            final overview = find.byKey(
+              const ValueKey('artist-desktop-overview'),
+            );
+            for (final duration in ['4:00', '3:30', '4:08']) {
+              expect(
+                find.descendant(of: overview, matching: find.text(duration)),
+                findsOneWidget,
+              );
+            }
+            expect(
+              find.text(_responsiveArtistLockedSong.displayTitle),
+              findsOneWidget,
+            );
+            await tester.tap(
+              find.byKey(
+                const ValueKey(
+                  'song-action-menu-responsive-artist-featured-locked',
+                ),
+              ),
+            );
+            await tester.pumpAndSettle();
+            expect(
+              find.byKey(
+                const ValueKey(
+                  'song-action-menu-item-detail-responsive-artist-featured-locked',
+                ),
+              ),
+              findsOneWidget,
+            );
+            expect(
+              find.byKey(
+                const ValueKey(
+                  'song-action-menu-item-play-responsive-artist-featured-locked',
+                ),
+              ),
+              findsNothing,
+            );
+            expect(
+              find.byKey(
+                const ValueKey(
+                  'song-action-menu-item-queue-responsive-artist-featured-locked',
+                ),
+              ),
+              findsNothing,
+            );
+            await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+            await tester.pumpAndSettle();
+            await tester.tap(
+              find.byKey(const ValueKey('responsive-artist-featured-locked')),
+            );
+            await tester.pumpAndSettle();
+            expect(controller.currentSong, isNull);
+            expect(controller.queue, isEmpty);
+
+            await tester.tap(
+              find.byKey(const ValueKey('responsive-artist-song')),
+            );
+            await tester.pumpAndSettle();
+            expect(controller.currentSong?.id, _responsiveArtistSong.id);
+            expect(controller.queue.map((song) => song.id), [
+              _responsiveArtistSong.id,
+              _responsiveArtistSongTwo.id,
+            ]);
+            expect(
+              find.byKey(const ValueKey('artist-desktop-songs-show-all')),
+              findsOneWidget,
+            );
+            expect(
+              find.text(_responsiveArtistSongFour.displayTitle),
+              findsNothing,
+            );
+            await tester.tap(
+              find.byKey(const ValueKey('artist-desktop-songs-show-all')),
+            );
+            await tester.pumpAndSettle();
+            expect(
+              find.byKey(const ValueKey('artist-desktop-overview')),
+              findsNothing,
+            );
+            expect(find.text('TẤT CẢ BÀI HÁT'), findsOneWidget);
+            expect(
+              find.text(_responsiveArtistSongFour.displayTitle),
+              findsOneWidget,
+            );
+            await tester.tap(
+              find.byKey(const ValueKey('catalog-history-back')).first,
+            );
+            await tester.pumpAndSettle();
+            expect(
+              find.byKey(const ValueKey('artist-desktop-overview')),
+              findsOneWidget,
+            );
+          }
         } else {
+          expect(
+            find.byKey(const ValueKey('artist-desktop-overview')),
+            findsNothing,
+          );
           expect(
             find.byKey(const ValueKey('artist-desktop-title-row')),
             findsNothing,
@@ -1523,33 +1648,37 @@ void main() {
         );
         expect(
           find.byKey(const ValueKey('artist-link-responsive-artist')),
-          findsOneWidget,
+          findsWidgets,
         );
         if (configuration.size.width >= 1180) {
-          expect(
-            find.byKey(
-              const ValueKey('song-album-link-responsive-artist-song'),
-            ),
-            findsOneWidget,
+          final albumLink = find.byKey(
+            const ValueKey('song-album-link-responsive-artist-song'),
           );
-          expect(find.textContaining('4:00'), findsOneWidget);
           if (!configuration.tvMode) {
-            await tester.tap(
-              find.byKey(
-                const ValueKey('song-album-link-responsive-artist-song'),
-              ),
-            );
-            await tester.pumpAndSettle();
-            expect(
-              find.byKey(const ValueKey('collection-detail-hero')),
-              findsOneWidget,
-            );
-            await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-            await tester.pumpAndSettle();
-            expect(
-              find.byKey(const ValueKey('artist-profile-hero')),
-              findsOneWidget,
-            );
+            expect(albumLink, findsNothing);
+          } else {
+            expect(albumLink, findsOneWidget);
+            expect(find.textContaining('4:00'), findsOneWidget);
+          }
+          if (!configuration.tvMode) {
+            if (configuration.size.width >= 1180) {
+              await tester.tap(
+                find.byKey(
+                  const ValueKey('artist-latest-release-responsive-album'),
+                ),
+              );
+              await tester.pumpAndSettle();
+              expect(
+                find.byKey(const ValueKey('collection-detail-hero')),
+                findsOneWidget,
+              );
+              await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+              await tester.pumpAndSettle();
+              expect(
+                find.byKey(const ValueKey('artist-desktop-overview')),
+                findsOneWidget,
+              );
+            }
           }
         }
         await tester.scrollUntilVisible(
@@ -1613,6 +1742,119 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'artist latest release keeps its focus treatment after pointer exit',
+    (tester) async {
+      tester.view.physicalSize = const Size(1180, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(useMaterial3: true),
+          home: Scaffold(
+            body: ArtistDesktopOverview(
+              latestRelease: _responsiveArtistAlbum,
+              releaseLabel: 'Single & EP',
+              featuredSongs: const [],
+              totalSongCount: 0,
+              songBuilder: (_, _) => const SizedBox.shrink(),
+              onReleaseTap: () {},
+              onShowAllSongs: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final card = find.byKey(
+        const ValueKey('artist-latest-release-responsive-album'),
+      );
+      var focused = _primaryFocusIsInside(card);
+      for (var step = 0; step < 6 && !focused; step++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        focused = _primaryFocusIsInside(card);
+      }
+      expect(focused, isTrue);
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: const Offset(1, 1));
+      await mouse.moveTo(tester.getCenter(card));
+      await tester.pumpAndSettle();
+      await mouse.moveTo(const Offset(1, 1));
+      await tester.pumpAndSettle();
+      addTearDown(mouse.removePointer);
+
+      expect(_primaryFocusIsInside(card), isTrue);
+      final surface = tester.widget<AnimatedContainer>(
+        find.byKey(
+          const ValueKey('artist-latest-release-surface-responsive-album'),
+        ),
+      );
+      final decoration = surface.decoration! as BoxDecoration;
+      expect((decoration.border! as Border).top.color, ZingColors.lime);
+    },
+  );
+
+  testWidgets('Escape closes the desktop player before leaving an artist', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = PlaybackService(
+      playbackAudioPlayer: FakePlaybackAudioPlayer(),
+      sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+      libraryRepository: MemoryLibraryRepository(),
+      systemMediaBridge: NoopSystemMediaBridge(),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MusicPlayerScope(
+        controller: controller,
+        child: MaterialApp(
+          theme: ThemeData.dark(useMaterial3: true),
+          home: ZingChartScreen(
+            loadSongs: () async => _responsiveArtistSongs,
+            loadArtistDetail: (_) async => _responsiveArtistDetail,
+            chartRefreshInterval: null,
+            initialArtist: _responsiveArtist,
+            initialDesktopQueueVisible: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('desktop-close-player-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('artist-desktop-overview')),
+      findsOneWidget,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-close-player-panel')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('artist-desktop-overview')),
+      findsOneWidget,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('artist-desktop-overview')), findsNothing);
+  });
 
   testWidgets(
     'opens playlist detail and preserves a playable collection queue',
@@ -7687,7 +7929,48 @@ const _responsiveArtistSong = Song(
   code: 'responsive-artist-song',
 );
 
-const _responsiveArtistSongs = [_responsiveArtistSong];
+const _responsiveArtistSongTwo = Song(
+  id: 'responsive-artist-song-two',
+  name: 'chay-ngay-di',
+  title: 'Chạy Ngay Đi',
+  thumbnail: '',
+  artistsNames: 'Sơn Tùng M-TP',
+  code: 'responsive-code-two',
+);
+
+const _responsiveArtistSongThree = Song(
+  id: 'responsive-artist-song-three',
+  name: 'chung-ta-cua-hien-tai',
+  title: 'Chúng Ta Của Hiện Tại',
+  thumbnail: '',
+  artistsNames: 'Sơn Tùng M-TP',
+  code: 'responsive-code-three',
+);
+
+const _responsiveArtistSongFour = Song(
+  id: 'responsive-artist-song-four',
+  name: 'hay-trao-cho-anh',
+  title: 'Hãy Trao Cho Anh',
+  thumbnail: '',
+  artistsNames: 'Sơn Tùng M-TP',
+  code: 'responsive-code-four',
+);
+
+const _responsiveArtistLockedSong = Song(
+  id: 'responsive-artist-featured-locked',
+  name: 'ban-quyen-gioi-han',
+  title: 'Bản Quyền Giới Hạn',
+  thumbnail: '',
+  artistsNames: 'Sơn Tùng M-TP',
+  code: 'responsive-code-locked',
+);
+
+const _responsiveArtistSongs = [
+  _responsiveArtistSong,
+  _responsiveArtistSongTwo,
+  _responsiveArtistSongThree,
+  _responsiveArtistSongFour,
+];
 
 const _responsiveArtistAlbum = CatalogCollection(
   id: 'responsive-album',
@@ -7695,6 +7978,15 @@ const _responsiveArtistAlbum = CatalogCollection(
   artist: 'Sơn Tùng M-TP',
   thumbnail: '',
   kind: CatalogCollectionKind.album,
+  externalUrl: '',
+);
+
+const _responsiveArtistEditorialPlaylist = CatalogCollection(
+  id: 'responsive-editorial-playlist',
+  title: 'Sơn Tùng M-TP Tuyển Chọn',
+  artist: 'Zing MP3',
+  thumbnail: '',
+  kind: CatalogCollectionKind.playlist,
   externalUrl: '',
 );
 
@@ -7707,10 +7999,60 @@ const _responsiveArtistDetail = CatalogArtistDetail(
   birthday: '05/07/1994',
   totalFollow: 2655838,
   awardCount: 12,
+  featuredSongs: [
+    CatalogSong(
+      song: _responsiveArtistSong,
+      duration: Duration(minutes: 4),
+      externalUrl: '',
+      playable: true,
+      artists: [_responsiveArtist],
+      album: _responsiveArtistAlbum,
+    ),
+    CatalogSong(
+      song: _responsiveArtistLockedSong,
+      duration: Duration(minutes: 3, seconds: 30),
+      externalUrl: '',
+      playable: false,
+      artists: [_responsiveArtist],
+      album: _responsiveArtistAlbum,
+    ),
+    CatalogSong(
+      song: _responsiveArtistSongTwo,
+      duration: Duration(minutes: 4, seconds: 8),
+      externalUrl: '',
+      playable: true,
+      artists: [_responsiveArtist],
+      album: _responsiveArtistAlbum,
+    ),
+  ],
   songs: [
     CatalogSong(
       song: _responsiveArtistSong,
       duration: Duration(minutes: 4),
+      externalUrl: '',
+      playable: true,
+      artists: [_responsiveArtist],
+      album: _responsiveArtistAlbum,
+    ),
+    CatalogSong(
+      song: _responsiveArtistSongTwo,
+      duration: Duration(minutes: 4, seconds: 8),
+      externalUrl: '',
+      playable: true,
+      artists: [_responsiveArtist],
+      album: _responsiveArtistAlbum,
+    ),
+    CatalogSong(
+      song: _responsiveArtistSongThree,
+      duration: Duration(minutes: 4, seconds: 2),
+      externalUrl: '',
+      playable: true,
+      artists: [_responsiveArtist],
+      album: _responsiveArtistAlbum,
+    ),
+    CatalogSong(
+      song: _responsiveArtistSongFour,
+      duration: Duration(minutes: 4, seconds: 5),
       externalUrl: '',
       playable: true,
       artists: [_responsiveArtist],
@@ -7729,6 +8071,11 @@ const _responsiveArtistDetail = CatalogArtistDetail(
     ),
   ],
   collectionSections: [
+    CatalogArtistCollectionSection(
+      id: 'responsive-editorial',
+      title: 'Tuyển tập nên nghe',
+      collections: [_responsiveArtistEditorialPlaylist],
+    ),
     CatalogArtistCollectionSection(
       id: 'responsive-section',
       title: 'Single & EP',
