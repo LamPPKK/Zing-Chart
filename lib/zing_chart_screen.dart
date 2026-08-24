@@ -4069,7 +4069,22 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                         _showArtistSection(OfficialArtistSection.videos),
                     onCollectionTap: (collection) =>
                         unawaited(_openCollection(collection)),
+                    onCollectionPlay: (collection) =>
+                        unawaited(_quickPlayCollection(collection)),
+                    onCollectionToggleSaved: (collection) =>
+                        _toggleCollectionSaved(controller, collection),
+                    onCollectionShare: (collection) =>
+                        unawaited(_shareCollection(collection)),
+                    savedCollectionIds: controller.savedCollections
+                        .map((collection) => collection.id)
+                        .toSet(),
+                    quickPlayingCollectionId: _quickPlayingCollectionId,
                     onArtistTap: (artist) => unawaited(_openArtist(artist)),
+                    onArtistToggleFollow: (artist) =>
+                        _toggleArtistFollowWithFeedback(controller, artist),
+                    followedArtistIds: controller.followedArtists
+                        .map((artist) => artist.id)
+                        .toSet(),
                     onVideoTap: (video) => unawaited(_openCatalogVideo(video)),
                     tvMode: widget.tvMode,
                   ),

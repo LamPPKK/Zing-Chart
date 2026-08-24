@@ -97,6 +97,8 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   横向全宽紫色 Hero，包含圆形头像、超大艺人名、圆形 Play、关注人数以及关注/分享操作；
   Hero 下方会像官方艺人页一样，把“最新发行”与三首“热门歌曲”并排展示；内容区域受限时
   自动改为上下排列并隐藏次要 metadata，避免溢出。手机/平板/电视继续保留合适的触控密度与焦点目标。
+  Single/EP、专辑与合辑栏共用播放、收藏、更多、分享及一致的右键菜单；桌面按实际内容宽度
+  显示翻页箭头，手机横向滑动，电视使用 D-pad/Enter。相关艺人可直接在卡片上本地关注。
   等待结果时，自适应骨架屏会在手机、平板、桌面和 TV 上保留
   `精选 → 歌单` 的内容层级；系统启用“减少动态效果”时，进度指示会改为静态。
   “全部”页按 Zing 官方顺序展示
@@ -287,6 +289,9 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="显示本地已关注状态的艺人主页"><br><sub><b>关注艺人</b> · 无需账号，使用 backup v3 恢复，并可从音乐库重新打开</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-catalog-actions-desktop.png" alt="艺人 Single EP 栏提供播放收藏和更多操作，独立 MV 栏使用播放浮层"><br><sub><b>艺人目录</b> · 合集提供播放/收藏/更多/分享，MV 使用独立播放浮层；支持鼠标、滑动、键盘与电视遥控器</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="类似 Zing 的双栏官方专辑页面，左侧封面，右侧编号曲目"><br><sub><b>官方专辑/歌单</b> · 按内容类型显示 CTA、专辑编号或歌单专辑列、受限歌曲 fail-closed，收藏状态继续保持本地优先</sub></td>

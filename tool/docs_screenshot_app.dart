@@ -437,7 +437,7 @@ class _ArtistCatalogDocsScreen extends StatefulWidget {
 }
 
 class _ArtistCatalogDocsScreenState extends State<_ArtistCatalogDocsScreen> {
-  final _scrollController = ScrollController(initialScrollOffset: 310);
+  final _scrollController = ScrollController();
 
   @override
   void dispose() {
@@ -461,7 +461,11 @@ class _ArtistCatalogDocsScreenState extends State<_ArtistCatalogDocsScreen> {
         child: ArtistProfileCatalog(
           detail: _artistDetail,
           onCollectionTap: (_) {},
+          onCollectionPlay: (_) {},
+          onCollectionToggleSaved: (_) {},
+          onCollectionShare: (_) {},
           onArtistTap: (_) {},
+          onArtistToggleFollow: (_) {},
           onVideoTap: (_) {},
         ),
       ),
@@ -1257,7 +1261,8 @@ const _artistTrackAlbum = CatalogCollection(
   artist: 'Sơn Tùng M-TP',
   thumbnail: 'docs-fixture-album-art.webp',
   kind: CatalogCollectionKind.album,
-  externalUrl: '',
+  externalUrl:
+      'https://zingmp3.vn/album/chung-ta-cua-tuong-lai/chung-ta-cua-tuong-lai.html',
 );
 
 final _artistDetail = CatalogArtistDetail(
@@ -1335,7 +1340,8 @@ final _artistDetail = CatalogArtistDetail(
           artist: 'Sơn Tùng M-TP',
           thumbnail: '',
           kind: CatalogCollectionKind.album,
-          externalUrl: '',
+          externalUrl:
+              'https://zingmp3.vn/album/making-my-way/making-my-way.html',
         ),
         CatalogCollection(
           id: 'muon-roi-ma-sao-con-single',
@@ -1343,7 +1349,8 @@ final _artistDetail = CatalogArtistDetail(
           artist: 'Sơn Tùng M-TP',
           thumbnail: '',
           kind: CatalogCollectionKind.album,
-          externalUrl: '',
+          externalUrl:
+              'https://zingmp3.vn/album/muon-roi-ma-sao-con/muon-roi-ma-sao-con.html',
         ),
       ],
     ),

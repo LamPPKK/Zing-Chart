@@ -581,7 +581,13 @@ class _CollectionCardState extends State<_CollectionCard> {
                 onShare: widget.onShare,
               ),
               child: Padding(
-                padding: EdgeInsets.all(widget.tvMode ? 10 : 8),
+                padding: EdgeInsets.all(
+                  widget.tvMode
+                      ? 10
+                      : widget.persistentActions
+                      ? 4
+                      : 8,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -626,6 +632,9 @@ class _CollectionCardState extends State<_CollectionCard> {
                                   keyPrefix: 'collection-related',
                                   collection: widget.collection,
                                   tvMode: widget.tvMode,
+                                  touchMode:
+                                      widget.persistentActions &&
+                                      !widget.tvMode,
                                   active: active,
                                   saved: widget.saved,
                                   playing: widget.playing,

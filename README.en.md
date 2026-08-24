@@ -143,6 +143,10 @@ clients never call Zing upstream directly.
   three Featured Songs in the same two-column hierarchy as the official artist
   page; constrained content stacks the sections and hides secondary metadata
   instead of overflowing. Mobile/tablet/TV keep appropriate touch and focus targets.
+  Single/EP, album, and compilation rails share Play/Save/More/Share actions
+  with matching right-click menus; desktop pages by local content width, mobile
+  swipes horizontally, and TV uses D-pad/Enter. Related artists can be followed
+  locally from their cards.
   Validated artist identities remain hover/focus links into in-app profiles and
   an on-device Save-to-Library action. “Play all” builds a
   queue from every authorized track. While results load, an adaptive skeleton
@@ -377,6 +381,9 @@ historical binaries and contain no real user data.
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="Artist profile with an on-device Following state"><br><sub><b>Follow artists</b> · account-free OA following, restored by backup v3 and reopened from Library</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-catalog-actions-desktop.png" alt="Artist Single EP rail with Play Save and More actions plus a separate MV rail with a play overlay"><br><sub><b>Artist catalog</b> · Collections expose Play/Save/More/Share; MVs use a dedicated play overlay; rails support mouse, swipe, keyboard, and TV remote</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="Official album in a Zing-style two-column workspace with artwork left and numbered tracks right"><br><sub><b>Official albums/playlists</b> · type-aware CTA, numbered album tracks or playlist Album column, fail-closed locked songs, and Local-First Saved state</sub></td>

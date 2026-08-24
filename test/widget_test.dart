@@ -1389,7 +1389,33 @@ void main() {
     );
     await tester.ensureVisible(artistCollectionCard);
     await tester.pump();
-    await tester.tap(artistCollectionCard);
+    await tester.tap(
+      find.byKey(const ValueKey('artist-collection-save-artist-single')),
+    );
+    await tester.pump();
+    expect(controller.isCollectionSaved(artistCollection), isTrue);
+    expect(find.byKey(const ValueKey('collection-detail-hero')), findsNothing);
+    expect(artistCollectionCard, findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('artist-collection-more-artist-single')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('artist-collection-menu-share-artist-single')),
+    );
+    await tester.pumpAndSettle();
+    expect(shareService.contents, hasLength(2));
+    expect(shareService.contents.last.kind, OfficialContentKind.collection);
+    expect(
+      shareService.contents.last.externalUrl,
+      artistCollection.externalUrl,
+    );
+    expect(find.byKey(const ValueKey('collection-detail-hero')), findsNothing);
+    expect(artistCollectionCard, findsOneWidget);
+    final artistCollectionRect = tester.getRect(artistCollectionCard);
+    await tester.tapAt(
+      Offset(artistCollectionRect.center.dx, artistCollectionRect.bottom - 18),
+    );
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('collection-detail-hero')),
@@ -1402,7 +1428,7 @@ void main() {
     await tester.pump();
     await tester.tap(collectionShare);
     await tester.pumpAndSettle();
-    expect(shareService.contents, hasLength(2));
+    expect(shareService.contents, hasLength(3));
     expect(shareService.contents.last.kind, OfficialContentKind.collection);
     expect(
       shareService.contents.last.externalUrl,

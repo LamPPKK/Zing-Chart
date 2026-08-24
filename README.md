@@ -142,6 +142,10 @@ proxy Node/TypeScript do người triển khai tự host.
   “Bài Hát Nổi Bật” thành workspace hai cột như trang nghệ sĩ chính thức; khi
   vùng nội dung hẹp do panel phát nhạc, hai cụm tự xếp dọc và ẩn metadata phụ để
   không tràn. Mobile/tablet/TV vẫn giữ mật độ và touch/focus target phù hợp.
+  Các rail Single/EP, album và tuyển tập dùng chung Play/Lưu/Thêm/Chia sẻ,
+  right-click tương đương; desktop có mũi tên theo chiều rộng vùng nội dung,
+  mobile vuốt ngang, TV dùng D-pad/Enter. Hàng nghệ sĩ liên quan hỗ trợ Quan tâm
+  cục bộ ngay trên card.
   Nghệ sĩ có định danh trở thành link hover/focus mở hồ sơ nội bộ và
   album/playlist có thể lưu vào Thư viện local. Fallback cục bộ từ
   #zingchart vẫn hoạt động khi proxy tìm kiếm gián đoạn. Trong lúc
@@ -397,6 +401,9 @@ không chứa dữ liệu người dùng thật.
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="Hồ sơ nghệ sĩ với trạng thái Đang quan tâm được lưu cục bộ"><br><sub><b>Quan tâm nghệ sĩ</b> · theo dõi OA không cần tài khoản, khôi phục qua backup v3 và mở lại từ Thư viện</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-catalog-actions-desktop.png" alt="Rail Single EP của nghệ sĩ với action deck Play Lưu và Thêm, phía dưới là rail MV có nút phát"><br><sub><b>Catalog nghệ sĩ</b> · Collection có Play/Lưu/Thêm/Chia sẻ; MV có nút phát riêng; các rail hỗ trợ chuột, swipe, bàn phím và remote TV</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="Album chính thức trong workspace hai cột kiểu Zing với artwork trái và danh sách track đánh số bên phải"><br><sub><b>Album/playlist chính thức</b> · CTA theo loại nội dung, track đánh số hoặc cột Album, bài khóa fail-closed và trạng thái lưu vẫn local-first</sub></td>

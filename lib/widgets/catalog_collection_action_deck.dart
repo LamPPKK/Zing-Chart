@@ -62,6 +62,7 @@ class CatalogCollectionActionDeck extends StatelessWidget {
     required this.keyPrefix,
     required this.collection,
     required this.tvMode,
+    this.touchMode = false,
     required this.active,
     required this.saved,
     required this.playing,
@@ -74,6 +75,7 @@ class CatalogCollectionActionDeck extends StatelessWidget {
   final String keyPrefix;
   final CatalogCollection collection;
   final bool tvMode;
+  final bool touchMode;
   final bool active;
   final bool saved;
   final bool playing;
@@ -88,11 +90,15 @@ class CatalogCollectionActionDeck extends StatelessWidget {
       final compact = !tvMode && constraints.maxWidth < 122;
       final sideSize = tvMode
           ? 46.0
+          : touchMode
+          ? 44.0
           : compact
           ? 44.0
           : 36.0;
       final playSize = tvMode
           ? 58.0
+          : touchMode
+          ? 48.0
           : compact
           ? 44.0
           : 46.0;
