@@ -135,7 +135,11 @@ proxy Node/TypeScript do người triển khai tự host.
   Album dùng “Phát tất cả”, đánh số track và bỏ cột Album lặp lại; playlist dùng
   “Phát ngẫu nhiên” cùng cột Album. Khi mở queue/lyrics, bảng tự chuyển compact
   theo chiều rộng thực thay vì theo viewport nên không tràn.
-  Mobile/tablet tiếp tục dùng hero dọc/ngang, còn TV giữ bố cục focus-friendly;
+  Trên điện thoại, hero rút gọn để đưa track đầu vào ngay viewport, chỉ giữ nghệ
+  sĩ chính và bộ Play/Lưu/Thêm cỡ chạm; Chia sẻ nằm trong menu Thêm. Dưới 480 px,
+  mỗi track chỉ giữ một nút Thêm ở cuối hàng, còn Yêu thích vẫn có trong menu để
+  tiêu đề không bị bóp hẹp. Tablet cảm ứng dùng cùng hierarchy và chuyển dọc/ngang
+  theo vùng nội dung thực; TV giữ bố cục focus-friendly;
   hồ sơ nghệ sĩ desktop từ 1180 px dùng hero tím tràn chiều ngang giống Zing OA,
   với avatar tròn, tên lớn, nút Play tròn, số người quan tâm và hành động
   Quan tâm/Chia sẻ. Ngay dưới hero, màn hình rộng ghép “Mới Phát Hành” với ba
@@ -406,7 +410,8 @@ không chứa dữ liệu người dùng thật.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-catalog-actions-desktop.png" alt="Rail Single EP của nghệ sĩ với action deck Play Lưu và Thêm, phía dưới là rail MV có nút phát"><br><sub><b>Catalog nghệ sĩ</b> · Collection có Play/Lưu/Thêm/Chia sẻ; MV có nút phát riêng; các rail hỗ trợ chuột, swipe, bàn phím và remote TV</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="Album chính thức trong workspace hai cột kiểu Zing với artwork trái và danh sách track đánh số bên phải"><br><sub><b>Album/playlist chính thức</b> · CTA theo loại nội dung, track đánh số hoặc cột Album, bài khóa fail-closed và trạng thái lưu vẫn local-first</sub></td>
+    <td width="34%" align="center"><img src="docs/screenshots/v1.2-collection-mobile.png" alt="Trang album chính thức trên điện thoại với hero gọn Play Lưu Thêm và track đầu trong viewport"><br><sub><b>Collection mobile</b> · Play/Lưu/Thêm cỡ chạm, Share trong menu và hàng bài chỉ giữ một overflow</sub></td>
+    <td width="66%" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="Album chính thức trong workspace hai cột kiểu Zing với artwork trái và danh sách track đánh số bên phải"><br><sub><b>Album/playlist desktop</b> · CTA theo loại nội dung, track đánh số hoặc cột Album, bài khóa fail-closed và trạng thái lưu vẫn local-first</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="Thông tin phát hành, nghệ sĩ tham gia và các album playlist liên quan trong trang chi tiết bộ sưu tập"><br><sub><b>Thông tin bộ sưu tập</b> · metadata gọn, nghệ sĩ tham gia có theo dõi local và các rail liên quan với Play/Lưu/Chia sẻ</sub></td>

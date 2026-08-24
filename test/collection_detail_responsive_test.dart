@@ -43,6 +43,18 @@ void main() {
         find.byKey(const ValueKey('collection-desktop-table-header')),
         configuration.workspace ? findsOneWidget : findsNothing,
       );
+      if (configuration.workspace) {
+        final title = find.descendant(
+          of: find.byKey(const ValueKey('collection-detail-hero')),
+          matching: find.text(_playlistDetail.collection.title),
+        );
+        expect(title, findsOneWidget);
+        expect(
+          tester.widget<Text>(title).maxLines,
+          3,
+          reason: 'The desktop sidebar keeps its three-line title allowance.',
+        );
+      }
       expect(tester.takeException(), isNull);
     });
   }

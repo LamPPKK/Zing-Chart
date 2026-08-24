@@ -6221,7 +6221,14 @@ class _CatalogMetadataLinkState extends State<_CatalogMetadataLink> {
     );
     if (onTap == null) return text;
     final semanticLabel = widget.semanticLabel ?? widget.text;
-    final compactTouchTarget = MediaQuery.sizeOf(context).width >= 720;
+    final platform = Theme.of(context).platform;
+    final touchPlatform =
+        platform == TargetPlatform.android ||
+        platform == TargetPlatform.iOS ||
+        platform == TargetPlatform.fuchsia;
+    final width = MediaQuery.sizeOf(context).width;
+    final compactTouchTarget =
+        width >= 720 && (!touchPlatform || width >= 1024);
     return Tooltip(
       message: semanticLabel,
       child: TextButton(
@@ -6751,7 +6758,8 @@ class _SongTileState extends State<_SongTile> {
                     ),
                     const SizedBox(width: 12),
                   ],
-                  if (showDesktopMetadata || widget.compactMetadata) ...[
+                  if (!compactSongRow &&
+                      (showDesktopMetadata || widget.compactMetadata)) ...[
                     SizedBox(
                       width: 44,
                       child: widget.duration <= Duration.zero
@@ -6782,20 +6790,21 @@ class _SongTileState extends State<_SongTile> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          IconButton(
-                            tooltip: widget.isLiked
-                                ? 'Bỏ yêu thích'
-                                : 'Yêu thích',
-                            onPressed: widget.onLike,
-                            icon: Icon(
-                              widget.isLiked
-                                  ? Icons.favorite_rounded
-                                  : Icons.favorite_border_rounded,
-                              color: widget.isLiked
-                                  ? const Color(0xFFFF6B4A)
-                                  : scheme.onSurfaceVariant,
+                          if (!compactSongRow)
+                            IconButton(
+                              tooltip: widget.isLiked
+                                  ? 'Bỏ yêu thích'
+                                  : 'Yêu thích',
+                              onPressed: widget.onLike,
+                              icon: Icon(
+                                widget.isLiked
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                color: widget.isLiked
+                                    ? const Color(0xFFFF6B4A)
+                                    : scheme.onSurfaceVariant,
+                              ),
                             ),
-                          ),
                           if (showDesktopMetadata || widget.tvMode)
                             IconButton(
                               key: ValueKey(

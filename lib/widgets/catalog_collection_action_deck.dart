@@ -40,6 +40,7 @@ Future<void> showCatalogCollectionContextMenu({
       collection: collection,
       saved: saved,
       playing: playing,
+      includeOpen: true,
       onPlay: onPlay,
       onToggleSaved: onToggleSaved,
       onShare: onShare,
@@ -199,6 +200,7 @@ class CatalogCollectionActionDeck extends StatelessWidget {
                     collection: collection,
                     saved: saved,
                     playing: playing,
+                    includeOpen: true,
                     onPlay: onPlay,
                     onToggleSaved: onToggleSaved,
                     onShare: onShare,
@@ -213,11 +215,81 @@ class CatalogCollectionActionDeck extends StatelessWidget {
   );
 }
 
+/// Compact collection overflow used by touch-first detail surfaces.
+///
+/// The current collection is already open, so this menu deliberately omits
+/// the redundant "Open info" action while reusing the same Play/Save/Share
+/// contract as collection cards.
+class CatalogCollectionOverflowButton extends StatelessWidget {
+  const CatalogCollectionOverflowButton({
+    super.key,
+    required this.buttonKey,
+    required this.keyPrefix,
+    required this.collection,
+    required this.saved,
+    required this.playing,
+    this.onPlay,
+    this.onToggleSaved,
+    this.onShare,
+    this.size = 48,
+    this.foregroundColor = Colors.white,
+  });
+
+  final Key buttonKey;
+  final String keyPrefix;
+  final CatalogCollection collection;
+  final bool saved;
+  final bool playing;
+  final VoidCallback? onPlay;
+  final VoidCallback? onToggleSaved;
+  final VoidCallback? onShare;
+  final double size;
+  final Color foregroundColor;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white.withValues(alpha: 0.08),
+    shape: CircleBorder(
+      side: BorderSide(color: Colors.white.withValues(alpha: 0.42)),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: SizedBox.square(
+      dimension: size,
+      child: PopupMenuButton<_CatalogCollectionAction>(
+        key: buttonKey,
+        tooltip: 'Thêm lựa chọn cho ${collection.title}',
+        padding: EdgeInsets.zero,
+        iconSize: 23,
+        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+        icon: Icon(Icons.more_horiz_rounded, color: foregroundColor),
+        onSelected: (action) => _handleCollectionAction(
+          action,
+          onOpen: null,
+          onPlay: onPlay,
+          onToggleSaved: onToggleSaved,
+          onShare: onShare,
+        ),
+        itemBuilder: (context) => _collectionMenuItems(
+          keyPrefix: keyPrefix,
+          collection: collection,
+          saved: saved,
+          playing: playing,
+          includeOpen: false,
+          onPlay: onPlay,
+          onToggleSaved: onToggleSaved,
+          onShare: onShare,
+        ),
+      ),
+    ),
+  );
+}
+
 List<PopupMenuEntry<_CatalogCollectionAction>> _collectionMenuItems({
   required String keyPrefix,
   required CatalogCollection collection,
   required bool saved,
   required bool playing,
+  required bool includeOpen,
   required VoidCallback? onPlay,
   required VoidCallback? onToggleSaved,
   required VoidCallback? onShare,
@@ -232,14 +304,15 @@ List<PopupMenuEntry<_CatalogCollectionAction>> _collectionMenuItems({
         label: playing ? 'Đang chuẩn bị phát…' : 'Phát ngay',
       ),
     ),
-  PopupMenuItem(
-    key: ValueKey('$keyPrefix-menu-open-${collection.id}'),
-    value: _CatalogCollectionAction.open,
-    child: const _MenuLabel(
-      icon: Icons.info_outline_rounded,
-      label: 'Mở thông tin',
+  if (includeOpen)
+    PopupMenuItem(
+      key: ValueKey('$keyPrefix-menu-open-${collection.id}'),
+      value: _CatalogCollectionAction.open,
+      child: const _MenuLabel(
+        icon: Icons.info_outline_rounded,
+        label: 'Mở thông tin',
+      ),
     ),
-  ),
   if (onToggleSaved != null)
     PopupMenuItem(
       key: ValueKey('$keyPrefix-menu-save-${collection.id}'),
@@ -259,7 +332,7 @@ List<PopupMenuEntry<_CatalogCollectionAction>> _collectionMenuItems({
 
 void _handleCollectionAction(
   _CatalogCollectionAction action, {
-  required VoidCallback onOpen,
+  required VoidCallback? onOpen,
   required VoidCallback? onPlay,
   required VoidCallback? onToggleSaved,
   required VoidCallback? onShare,
@@ -269,7 +342,7 @@ void _handleCollectionAction(
       onPlay?.call();
       break;
     case _CatalogCollectionAction.open:
-      onOpen();
+      onOpen?.call();
       break;
     case _CatalogCollectionAction.toggleSaved:
       onToggleSaved?.call();

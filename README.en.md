@@ -136,8 +136,12 @@ clients never call Zing upstream directly.
   list on the right. Albums use Play All, numbered tracks, and no duplicated
   Album column; playlists use Shuffle Play and retain the Album column. Opening
   queue/lyrics switches the table from actual content constraints into compact
-  mode instead of overflowing. Phone/tablet retain the adaptive hero and TV
-  keeps its focus-friendly layout. From 1180 px, artist profiles use a full-width Zing OA-style purple
+  mode instead of overflowing. On phones, the compact hero brings the first
+  track into the initial viewport and keeps only the primary artist plus
+  touch-sized Play/Save/More; Share lives inside More. Below 480 px each track
+  keeps one trailing More while Like remains in its menu, preserving useful
+  title space. Touch tablets use the same hierarchy and switch orientation from
+  actual content width; TV keeps its focus-friendly layout. From 1180 px, artist profiles use a full-width Zing OA-style purple
   hero with a circular avatar, oversized name, circular Play, follower count,
   Follow, and Share. Directly below it, wide layouts pair Latest Release with
   three Featured Songs in the same two-column hierarchy as the official artist
@@ -386,7 +390,8 @@ historical binaries and contain no real user data.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-catalog-actions-desktop.png" alt="Artist Single EP rail with Play Save and More actions plus a separate MV rail with a play overlay"><br><sub><b>Artist catalog</b> · Collections expose Play/Save/More/Share; MVs use a dedicated play overlay; rails support mouse, swipe, keyboard, and TV remote</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="Official album in a Zing-style two-column workspace with artwork left and numbered tracks right"><br><sub><b>Official albums/playlists</b> · type-aware CTA, numbered album tracks or playlist Album column, fail-closed locked songs, and Local-First Saved state</sub></td>
+    <td width="34%" align="center"><img src="docs/screenshots/v1.2-collection-mobile.png" alt="Official mobile album detail with a compact hero Play Save More and the first track in view"><br><sub><b>Mobile collection</b> · touch-sized Play/Save/More, Share in the menu, and one trailing overflow per track</sub></td>
+    <td width="66%" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="Official album in a Zing-style two-column workspace with artwork left and numbered tracks right"><br><sub><b>Desktop albums/playlists</b> · type-aware CTA, numbered album tracks or playlist Album column, fail-closed locked songs, and Local-First Saved state</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="Release information, participating artists, and related official collections on a collection detail page"><br><sub><b>Collection information</b> · compact metadata, locally followed participating artists, and related rails with Play/Save/Share</sub></td>

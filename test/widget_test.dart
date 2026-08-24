@@ -485,7 +485,11 @@ void main() {
     expect(find.byKey(const ValueKey('search-8')), findsOneWidget);
 
     final resultTile = find.byKey(const ValueKey('search-one'));
-    await tester.ensureVisible(resultTile);
+    await tester.scrollUntilVisible(
+      resultTile,
+      -240,
+      scrollable: catalogScroll,
+    );
     await tester.pumpAndSettle();
     await tester.tap(
       find.descendant(of: resultTile, matching: find.byType(InkWell)).first,
@@ -1421,12 +1425,14 @@ void main() {
       find.byKey(const ValueKey('collection-detail-hero')),
       findsOneWidget,
     );
-    final collectionShare = find.byKey(
-      const ValueKey('collection-share-button'),
-    );
-    await tester.ensureVisible(collectionShare);
+    final collectionMore = find.byKey(const ValueKey('collection-more-button'));
+    await tester.ensureVisible(collectionMore);
     await tester.pump();
-    await tester.tap(collectionShare);
+    await tester.tap(collectionMore);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('collection-hero-menu-share-artist-single')),
+    );
     await tester.pumpAndSettle();
     expect(shareService.contents, hasLength(3));
     expect(shareService.contents.last.kind, OfficialContentKind.collection);
@@ -2078,7 +2084,14 @@ void main() {
         find.byKey(const ValueKey('collection-play-button')),
         findsOneWidget,
       );
-      expect(find.text('LƯU THƯ VIỆN'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('collection-save-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('collection-more-button')),
+        findsOneWidget,
+      );
       tester.view.physicalSize = const Size(1440, 900);
       await tester.pumpAndSettle();
       final desktopHero = find.byKey(const ValueKey('collection-detail-hero'));
@@ -2132,7 +2145,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('collection-save-button')));
       await tester.pump();
       expect(controller.isCollectionSaved(authoritativeCollection), isTrue);
-      expect(find.text('ĐÃ LƯU'), findsOneWidget);
+      expect(find.byTooltip('Bỏ lưu'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.byKey(const ValueKey('collection-play-button')));
@@ -2176,7 +2189,7 @@ void main() {
         find.byKey(const ValueKey('collection-detail-hero')),
         findsOneWidget,
       );
-      expect(find.text('ĐÃ LƯU'), findsOneWidget);
+      expect(find.byTooltip('Bỏ lưu'), findsOneWidget);
     },
   );
 
@@ -3018,7 +3031,13 @@ void main() {
         find.byKey(const ValueKey('collection-detail-hero')),
         findsOneWidget,
       );
-      expect(find.text('Bài Hát Trong Top 100'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('discovery-detail-song')),
+          matching: find.text('Bài Hát Trong Top 100'),
+        ),
+        findsOneWidget,
+      );
       expect(collectionLoadCalls, 2);
 
       final detailScrollable = find.descendant(
@@ -4994,7 +5013,15 @@ void main() {
         find.byKey(const ValueKey('collection-detail-hero')),
         findsOneWidget,
       );
-      expect(find.text('Album mới chính thức.'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('collection-detail-hero')),
+          matching: find.text('Album mới chính thức.'),
+        ),
+        findsNothing,
+        reason: 'The compact phone hero keeps the first track in view.',
+      );
+      expect(find.byKey(const ValueKey('release-vietnam')), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.binding.handlePopRoute();

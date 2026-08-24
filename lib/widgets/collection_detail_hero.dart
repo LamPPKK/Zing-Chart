@@ -4,6 +4,7 @@ import '../models/catalog_search.dart';
 import '../theme/app_theme.dart';
 import 'album_art.dart';
 import 'artwork_backdrop.dart';
+import 'catalog_collection_action_deck.dart';
 
 enum CollectionDetailHeroLayout { standard, sidebar }
 
@@ -41,6 +42,7 @@ class CollectionDetailHero extends StatelessWidget {
     final effectiveCollection = metadata?.collection ?? collection;
     final songs = metadata?.songs ?? const <CatalogSong>[];
     final duration = metadata?.totalDuration ?? Duration.zero;
+    final narrowViewport = !tvMode && MediaQuery.sizeOf(context).width < 600;
     if (layout == CollectionDetailHeroLayout.sidebar) {
       return _buildSidebar(
         context,
@@ -53,10 +55,22 @@ class CollectionDetailHero extends StatelessWidget {
     return Container(
       key: const ValueKey('collection-detail-hero'),
       margin: EdgeInsets.fromLTRB(
-        tvMode ? 32 : 20,
+        tvMode
+            ? 32
+            : narrowViewport
+            ? 12
+            : 20,
         0,
-        tvMode ? 32 : 20,
-        tvMode ? 32 : 24,
+        tvMode
+            ? 32
+            : narrowViewport
+            ? 12
+            : 20,
+        tvMode
+            ? 32
+            : narrowViewport
+            ? 14
+            : 24,
       ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -105,14 +119,27 @@ class CollectionDetailHero extends StatelessWidget {
               ),
             ),
           Padding(
-            padding: EdgeInsets.all(tvMode ? 34 : 24),
+            padding: EdgeInsets.all(
+              tvMode
+                  ? 34
+                  : narrowViewport
+                  ? 16
+                  : 24,
+            ),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final compact = constraints.maxWidth < 600;
+                final compact = constraints.maxWidth < 440;
+                final platform = Theme.of(context).platform;
+                final touchPlatform =
+                    platform == TargetPlatform.android ||
+                    platform == TargetPlatform.iOS ||
+                    platform == TargetPlatform.fuchsia;
+                final touchTablet =
+                    touchPlatform && MediaQuery.sizeOf(context).width < 1024;
                 final artworkSize = tvMode
                     ? 210.0
                     : compact
-                    ? 188.0
+                    ? (constraints.maxWidth * 0.48).clamp(132.0, 164.0)
                     : 190.0;
                 final details = _CollectionDetails(
                   collection: effectiveCollection,
@@ -126,6 +153,7 @@ class CollectionDetailHero extends StatelessWidget {
                   onToggleSave: onToggleSave,
                   isSaved: isSaved,
                   compact: compact,
+                  mobileActions: !tvMode && (compact || touchTablet),
                   tvMode: tvMode,
                   sidebar: false,
                   shufflePlay: shufflePlay,
@@ -139,7 +167,7 @@ class CollectionDetailHero extends StatelessWidget {
                         size: artworkSize,
                         borderRadius: 16,
                       ),
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 14),
                       details,
                     ],
                   );
@@ -276,6 +304,7 @@ class CollectionDetailHero extends StatelessWidget {
             onToggleSave: onToggleSave,
             isSaved: isSaved,
             compact: true,
+            mobileActions: false,
             tvMode: false,
             sidebar: true,
             shufflePlay: shufflePlay,
@@ -519,6 +548,7 @@ class _CollectionDetails extends StatelessWidget {
     required this.onToggleSave,
     required this.isSaved,
     required this.compact,
+    required this.mobileActions,
     required this.tvMode,
     required this.sidebar,
     required this.shufflePlay,
@@ -535,6 +565,7 @@ class _CollectionDetails extends StatelessWidget {
   final VoidCallback? onToggleSave;
   final bool isSaved;
   final bool compact;
+  final bool mobileActions;
   final bool tvMode;
   final bool sidebar;
   final bool shufflePlay;
@@ -555,6 +586,53 @@ class _CollectionDetails extends StatelessWidget {
       if ((detail?.likeCount ?? 0) > 0)
         '${_compactNumber(detail!.likeCount)} người yêu thích',
     ].join(' · ');
+    CatalogArtist? primaryArtist;
+    if (mobileActions) {
+      if (collection.artists.isNotEmpty) {
+        primaryArtist = collection.artists.first;
+      } else if (detail?.artists.isNotEmpty == true) {
+        final collectionCredits = collection.artist
+            .split(',')
+            .map((credit) => credit.trim().toLowerCase())
+            .where((credit) => credit.isNotEmpty);
+        for (final credit in collectionCredits) {
+          for (final artist in detail!.artists) {
+            if (artist.name.trim().toLowerCase() == credit) {
+              primaryArtist = artist;
+              break;
+            }
+          }
+          if (primaryArtist != null) break;
+        }
+        primaryArtist ??= detail!.artists.first;
+      }
+    }
+    final mobilePlayButton = FilledButton.icon(
+      key: const ValueKey('collection-play-button'),
+      onPressed: onPlay,
+      style: FilledButton.styleFrom(
+        minimumSize: Size.zero,
+        backgroundColor: ZingColors.purpleBright,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+      ),
+      icon: Icon(
+        shufflePlay ? Icons.shuffle_rounded : Icons.play_arrow_rounded,
+        size: 21,
+      ),
+      label: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          shufflePlay ? 'PHÁT NGẪU NHIÊN' : 'PHÁT TẤT CẢ',
+          maxLines: 1,
+          style: const TextStyle(
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.4,
+            fontSize: 11,
+          ),
+        ),
+      ),
+    );
     return Column(
       crossAxisAlignment: alignment,
       children: [
@@ -567,10 +645,10 @@ class _CollectionDetails extends StatelessWidget {
             letterSpacing: 1.7,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: compact ? 5 : 8),
         Text(
           collection.title,
-          maxLines: compact ? 3 : 2,
+          maxLines: sidebar ? 3 : 2,
           overflow: TextOverflow.ellipsis,
           textAlign: compact ? TextAlign.center : TextAlign.start,
           style: TextStyle(
@@ -580,14 +658,22 @@ class _CollectionDetails extends StatelessWidget {
                 : compact
                 ? sidebar
                       ? 25
-                      : 30
+                      : 24
                 : 42,
             height: 1.04,
             fontWeight: FontWeight.w900,
             letterSpacing: -1.3,
           ),
         ),
-        if (detail?.artists.isNotEmpty == true) ...[
+        if (primaryArtist != null) ...[
+          const SizedBox(height: 8),
+          _CollectionArtistLinks(
+            artists: [primaryArtist],
+            onTap: onArtistTap,
+            centered: compact,
+            tvMode: tvMode,
+          ),
+        ] else if (!mobileActions && detail?.artists.isNotEmpty == true) ...[
           const SizedBox(height: 12),
           _CollectionArtistLinks(
             artists: detail!.artists,
@@ -596,7 +682,7 @@ class _CollectionDetails extends StatelessWidget {
             tvMode: tvMode,
           ),
         ] else if (collection.artist.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          SizedBox(height: compact ? 8 : 12),
           Text(
             collection.artist,
             maxLines: 2,
@@ -609,7 +695,7 @@ class _CollectionDetails extends StatelessWidget {
             ),
           ),
         ],
-        if (!sidebar && description.isNotEmpty) ...[
+        if (!sidebar && !compact && description.isNotEmpty) ...[
           const SizedBox(height: 10),
           _ExpandableHeroDescription(
             text: description,
@@ -617,7 +703,7 @@ class _CollectionDetails extends StatelessWidget {
             fontSize: tvMode ? 15 : 12,
           ),
         ],
-        const SizedBox(height: 12),
+        SizedBox(height: compact ? 8 : 12),
         Text(
           loading
               ? 'ĐANG TẢI DANH SÁCH BÀI HÁT…'
@@ -625,6 +711,8 @@ class _CollectionDetails extends StatelessWidget {
               ? meta
               : meta.toUpperCase(),
           textAlign: compact ? TextAlign.center : TextAlign.start,
+          maxLines: compact ? 2 : null,
+          overflow: compact ? TextOverflow.ellipsis : null,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.68),
             fontSize: tvMode
@@ -636,7 +724,13 @@ class _CollectionDetails extends StatelessWidget {
             letterSpacing: sidebar ? 0.25 : 1.1,
           ),
         ),
-        SizedBox(height: tvMode ? 26 : 20),
+        SizedBox(
+          height: tvMode
+              ? 26
+              : compact
+              ? 14
+              : 20,
+        ),
         if (sidebar) ...[
           Center(
             child: SizedBox(
@@ -724,7 +818,65 @@ class _CollectionDetails extends StatelessWidget {
               ),
             ),
           ),
-        ] else
+        ] else if (mobileActions)
+          Row(
+            mainAxisAlignment: compact
+                ? MainAxisAlignment.center
+                : MainAxisAlignment.start,
+            mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
+            children: [
+              if (compact)
+                SizedBox(width: 142, height: 48, child: mobilePlayButton)
+              else
+                Expanded(child: SizedBox(height: 48, child: mobilePlayButton)),
+              if (onToggleSave != null) ...[
+                const SizedBox(width: 10),
+                Semantics(
+                  toggled: isSaved,
+                  button: true,
+                  onTap: onToggleSave,
+                  label: isSaved
+                      ? 'Bỏ lưu ${collection.title}'
+                      : 'Lưu ${collection.title} vào thư viện',
+                  child: ExcludeSemantics(
+                    child: IconButton.outlined(
+                      key: const ValueKey('collection-save-button'),
+                      tooltip: isSaved ? 'Bỏ lưu' : 'Lưu thư viện',
+                      onPressed: onToggleSave,
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size.square(48),
+                        foregroundColor: isSaved
+                            ? ZingColors.coral
+                            : Colors.white,
+                        side: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.42),
+                        ),
+                      ),
+                      icon: Icon(
+                        isSaved
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              if (onToggleSave != null || onShare != null) ...[
+                const SizedBox(width: 10),
+                CatalogCollectionOverflowButton(
+                  buttonKey: const ValueKey('collection-more-button'),
+                  keyPrefix: 'collection-hero',
+                  collection: collection,
+                  saved: isSaved,
+                  playing: false,
+                  onPlay: onPlay,
+                  onToggleSaved: onToggleSave,
+                  onShare: onShare,
+                ),
+              ],
+            ],
+          )
+        else
           Wrap(
             alignment: compact ? WrapAlignment.center : WrapAlignment.start,
             spacing: 10,
@@ -911,7 +1063,14 @@ class _CollectionArtistLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final compactDesktopTarget = MediaQuery.sizeOf(context).width >= 720;
+    final platform = Theme.of(context).platform;
+    final touchPlatform =
+        platform == TargetPlatform.android ||
+        platform == TargetPlatform.iOS ||
+        platform == TargetPlatform.fuchsia;
+    final width = MediaQuery.sizeOf(context).width;
+    final compactDesktopTarget =
+        width >= 720 && (!touchPlatform || width >= 1024);
     final label = onTap == null
         ? artist.name
         : 'Mở trang nghệ sĩ ${artist.name}';

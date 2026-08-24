@@ -2158,6 +2158,79 @@ void main() {
     );
   });
 
+  testWidgets('mobile collection detail keeps the compact official hierarchy', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = PlaybackService(
+      playbackAudioPlayer: FakePlaybackAudioPlayer(),
+      libraryRepository: MemoryLibraryRepository(),
+      analyticsRepository: MemoryListeningAnalyticsRepository(),
+      systemMediaBridge: NoopSystemMediaBridge(),
+    );
+    await controller.initialize();
+    addTearDown(controller.dispose);
+    final collection = _artistDetail.collectionSections.first.collections.first;
+    final detail = CatalogCollectionDetail(
+      collection: collection,
+      artists: const [_artist],
+      description:
+          'Tuyển tập chính thức với metadata từng bài từ Zing MP3 và phần giới thiệu dài.',
+      year: '2026',
+      releasedAt: DateTime.utc(2026, 8, 3),
+      distributor: 'VIVI ENM',
+      likeCount: 2200000,
+      genres: const ['V-Pop'],
+      songs: [
+        for (var index = 0; index < _artistDetail.songs.length; index++)
+          CatalogSong(
+            song: _artistDetail.songs[index].song,
+            duration: _artistDetail.songs[index].duration,
+            externalUrl: _artistDetail.songs[index].externalUrl,
+            playable: index != 1 && _artistDetail.songs[index].playable,
+            artists: const [_artist],
+            album: collection,
+          ),
+      ],
+      catalogPlaybackEnabled: true,
+    );
+
+    await tester.pumpWidget(
+      MusicPlayerScope(
+        controller: controller,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: buildZingDarkTheme(
+            tvMode: false,
+          ).copyWith(platform: TargetPlatform.android),
+          home: ZingChartScreen(
+            loadChart: () async => const ChartSnapshot(songs: _songs),
+            loadCollection: (_) async => detail,
+            loadArtistDetail: (_) async => _artistDetail,
+            initialOfficialUrl:
+                'https://zingmp3.vn/album/chung-ta-cua-tuong-lai/single-one.html',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('collection-more-button')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('collection-share-button')), findsNothing);
+    expect(find.byKey(const ValueKey('artist-one')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await expectLater(
+      find.byType(Scaffold).first,
+      matchesGoldenFile('goldens/collection_detail_mobile_360.png'),
+    );
+  });
+
   testWidgets('desktop artist follow state stays local-first', (tester) async {
     tester.view.physicalSize = const Size(1440, 900);
     tester.view.devicePixelRatio = 1;

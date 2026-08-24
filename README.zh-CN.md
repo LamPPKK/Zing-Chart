@@ -93,6 +93,10 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   详情页切换为类似 Zing 的双栏工作区：左侧显示封面、标题、艺人、更新日期与操作；右侧显示
   可展开/收起的简介和歌曲列表。专辑使用“播放全部”、曲目编号且不重复显示专辑列；歌单使用
   “随机播放”并保留专辑列。打开队列/歌词面板后，表格会按实际内容宽度切换为紧凑模式，避免溢出。
+  手机端使用更紧凑的 Hero，让第一首曲目直接进入初始视口，仅保留主要艺人与适合触控的
+  播放/收藏/更多操作；分享放在“更多”菜单内。宽度低于 480 px 时，每行歌曲只保留一个
+  尾部“更多”，点赞仍可从菜单访问，从而为标题留出空间。触控平板沿用相同层级，并按实际
+  内容宽度切换横向/纵向；电视继续使用焦点友好的布局。
   艺人主页在 1180 px 起使用贴近 Zing OA 的
   横向全宽紫色 Hero，包含圆形头像、超大艺人名、圆形 Play、关注人数以及关注/分享操作；
   Hero 下方会像官方艺人页一样，把“最新发行”与三首“热门歌曲”并排展示；内容区域受限时
@@ -294,7 +298,8 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-catalog-actions-desktop.png" alt="艺人 Single EP 栏提供播放收藏和更多操作，独立 MV 栏使用播放浮层"><br><sub><b>艺人目录</b> · 合集提供播放/收藏/更多/分享，MV 使用独立播放浮层；支持鼠标、滑动、键盘与电视遥控器</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="类似 Zing 的双栏官方专辑页面，左侧封面，右侧编号曲目"><br><sub><b>官方专辑/歌单</b> · 按内容类型显示 CTA、专辑编号或歌单专辑列、受限歌曲 fail-closed，收藏状态继续保持本地优先</sub></td>
+    <td width="34%" align="center"><img src="docs/screenshots/v1.2-collection-mobile.png" alt="手机官方专辑详情采用紧凑 Hero，包含播放收藏更多并在首屏显示第一首曲目"><br><sub><b>手机合集</b> · 适合触控的播放/收藏/更多、菜单内分享，以及每行唯一的尾部 overflow</sub></td>
+    <td width="66%" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="类似 Zing 的双栏官方专辑页面，左侧封面，右侧编号曲目"><br><sub><b>桌面专辑/歌单</b> · 按内容类型显示 CTA、专辑编号或歌单专辑列、受限歌曲 fail-closed，收藏状态继续保持本地优先</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="歌单专辑详情页中的发行信息、参与艺人与官方相关内容"><br><sub><b>歌单/专辑信息</b> · 紧凑 metadata、支持本地关注的参与艺人，以及带播放/收藏/分享操作的相关内容栏</sub></td>
