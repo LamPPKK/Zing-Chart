@@ -187,6 +187,9 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 - Local-First 音乐库提供接近 Zing 的“总览、歌曲、歌单、专辑、歌手”五个分区；
   本地收藏、已关注歌手/OA、已保存的 Zing 专辑/歌单、个人歌单、收听历史、
   最近搜索、Daily/Mood Mix、7/30 天及年度统计都无需账号并只保存在设备上。
+- 个人歌单拥有独立的拼贴封面工作区，支持播放/随机播放、重命名、删除、手机与桌面
+  拖放排序、电视端上移/下移，以及按原位置撤销删除。选择器可在不离开当前目录的
+  情况下创建并立即加入歌曲；编辑歌单不会改动正在播放的队列。
 - 全年可查看的六页 Mini Wrapped，并可导出 PNG 或 TV 本地二维码摘要。
 - JSON v3 备份，支持幂等合并与完全覆盖，也能读取 v1/v2。
 - 手机、平板、桌面和电视自适应 UI，保留 charcoal/coral/lime 视觉语言。
@@ -268,6 +271,9 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-library-workspace-desktop.png" alt="桌面音乐库包含总览歌曲歌单专辑与歌手分区"><br><sub><b>Zing 风格 Local-First 音乐库</b> · 五个自适应分区、个人歌单与已保存官方内容，无需账号</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-local-playlist-workspace-desktop.png" alt="带拼贴封面播放随机播放操作与可排序歌曲的个人歌单工作区"><br><sub><b>Local-First 个人歌单</b> · 拼贴封面、播放/随机播放、重命名、删除、排序与撤销，不影响正在播放的队列</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-realtime-chart-desktop.png" alt="带数据点与当前歌曲提示卡的 24 小时 ZingChart 交互曲线"><br><sub><b>24 小时榜单脉搏</b> · 通过悬停、触摸拖动或遥控器查看每小时占比并播放当前歌曲</sub></td>

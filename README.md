@@ -267,6 +267,10 @@ proxy Node/TypeScript do người triển khai tự host.
   album/playlist Zing đã lưu, playlist cá nhân, lịch sử nghe, tìm kiếm gần đây,
   analytics 7/30 ngày/theo năm, Daily Mix và Mood Mix Chill/Gym/Tập trung đều
   nằm trên thiết bị và không cần tài khoản.
+- Playlist cá nhân có workspace riêng với cover mosaic, Phát/Trộn bài, đổi tên,
+  xóa, kéo thả sắp xếp trên mobile/desktop, nút Lên/Xuống trên TV và xóa bài có
+  Hoàn tác đúng vị trí. Picker luôn cho tạo playlist mới rồi thêm bài ngay mà
+  không rời màn hình đang duyệt; chỉnh playlist không thay đổi queue đang phát.
 - Mini Wrapped 6 slide quanh năm; xuất PNG trên phone/web/desktop và QR tóm tắt
   local trên TV.
 - Export/import backup JSON v3 theo hai chế độ Merge hoặc Overwrite; vẫn đọc
@@ -386,6 +390,9 @@ không chứa dữ liệu người dùng thật.
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-library-workspace-desktop.png" alt="Thư viện desktop với các phân mục Tổng quan Bài hát Playlist Album và Nghệ sĩ"><br><sub><b>Thư viện kiểu Zing, dữ liệu Local-First</b> · năm phân mục responsive, playlist cá nhân và nội dung chính thức đã lưu mà không cần tài khoản</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-local-playlist-workspace-desktop.png" alt="Workspace playlist cá nhân với cover mosaic, nút phát trộn bài và danh sách có thể sắp xếp"><br><sub><b>Playlist cá nhân Local-First</b> · cover mosaic, Play/Shuffle, đổi tên, xóa, reorder và Undo; chỉnh sửa không chạm vào queue đang phát</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-realtime-chart-desktop.png" alt="Biểu đồ ZingChart 24 giờ với điểm dữ liệu và tooltip bài hát đang chọn"><br><sub><b>Nhịp BXH 24 giờ</b> · hover, chạm/kéo hoặc remote để xem tỷ lệ theo giờ và phát bài đang chọn</sub></td>

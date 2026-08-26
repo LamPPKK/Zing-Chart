@@ -10,6 +10,7 @@ enum _SongAction {
   queue,
   radio,
   playlist,
+  removeFromPlaylist,
   share,
   toggleLike,
   moodChill,
@@ -28,6 +29,7 @@ class SongActionHandlers {
     this.onAddToQueue,
     this.onStartRadio,
     this.onAddToPlaylist,
+    this.onRemoveFromPlaylist,
     this.onShare,
     this.onToggleLike,
     this.onToggleMood,
@@ -38,6 +40,7 @@ class SongActionHandlers {
   final VoidCallback? onAddToQueue;
   final VoidCallback? onStartRadio;
   final VoidCallback? onAddToPlaylist;
+  final VoidCallback? onRemoveFromPlaylist;
   final VoidCallback? onShare;
   final VoidCallback? onToggleLike;
   final ValueChanged<MoodTag>? onToggleMood;
@@ -48,6 +51,7 @@ class SongActionHandlers {
       onAddToQueue != null ||
       onStartRadio != null ||
       onAddToPlaylist != null ||
+      onRemoveFromPlaylist != null ||
       onShare != null ||
       onToggleLike != null ||
       onToggleMood != null;
@@ -196,6 +200,16 @@ List<PopupMenuEntry<_SongAction>> _songMenuItems({
         label: 'Thêm vào playlist',
       ),
     ),
+  if (handlers.onRemoveFromPlaylist != null)
+    PopupMenuItem(
+      key: ValueKey('$keyPrefix-menu-item-remove-playlist-${song.id}'),
+      value: _SongAction.removeFromPlaylist,
+      child: const _SongMenuLabel(
+        icon: Icons.playlist_remove_rounded,
+        iconColor: ZingColors.coral,
+        label: 'Xóa khỏi playlist',
+      ),
+    ),
   if (handlers.onShare != null)
     PopupMenuItem(
       key: ValueKey('$keyPrefix-menu-item-share-${song.id}'),
@@ -244,6 +258,8 @@ void _handleSongAction(_SongAction action, SongActionHandlers handlers) {
       handlers.onStartRadio?.call();
     case _SongAction.playlist:
       handlers.onAddToPlaylist?.call();
+    case _SongAction.removeFromPlaylist:
+      handlers.onRemoveFromPlaylist?.call();
     case _SongAction.share:
       handlers.onShare?.call();
     case _SongAction.toggleLike:

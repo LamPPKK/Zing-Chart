@@ -275,6 +275,10 @@ clients never call Zing upstream directly.
   Artists sections. Favorites, followed artists/OAs, saved Zing
   albums/playlists, personal playlists, history, recent searches, Daily/Mood
   Mix, 7/30-day and yearly analytics all remain account-free and on-device.
+- Personal playlists have a dedicated mosaic-cover workspace with Play/Shuffle,
+  rename, delete, drag reorder on touch/desktop, TV Up/Down controls, and
+  position-preserving Undo. The picker can create and populate a playlist
+  without leaving the current catalog, while edits never mutate the active queue.
 - Six-slide Mini Wrapped remains available year-round.
 - JSON backup v3 with idempotent Merge and full Overwrite modes; v1/v2 remain
   importable.
@@ -368,6 +372,9 @@ historical binaries and contain no real user data.
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-library-workspace-desktop.png" alt="Desktop Library with Overview Songs Playlists Albums and Artists sections"><br><sub><b>Zing-style, Local-First Library</b> · five responsive sections, personal playlists, and saved official content without an account</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-local-playlist-workspace-desktop.png" alt="Personal playlist workspace with a mosaic cover, play and shuffle actions, and reorderable tracks"><br><sub><b>Local-First personal playlists</b> · mosaic cover, Play/Shuffle, rename, delete, reorder, and Undo without touching the active queue</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-realtime-chart-desktop.png" alt="Interactive 24-hour ZingChart plot with data points and the selected-song tooltip"><br><sub><b>24-hour chart pulse</b> · hover, touch/drag, or remote navigation to inspect hourly share and play the selected song</sub></td>

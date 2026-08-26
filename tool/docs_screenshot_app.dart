@@ -6,6 +6,7 @@ import 'package:zmp3chart/analytics_dashboard_screen.dart';
 import 'package:zmp3chart/data/library_repository.dart';
 import 'package:zmp3chart/data/listening_analytics_repository.dart';
 import 'package:zmp3chart/main.dart';
+import 'package:zmp3chart/models/app_navigation_route.dart';
 import 'package:zmp3chart/models/listening_analytics.dart';
 import 'package:zmp3chart/models/live_radio.dart';
 import 'package:zmp3chart/models/local_library.dart';
@@ -43,7 +44,7 @@ import 'package:zmp3chart/widgets/streaming_quality_controls.dart';
 /// Deterministic documentation-only entry point used to capture README images.
 ///
 /// It never calls the proxy or a platform media service. Choose a surface with
-/// `?screen=home|queue|smart-shuffle|stream-quality|desktop-lyrics|realtime-chart|discovery|discovery-recommendations|discovery-mv|discovery-recent|discovery-new-releases|discovery-new-release-chart|live-radio|artist|artist-follow|artist-mv|collection-save|collection-information|hubs|top-100|release-catalog|weekly-chart|search|search-all|search-songs|search-results|new-releases|player|car-mode|song-detail|lyrics|lyric-share|radio|library|for-you|analytics|wrapped|tv`.
+/// `?screen=home|queue|smart-shuffle|stream-quality|desktop-lyrics|realtime-chart|discovery|discovery-recommendations|discovery-mv|discovery-recent|discovery-new-releases|discovery-new-release-chart|live-radio|artist|artist-follow|artist-mv|collection-save|collection-information|hubs|top-100|release-catalog|weekly-chart|search|search-all|search-songs|search-results|new-releases|player|car-mode|song-detail|lyrics|lyric-share|radio|library|playlist-workspace|for-you|analytics|wrapped|tv`.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final audioPlayer = _DocsAudioPlayer();
@@ -412,6 +413,13 @@ Future<void> main() async {
         ),
         'for-you' => ZingChartScreen(loadSongs: _loadSongs, initialTab: 3),
         'library' => ZingChartScreen(loadSongs: _loadSongs, initialTab: 4),
+        'playlist-workspace' => ZingChartScreen(
+          loadSongs: _loadSongs,
+          navigationRoute: const AppNavigationRoute.library(
+            section: LibrarySection.playlists,
+            playlistId: 'docs-focus',
+          ),
+        ),
         'tv' => ZingChartScreen(
           loadSongs: _loadSongs,
           initialTab: 3,

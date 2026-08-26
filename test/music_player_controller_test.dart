@@ -905,6 +905,105 @@ void main() {
       controller.dispose();
     });
 
+    test('removes and restores playlist songs at their original index without '
+        'mutating playback queue', () async {
+      final controller = _controller(FakePlaybackAudioPlayer());
+      await controller.initialize();
+      await controller.playSong(songs[1], queue: songs);
+      final playlist = controller.createPlaylist(
+        'Local mix',
+        initialSongs: songs,
+      );
+      final queueBeforeEdit = controller.queue;
+
+      expect(
+        () => controller.playlists.single.songs.removeLast(),
+        throwsUnsupportedError,
+      );
+      final removal = controller.removeSongFromPlaylist(playlist.id, 'two');
+      expect(removal, isNotNull);
+      expect(removal!.index, 1);
+      expect(removal.song, songs[1]);
+      expect(controller.playlists.single.songs.map((song) => song.id), [
+        'one',
+        'three',
+      ]);
+      expect(controller.queue, queueBeforeEdit);
+      expect(controller.currentSong, songs[1]);
+
+      expect(controller.restoreSongToPlaylist(removal), isTrue);
+      expect(controller.playlists.single.songs.map((song) => song.id), [
+        'one',
+        'two',
+        'three',
+      ]);
+      expect(controller.restoreSongToPlaylist(removal), isFalse);
+      expect(controller.queue, queueBeforeEdit);
+      controller.dispose();
+    });
+
+    test(
+      'moves playlist songs by exact TV index and persists the order',
+      () async {
+        final repository = MemoryLibraryRepository();
+        final source = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await source.initialize();
+        final playlist = source.createPlaylist(
+          'Remote order',
+          initialSongs: songs,
+        );
+
+        expect(source.reorderPlaylistSongItem(playlist.id, 0, 1), isTrue);
+        expect(source.reorderPlaylistSongItem(playlist.id, 1, 2), isTrue);
+        expect(source.reorderPlaylistSongItem(playlist.id, 2, 2), isFalse);
+        expect(source.playlists.single.songs.map((song) => song.id), [
+          'two',
+          'three',
+          'one',
+        ]);
+        await _flushAsync();
+        source.dispose();
+        await _flushAsync();
+
+        final restored = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await restored.initialize();
+        expect(restored.playlists.single.songs.map((song) => song.id), [
+          'two',
+          'three',
+          'one',
+        ]);
+        restored.dispose();
+      },
+    );
+
+    test('rename keeps playlist names unique', () async {
+      final controller = _controller(FakePlaybackAudioPlayer());
+      await controller.initialize();
+      final first = controller.createPlaylist('Buổi sáng');
+      final second = controller.createPlaylist('Buổi tối');
+
+      expect(
+        () => controller.renamePlaylist(second.id, '  BUỔI SÁNG  '),
+        throwsArgumentError,
+      );
+      expect(controller.renamePlaylist(first.id, 'Buổi sáng'), isFalse);
+      expect(
+        controller.playlists.map((playlist) => playlist.name),
+        containsAll(['Buổi sáng', 'Buổi tối']),
+      );
+      controller.dispose();
+    });
+
     test('serializes and coalesces local snapshot writes', () async {
       final repository = _BlockingLibraryRepository();
       final controller = PlaybackService(

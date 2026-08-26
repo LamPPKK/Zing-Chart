@@ -46,6 +46,7 @@ import 'widgets/discovery_home_hub.dart';
 import 'widgets/for_you_hub.dart';
 import 'widgets/library_hub.dart';
 import 'widgets/live_radio_hub.dart';
+import 'widgets/local_playlist_workspace.dart';
 import 'widgets/mini_player.dart';
 import 'widgets/official_content_share_dialog.dart';
 import 'widgets/realtime_chart.dart';
@@ -102,6 +103,7 @@ typedef ClipboardTextReader = Future<String?> Function();
 typedef NavigationRouteChanged =
     void Function(AppNavigationRoute route, {required bool replace});
 typedef PlatformHistoryRequest = bool Function();
+typedef _PlaylistPickerSelection = ({bool create, String? playlistId});
 
 Future<bool> launchExternalCatalogPage(Uri uri) =>
     launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -588,7 +590,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
           : _songs.take(_chartPreviewSongCount).toList(growable: false);
     }
     final source = _selectedTab == _libraryTab
-        ? _selectedPlaylist(controller)?.songs ?? controller.likedSongs
+        ? _selectedPlaylistId == null
+              ? controller.likedSongs
+              : _selectedPlaylist(controller)?.songs ?? const <Song>[]
         : _songs;
     return filterSongs(source, _searchController.text);
   }
@@ -988,6 +992,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
             _librarySection = route.librarySection;
             _selectedPlaylistId = route.playlistId;
           });
+          _scrollContentToStart();
         case AppShellDestination.forYou:
           _selectTab(_forYouTab);
       }
@@ -1268,6 +1273,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
 
   bool get _canUseToolbarBack =>
       _canNavigateBack ||
+      _selectedPlaylistId != null ||
       _selectedCollection != null ||
       _selectedArtist != null ||
       _selectedHub != null ||
@@ -1277,6 +1283,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   void _navigateToolbarBack() {
     if (_canNavigateBack) {
       _navigateBack();
+      return;
+    }
+    if (_selectedPlaylistId != null) {
+      _closeLocalPlaylist();
       return;
     }
     if (_selectedCollection != null) {
@@ -3561,6 +3571,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       setState(() => _desktopPlayerVisible = false);
       return;
     }
+    if (_selectedPlaylistId != null) {
+      _navigateBackOr(_closeLocalPlaylist);
+      return;
+    }
     if (_selectedCollection != null) {
       _navigateBackOr(_closeCollection);
       return;
@@ -3694,6 +3708,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     final pinCatalogToolbar =
         !widget.tvMode && MediaQuery.sizeOf(context).width >= 720;
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final selectedPlaylist = _selectedPlaylist(controller);
+    final localPlaylistRequested =
+        _selectedTab == _libraryTab && _selectedPlaylistId != null;
     final selectedArtist = _selectedArtist;
     final effectiveArtist = _artistDetail?.artist ?? selectedArtist;
     final selectedCollection = _selectedCollection;
@@ -3761,8 +3778,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _catalogBrowseView == _CatalogBrowseView.weekly;
     final showLibrarySongList =
         _selectedTab != _libraryTab ||
-        _librarySection == LibrarySection.songs ||
-        _selectedPlaylistId != null;
+        (_selectedPlaylistId == null &&
+            _librarySection == LibrarySection.songs);
     final showSearchSongList =
         _selectedTab != _liveRadioTab &&
         showLibrarySongList &&
@@ -3822,10 +3839,71 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                     ),
                   ),
                 ),
-              SliverToBoxAdapter(
-                child: _buildHeader(pinCatalogToolbar: pinCatalogToolbar),
-              ),
-              if (_selectedTab == _discoveryTab &&
+              if (!localPlaylistRequested)
+                SliverToBoxAdapter(
+                  child: _buildHeader(pinCatalogToolbar: pinCatalogToolbar),
+                ),
+              if (localPlaylistRequested && selectedPlaylist != null)
+                LocalPlaylistWorkspace(
+                  playlist: selectedPlaylist,
+                  tvMode: widget.tvMode,
+                  showBack: !pinCatalogToolbar,
+                  currentSongId: controller.currentSong?.id,
+                  isPlaying: controller.isPlaying,
+                  onBack: () => _navigateBackOr(_closeLocalPlaylist),
+                  onPlayAll: () => _playLocalPlaylist(
+                    controller,
+                    selectedPlaylist,
+                    shuffle: false,
+                  ),
+                  onShuffle: () => _playLocalPlaylist(
+                    controller,
+                    selectedPlaylist,
+                    shuffle: true,
+                  ),
+                  onRename: () =>
+                      _showRenamePlaylist(controller, selectedPlaylist),
+                  onDelete: () =>
+                      _confirmDeletePlaylist(controller, selectedPlaylist),
+                  onSongTap: (song) => _selectSong(
+                    song,
+                    selectedPlaylist.songs,
+                    origin: PlaybackOrigin(
+                      kind: PlaybackOriginKind.playlist,
+                      label: selectedPlaylist.name,
+                    ),
+                  ),
+                  onReorderItem: (oldIndex, targetIndex) =>
+                      controller.reorderPlaylistSongItem(
+                        selectedPlaylist.id,
+                        oldIndex,
+                        targetIndex,
+                      ),
+                  onMoveItem: (oldIndex, targetIndex) =>
+                      controller.reorderPlaylistSongItem(
+                        selectedPlaylist.id,
+                        oldIndex,
+                        targetIndex,
+                      ),
+                  onRemove: (song) => _removePlaylistSongWithUndo(
+                    controller,
+                    selectedPlaylist.id,
+                    song,
+                  ),
+                  actionResolver: (song) => _localPlaylistSongActions(
+                    controller,
+                    selectedPlaylist,
+                    song,
+                  ),
+                )
+              else if (localPlaylistRequested)
+                SliverToBoxAdapter(
+                  child: LocalPlaylistMissingState(
+                    onBackToPlaylists: () =>
+                        _navigateBackOr(_closeLocalPlaylist),
+                  ),
+                )
+              else if (_selectedTab == _discoveryTab &&
                   effectiveCollection != null &&
                   desktopCollectionWorkspace)
                 _buildDesktopCollectionWorkspace(
@@ -5621,6 +5699,19 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _searchController.clear();
       _lastObservedSearchQuery = '';
     });
+    _scrollContentToStart();
+  }
+
+  void _closeLocalPlaylist() {
+    if (_selectedPlaylistId == null) return;
+    _replaceNextRouteReport = true;
+    setState(() {
+      _selectedPlaylistId = null;
+      _librarySection = LibrarySection.playlists;
+      _searchController.clear();
+      _lastObservedSearchQuery = '';
+    });
+    _scrollContentToStart();
   }
 
   void _focusSearch() {
@@ -5692,22 +5783,112 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   Future<void> _openSettings(MusicPlayerController controller) =>
       showAppSettings(context, controller: controller, tvMode: widget.tvMode);
 
+  void _playLocalPlaylist(
+    MusicPlayerController controller,
+    LocalPlaylist playlist, {
+    required bool shuffle,
+  }) {
+    if (playlist.songs.isEmpty) return;
+    controller.setShuffleEnabled(shuffle);
+    _selectSong(
+      playlist.songs.first,
+      playlist.songs,
+      origin: PlaybackOrigin(
+        kind: PlaybackOriginKind.playlist,
+        label: playlist.name,
+      ),
+    );
+  }
+
+  SongActionMenuConfiguration _localPlaylistSongActions(
+    MusicPlayerController controller,
+    LocalPlaylist playlist,
+    Song song,
+  ) => SongActionMenuConfiguration(
+    isLiked: controller.isLiked(song),
+    moods: controller.moodsFor(song),
+    handlers: SongActionHandlers(
+      onPlay: () => _selectSong(
+        song,
+        playlist.songs,
+        origin: PlaybackOrigin(
+          kind: PlaybackOriginKind.playlist,
+          label: playlist.name,
+        ),
+      ),
+      onOpenDetail: () =>
+          unawaited(_openSongDetail(song, playlist.songs, canPlay: true)),
+      onAddToQueue: () => _addSongToQueueWithFeedback(controller, song),
+      onStartRadio: () =>
+          unawaited(startSongRadioWithFeedback(context, controller, song)),
+      onAddToPlaylist: () => unawaited(_showPlaylistPicker(controller, song)),
+      onRemoveFromPlaylist: () =>
+          _removePlaylistSongWithUndo(controller, playlist.id, song),
+      onShare: () => unawaited(_shareSong(song, _catalogSongFor(song))),
+      onToggleLike: () => controller.toggleLike(song),
+      onToggleMood: (mood) => controller.toggleMood(song, mood),
+    ),
+  );
+
+  void _removePlaylistSongWithUndo(
+    MusicPlayerController controller,
+    String playlistId,
+    Song song,
+  ) {
+    final removal = controller.removeSongFromPlaylist(playlistId, song.id);
+    if (removal == null || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('Đã xóa ${song.displayTitle} khỏi playlist'),
+          action: SnackBarAction(
+            label: 'Hoàn tác',
+            onPressed: () {
+              if (!controller.restoreSongToPlaylist(removal) && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Không thể hoàn tác thay đổi này'),
+                  ),
+                );
+              }
+            },
+          ),
+        ),
+      );
+  }
+
   Future<void> _showCreatePlaylist(MusicPlayerController controller) async {
+    final playlist = await _promptAndCreatePlaylist(controller);
+    if (playlist == null || !mounted) return;
+    final alreadyInLibrary = _selectedTab == _libraryTab;
+    if (!alreadyInLibrary) {
+      _selectTab(_libraryTab);
+    } else {
+      _recordNavigationOrigin();
+    }
+    setState(() {
+      _librarySection = LibrarySection.playlists;
+      _selectedPlaylistId = playlist.id;
+    });
+    _scrollContentToStart();
+  }
+
+  Future<LocalPlaylist?> _promptAndCreatePlaylist(
+    MusicPlayerController controller, {
+    List<Song> initialSongs = const [],
+  }) async {
     final name = await _promptPlaylistName(title: 'Tạo playlist mới');
-    if (name == null) return;
+    if (name == null) return null;
     try {
-      final playlist = controller.createPlaylist(name);
-      if (!mounted) return;
-      if (_selectedTab != _libraryTab) _selectTab(_libraryTab);
-      setState(() {
-        _librarySection = LibrarySection.playlists;
-        _selectedPlaylistId = playlist.id;
-      });
+      return controller.createPlaylist(name, initialSongs: initialSongs);
     } on ArgumentError catch (error) {
-      if (!mounted) return;
+      if (!mounted) return null;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message.toString())));
+      return null;
     }
   }
 
@@ -5719,7 +5900,15 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       title: 'Đổi tên playlist',
       initialValue: playlist.name,
     );
-    if (name != null) controller.renamePlaylist(playlist.id, name);
+    if (name == null) return;
+    try {
+      controller.renamePlaylist(playlist.id, name);
+    } on ArgumentError catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message.toString())));
+    }
   }
 
   Future<String?> _promptPlaylistName({
@@ -5757,7 +5946,17 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     if (confirmed != true) return;
     controller.deletePlaylist(playlist.id);
     if (mounted && _selectedPlaylistId == playlist.id) {
-      setState(() => _selectedPlaylistId = null);
+      _backHistory.removeWhere(
+        (state) => state.selectedPlaylistId == playlist.id,
+      );
+      _forwardHistory.removeWhere(
+        (state) => state.selectedPlaylistId == playlist.id,
+      );
+      _replaceNextRouteReport = true;
+      setState(() {
+        _selectedPlaylistId = null;
+        _librarySection = LibrarySection.playlists;
+      });
     }
   }
 
@@ -5765,39 +5964,85 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     MusicPlayerController controller,
     Song song,
   ) async {
-    if (controller.playlists.isEmpty) {
-      await _showCreatePlaylist(controller);
-    }
-    if (!mounted || controller.playlists.isEmpty) return;
-    final playlistId = await showModalBottomSheet<String>(
+    final selection = await showModalBottomSheet<_PlaylistPickerSelection>(
       context: context,
+      isScrollControlled: true,
       builder: (sheetContext) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 18),
-          children: [
-            const ListTile(
-              title: Text(
-                'Thêm vào playlist',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.72,
+          ),
+          child: ListView(
+            key: const ValueKey('playlist-picker'),
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 18),
+            children: [
+              const ListTile(
+                title: Text(
+                  'Thêm vào playlist',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                ),
               ),
-            ),
-            ...controller.playlists.map(
-              (playlist) => ListTile(
-                leading: const Icon(Icons.queue_music_rounded),
-                title: Text(playlist.name),
-                subtitle: Text('${playlist.songs.length} bài hát'),
-                trailing: playlist.songs.any((item) => item.id == song.id)
-                    ? const Icon(Icons.check_rounded, color: ZingColors.lime)
-                    : null,
-                onTap: () => Navigator.pop(sheetContext, playlist.id),
+              ListTile(
+                key: const ValueKey('playlist-picker-create'),
+                leading: const CircleAvatar(
+                  backgroundColor: ZingColors.purple,
+                  foregroundColor: Colors.white,
+                  child: Icon(Icons.add_rounded),
+                ),
+                title: const Text(
+                  'Tạo playlist mới',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: const Text('Tạo và thêm bài hát ngay'),
+                onTap: () => Navigator.pop(sheetContext, (
+                  create: true,
+                  playlistId: null,
+                )),
               ),
-            ),
-          ],
+              const Divider(height: 16),
+              ...controller.playlists.map((playlist) {
+                final alreadyAdded = playlist.songs.any(
+                  (item) => item.id == song.id,
+                );
+                return ListTile(
+                  key: ValueKey('playlist-picker-item-${playlist.id}'),
+                  enabled: !alreadyAdded,
+                  leading: const Icon(Icons.queue_music_rounded),
+                  title: Text(playlist.name),
+                  subtitle: Text('${playlist.songs.length} bài hát'),
+                  trailing: alreadyAdded
+                      ? const Icon(Icons.check_rounded, color: ZingColors.lime)
+                      : const Icon(Icons.add_rounded),
+                  onTap: alreadyAdded
+                      ? null
+                      : () => Navigator.pop(sheetContext, (
+                          create: false,
+                          playlistId: playlist.id,
+                        )),
+                );
+              }),
+            ],
+          ),
         ),
       ),
     );
-    if (playlistId == null || !mounted) return;
+    if (selection == null || !mounted) return;
+    if (selection.create) {
+      final playlist = await _promptAndCreatePlaylist(
+        controller,
+        initialSongs: [song],
+      );
+      if (playlist == null || !mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã tạo ${playlist.name} và thêm ${song.displayTitle}'),
+        ),
+      );
+      return;
+    }
+    final playlistId = selection.playlistId;
+    if (playlistId == null) return;
     final added = controller.addSongToPlaylist(playlistId, song);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

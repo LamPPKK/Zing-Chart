@@ -991,7 +991,10 @@ class PlaybackService extends ChangeNotifier {
     unawaited(_saveSnapshot());
   }
 
-  LocalPlaylist createPlaylist(String name) {
+  LocalPlaylist createPlaylist(
+    String name, {
+    List<Song> initialSongs = const [],
+  }) {
     final normalized = name.trim();
     if (normalized.isEmpty || normalized.length > 60) {
       throw ArgumentError('Tên playlist phải có từ 1 đến 60 ký tự.');
@@ -1002,28 +1005,43 @@ class PlaybackService extends ChangeNotifier {
       throw ArgumentError('Playlist này đã tồn tại.');
     }
     final now = DateTime.now().toUtc();
+    final uniqueSongs = <String, Song>{};
+    for (final song in initialSongs) {
+      uniqueSongs.putIfAbsent(song.id, () => song);
+    }
     final playlist = LocalPlaylist(
       id: 'playlist-${now.microsecondsSinceEpoch.toRadixString(36)}',
       name: normalized,
       createdAt: now,
       updatedAt: now,
+      songs: uniqueSongs.values.toList(growable: false),
     );
     _playlists[playlist.id] = playlist;
     _notifyLibraryChanged();
     return playlist;
   }
 
-  void renamePlaylist(String playlistId, String name) {
+  bool renamePlaylist(String playlistId, String name) {
     final playlist = _playlists[playlistId];
     final normalized = name.trim();
-    if (playlist == null || normalized.isEmpty || normalized.length > 60) {
-      return;
+    if (playlist == null) return false;
+    if (normalized.isEmpty || normalized.length > 60) {
+      throw ArgumentError('Tên playlist phải có từ 1 đến 60 ký tự.');
     }
+    if (_playlists.values.any(
+      (candidate) =>
+          candidate.id != playlistId &&
+          candidate.name.toLowerCase() == normalized.toLowerCase(),
+    )) {
+      throw ArgumentError('Playlist này đã tồn tại.');
+    }
+    if (playlist.name == normalized) return false;
     _playlists[playlistId] = playlist.copyWith(
       name: normalized,
       updatedAt: DateTime.now().toUtc(),
     );
     _notifyLibraryChanged();
+    return true;
   }
 
   void deletePlaylist(String playlistId) {
@@ -1043,37 +1061,85 @@ class PlaybackService extends ChangeNotifier {
     return true;
   }
 
-  void removeSongFromPlaylist(String playlistId, String songId) {
+  RemovedPlaylistSong? removeSongFromPlaylist(
+    String playlistId,
+    String songId,
+  ) {
     final playlist = _playlists[playlistId];
-    if (playlist == null || !playlist.songs.any((song) => song.id == songId)) {
-      return;
-    }
-    _playlists[playlistId] = playlist.copyWith(
-      songs: playlist.songs.where((song) => song.id != songId).toList(),
-      updatedAt: DateTime.now().toUtc(),
-    );
-    _notifyLibraryChanged();
-  }
-
-  void reorderPlaylistSong(String playlistId, int oldIndex, int newIndex) {
-    final playlist = _playlists[playlistId];
-    if (playlist == null || oldIndex < 0 || oldIndex >= playlist.songs.length) {
-      return;
-    }
-    if (newIndex > oldIndex) newIndex--;
-    if (newIndex < 0 ||
-        newIndex >= playlist.songs.length ||
-        newIndex == oldIndex) {
-      return;
-    }
+    if (playlist == null) return null;
+    final index = playlist.songs.indexWhere((song) => song.id == songId);
+    if (index < 0) return null;
     final songs = [...playlist.songs];
-    final song = songs.removeAt(oldIndex);
-    songs.insert(newIndex, song);
+    final song = songs.removeAt(index);
     _playlists[playlistId] = playlist.copyWith(
       songs: songs,
       updatedAt: DateTime.now().toUtc(),
     );
     _notifyLibraryChanged();
+    return (playlistId: playlistId, song: song, index: index);
+  }
+
+  bool restoreSongToPlaylist(RemovedPlaylistSong removal) {
+    final playlist = _playlists[removal.playlistId];
+    if (playlist == null ||
+        playlist.songs.any((song) => song.id == removal.song.id)) {
+      return false;
+    }
+    final songs = [...playlist.songs];
+    songs.insert(removal.index.clamp(0, songs.length), removal.song);
+    _playlists[removal.playlistId] = playlist.copyWith(
+      songs: songs,
+      updatedAt: DateTime.now().toUtc(),
+    );
+    _notifyLibraryChanged();
+    return true;
+  }
+
+  bool reorderPlaylistSong(String playlistId, int oldIndex, int newIndex) {
+    final playlist = _playlists[playlistId];
+    if (playlist == null || oldIndex < 0 || oldIndex >= playlist.songs.length) {
+      return false;
+    }
+    if (newIndex > oldIndex) newIndex--;
+    if (newIndex < 0 ||
+        newIndex >= playlist.songs.length ||
+        newIndex == oldIndex) {
+      return false;
+    }
+    return _movePlaylistSong(playlist, oldIndex, newIndex);
+  }
+
+  bool reorderPlaylistSongItem(
+    String playlistId,
+    int oldIndex,
+    int targetIndex,
+  ) {
+    final playlist = _playlists[playlistId];
+    if (playlist == null ||
+        oldIndex < 0 ||
+        oldIndex >= playlist.songs.length ||
+        targetIndex < 0 ||
+        targetIndex >= playlist.songs.length ||
+        targetIndex == oldIndex) {
+      return false;
+    }
+    return _movePlaylistSong(playlist, oldIndex, targetIndex);
+  }
+
+  bool _movePlaylistSong(
+    LocalPlaylist playlist,
+    int oldIndex,
+    int targetIndex,
+  ) {
+    final songs = [...playlist.songs];
+    final song = songs.removeAt(oldIndex);
+    songs.insert(targetIndex, song);
+    _playlists[playlist.id] = playlist.copyWith(
+      songs: songs,
+      updatedAt: DateTime.now().toUtc(),
+    );
+    _notifyLibraryChanged();
+    return true;
   }
 
   void recordSearch(String query) {

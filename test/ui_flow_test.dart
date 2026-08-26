@@ -872,7 +872,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(controller.playlists.single.name, 'Buổi sáng');
 
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, 1200));
+    await tester.tap(find.byKey(const ValueKey('catalog-history-back')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('library-tab-overview')));
     await tester.pumpAndSettle();

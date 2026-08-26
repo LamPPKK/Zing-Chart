@@ -20,14 +20,16 @@ extension StreamingQualityPreferenceLabel on StreamingQualityPreference {
 
 enum BackupImportMode { merge, overwrite }
 
+typedef RemovedPlaylistSong = ({String playlistId, Song song, int index});
+
 class LocalPlaylist {
-  const LocalPlaylist({
+  LocalPlaylist({
     required this.id,
     required this.name,
     required this.createdAt,
     required this.updatedAt,
-    this.songs = const [],
-  });
+    List<Song> songs = const [],
+  }) : songs = List<Song>.unmodifiable(songs);
 
   final String id;
   final String name;
