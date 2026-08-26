@@ -1,3 +1,5 @@
+import 'dart:ui' show SemanticsAction, Tristate;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -75,6 +77,24 @@ void main() {
     ),
   ];
 
+  ListeningRecord legacyLockedRecord({
+    String recordId = 'record-legacy-locked',
+    String songId = 'legacy-history',
+    DateTime? playedAt,
+  }) => ListeningRecord(
+    id: recordId,
+    song: Song.fromJson({
+      'id': songId,
+      'name': songId,
+      'title': 'Bản ghi từ dữ liệu cũ',
+      'thumbnail': '',
+      'artists_names': 'Nghệ sĩ cũ',
+      'code': '$songId-code',
+    }),
+    playedAt: (playedAt ?? DateTime(2026, 8, 26, 14)).toUtc(),
+    listened: const Duration(seconds: 18),
+  );
+
   SongActionMenuConfiguration actionsFor(Song song) =>
       SongActionMenuConfiguration(handlers: const SongActionHandlers());
 
@@ -86,6 +106,7 @@ void main() {
     VoidCallback? onPlay,
     VoidCallback? onShuffle,
     VoidCallback? onClear,
+    HistorySongActionResolver? actionResolver,
   }) => MaterialApp(
     theme: ThemeData.dark(useMaterial3: true),
     home: Scaffold(
@@ -101,7 +122,7 @@ void main() {
             onShuffle: onShuffle ?? () {},
             onClear: onClear ?? () {},
             onRecordTap: onTap ?? (_) {},
-            actionResolver: actionsFor,
+            actionResolver: actionResolver ?? actionsFor,
             now: localNow,
           ),
         ],
@@ -348,6 +369,130 @@ void main() {
       isNull,
     );
   });
+
+  for (final configuration in [
+    (name: 'mobile', size: const Size(360, 844), tvMode: false),
+    (name: 'TV', size: const Size(1920, 1080), tvMode: true),
+  ]) {
+    testWidgets(
+      'legacy locked history is fail-closed and adaptive on ${configuration.name}',
+      (tester) async {
+        tester.view.physicalSize = configuration.size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final record = legacyLockedRecord();
+        final secondRecord = legacyLockedRecord(
+          recordId: 'record-legacy-locked-second',
+          songId: 'legacy-history-second',
+          playedAt: DateTime(2026, 8, 26, 13),
+        );
+        var playCalls = 0;
+        var shuffleCalls = 0;
+        var rowTapCalls = 0;
+        var safeActionCalls = 0;
+
+        await tester.pumpWidget(
+          workspaceHarness(
+            records: [record, secondRecord],
+            tvMode: configuration.tvMode,
+            currentSongId: record.song.id,
+            onPlay: () => playCalls += 1,
+            onShuffle: () => shuffleCalls += 1,
+            onTap: (_) => rowTapCalls += 1,
+            actionResolver: (_) => SongActionMenuConfiguration(
+              handlers: SongActionHandlers(
+                onToggleLike: () => safeActionCalls += 1,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(record.song.isPlaybackEligible, isFalse);
+        expect(
+          tester
+              .widget<FilledButton>(
+                find.byKey(const ValueKey('local-history-play')),
+              )
+              .onPressed,
+          isNull,
+        );
+        expect(
+          tester
+              .widget<FilledButton>(
+                find.byKey(const ValueKey('local-history-shuffle')),
+              )
+              .onPressed,
+          isNull,
+        );
+        expect(find.textContaining('0/2 bài có thể phát'), findsOneWidget);
+
+        final playbackTarget = find.byKey(
+          const ValueKey('local-history-play-target-record-legacy-locked'),
+        );
+        await tester.ensureVisible(playbackTarget);
+        await tester.pumpAndSettle();
+        final semanticsHandle = tester.ensureSemantics();
+        final semantics = tester
+            .getSemantics(playbackTarget)
+            .getSemanticsData();
+        expect(semantics.label, contains('không thể phát từ lịch sử cũ'));
+        expect(semantics.flagsCollection.isEnabled, Tristate.isFalse);
+        expect(semantics.hasAction(SemanticsAction.tap), isFalse);
+        semanticsHandle.dispose();
+        expect(
+          find.byKey(const ValueKey('local-history-lock-record-legacy-locked')),
+          findsOneWidget,
+        );
+
+        final playbackInkWell = tester.widget<InkWell>(
+          find.descendant(of: playbackTarget, matching: find.byType(InkWell)),
+        );
+        expect(playbackInkWell.onTap, isNull);
+        expect(playbackInkWell.canRequestFocus, isFalse);
+        expect(playbackInkWell.mouseCursor, SystemMouseCursors.forbidden);
+        expect(playbackInkWell.focusNode?.canRequestFocus, isFalse);
+        playbackInkWell.focusNode?.requestFocus();
+        await tester.pump();
+        expect(playbackInkWell.focusNode?.hasFocus, isFalse);
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+        await tester.tap(playbackTarget);
+        await tester.pump();
+        expect(rowTapCalls, 0);
+        expect(playCalls, 0);
+        expect(shuffleCalls, 0);
+
+        await tester.tap(
+          find.byKey(
+            const ValueKey(
+              'local-history-action-record-legacy-locked-menu-legacy-history',
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(
+            const ValueKey(
+              'local-history-action-record-legacy-locked-menu-item-play-legacy-history',
+            ),
+          ),
+          findsNothing,
+        );
+        final safeAction = find.byKey(
+          const ValueKey(
+            'local-history-action-record-legacy-locked-menu-item-like-legacy-history',
+          ),
+        );
+        expect(safeAction, findsOneWidget);
+        await tester.tap(safeAction);
+        await tester.pumpAndSettle();
+        expect(safeActionCalls, 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets(
     'screen plays and clears local history without touching library',

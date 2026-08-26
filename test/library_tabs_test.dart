@@ -190,6 +190,76 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('legacy locked likes and recents stay visible but not playable', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(768, 1024);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const locked = Song(
+      id: 'legacy-locked-library',
+      name: 'legacy-locked-library',
+      title: 'Bản lưu cần xác minh lại',
+      thumbnail: '',
+      artistsNames: 'Nghệ sĩ cũ',
+      code: 'legacy-code',
+      playable: false,
+    );
+    final controller = PlaybackService(
+      playbackAudioPlayer: FakePlaybackAudioPlayer(),
+      sourceResolver: (_) async => 'https://audio.example.com/library.mp3',
+      libraryRepository: MemoryLibraryRepository(
+        PlayerSnapshot(
+          likedSongs: const [locked],
+          history: [
+            ListeningRecord(
+              id: 'legacy-locked-record',
+              song: locked,
+              playedAt: DateTime.utc(2026, 8, 26, 10),
+            ),
+          ],
+        ),
+      ),
+      systemMediaBridge: NoopSystemMediaBridge(),
+    );
+    await controller.initialize();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      libraryHarness(controller, section: LibrarySection.songs),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('0 có thể phát'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const ValueKey('library-play-liked-songs')),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    await tester.pumpWidget(
+      libraryHarness(controller, section: LibrarySection.recent),
+    );
+    await tester.pumpAndSettle();
+    final recent = find.byKey(
+      const ValueKey('library-recent-song-legacy-locked-library'),
+    );
+    expect(recent, findsOneWidget);
+    expect(tester.widget<InkWell>(recent).onTap, isNull);
+    final lockedSemantics = tester.widget<Semantics>(
+      find.byKey(
+        const ValueKey('library-recent-semantics-legacy-locked-library'),
+      ),
+    );
+    expect(lockedSemantics.properties.enabled, isFalse);
+    expect(lockedSemantics.properties.onTap, isNull);
+    expect(find.byIcon(Icons.lock_outline_rounded), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('recent shelf sorts restored history newest first', (
     tester,
   ) async {
@@ -248,6 +318,17 @@ void main() {
     );
     expect(newerCard, findsOneWidget);
     expect(olderCard, findsOneWidget);
+    expect(
+      tester
+          .widget<Semantics>(
+            find.byKey(
+              const ValueKey('library-recent-semantics-history-newer'),
+            ),
+          )
+          .properties
+          .onTap,
+      isNotNull,
+    );
     expect(
       tester.getTopLeft(newerCard).dx,
       lessThan(tester.getTopLeft(olderCard).dx),

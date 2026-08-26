@@ -113,6 +113,8 @@ void main() {
     );
 
     const forYou = AppNavigationRoute.forYou();
+    expect(forYou.identity, 'shell:for-you');
+    expect(forYou.webLocation().queryParameters, {'view': 'for-you'});
     expect(
       AppNavigationRoute.tryParse(forYou.webLocation())?.shellDestination,
       AppShellDestination.forYou,
@@ -144,6 +146,34 @@ void main() {
     );
   });
 
+  test('For You mix routes round-trip with bounded canonical identities', () {
+    const routes = [
+      AppNavigationRoute.forYou(),
+      AppNavigationRoute.forYou(mix: ForYouMix.daily),
+      AppNavigationRoute.forYou(mix: ForYouMix.chill),
+      AppNavigationRoute.forYou(mix: ForYouMix.gym),
+      AppNavigationRoute.forYou(mix: ForYouMix.focus),
+    ];
+
+    for (final route in routes) {
+      final location = route.webLocation();
+      final parsed = AppNavigationRoute.tryParse(location);
+
+      expect(location.path, '/', reason: route.identity);
+      expect(location.queryParameters['view'], 'for-you');
+      expect(location.queryParameters['mix'], route.forYouMix?.name);
+      expect(parsed?.identity, route.identity);
+      expect(parsed?.forYouMix, route.forYouMix);
+    }
+
+    expect(
+      const AppNavigationRoute.forYou(
+        mix: ForYouMix.daily,
+      ).webLocation().toString(),
+      '/?view=for-you&mix=daily',
+    );
+  });
+
   test(
     'accepts direct canonical app paths and rejects malformed envelopes',
     () {
@@ -161,6 +191,10 @@ void main() {
         '/?view=library&section=recent&playlist=playlist-1',
         '/?view=library&section=songs&playlist=private',
         '/?view=for-you&section=songs',
+        '/?view=for-you&mix=unknown',
+        '/?view=for-you&mix=',
+        '/?view=for-you&mix=daily&mix=chill',
+        '/?view=for-you&mix=daily&tracking=1',
         '/garbage?view=hubs',
         '/garbage?open=https%3A%2F%2Fzingmp3.vn%2Ftop100',
         '/unknown/path',

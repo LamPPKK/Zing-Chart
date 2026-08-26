@@ -1526,6 +1526,7 @@ class ProxyMusicRepository implements MusicRepository {
       }
     }
     final rawDurationSeconds = (json['durationSeconds'] as num?)?.toInt() ?? 0;
+    final playable = json['playable'] == true && code.isNotEmpty;
     return CatalogSong(
       song: Song(
         id: id,
@@ -1534,10 +1535,11 @@ class ProxyMusicRepository implements MusicRepository {
         thumbnail: json['albumCover']?.toString().trim() ?? '',
         artistsNames: json['artist']?.toString().trim() ?? '',
         code: code,
+        playable: playable,
       ),
       duration: Duration(seconds: rawDurationSeconds.clamp(0, 86_400)),
       externalUrl: json['externalUrl']?.toString().trim() ?? '',
-      playable: json['playable'] == true && code.isNotEmpty,
+      playable: playable,
       hasLyrics: json['hasLyrics'] == true,
       artists: artists,
       album: album,

@@ -252,79 +252,87 @@ class _LibraryHubState extends State<LibraryHub> {
     },
   );
 
-  Widget _buildSongs(BuildContext context) => Container(
-    key: const ValueKey('library-liked-songs-hero'),
-    constraints: const BoxConstraints(minHeight: 146),
-    padding: EdgeInsets.all(tvMode ? 24 : 18),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(tvMode ? 28 : 22),
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          ZingColors.coral.withValues(alpha: 0.28),
-          ZingColors.purple.withValues(alpha: 0.18),
+  Widget _buildSongs(BuildContext context) {
+    final playableSongs = controller.likedSongs
+        .where((song) => song.isPlaybackEligible)
+        .toList(growable: false);
+    return Container(
+      key: const ValueKey('library-liked-songs-hero'),
+      constraints: const BoxConstraints(minHeight: 146),
+      padding: EdgeInsets.all(tvMode ? 24 : 18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(tvMode ? 28 : 22),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            ZingColors.coral.withValues(alpha: 0.28),
+            ZingColors.purple.withValues(alpha: 0.18),
+          ],
+        ),
+        border: Border.all(color: ZingColors.coral.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: tvMode ? 92 : 72,
+            height: tvMode ? 92 : 72,
+            decoration: BoxDecoration(
+              color: ZingColors.coral.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(tvMode ? 26 : 20),
+            ),
+            child: Icon(
+              Icons.favorite_rounded,
+              size: tvMode ? 46 : 36,
+              color: ZingColors.coral,
+            ),
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'BÀI HÁT · LƯU LOCAL',
+                  style: TextStyle(
+                    color: ZingColors.lime,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  'Bài hát đã thích',
+                  style: TextStyle(
+                    fontSize: tvMode ? 28 : 22,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.7,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  '${controller.likedSongs.length} bài · '
+                  '${playableSongs.length} có thể phát · chỉ lưu trên thiết bị này',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+          if (controller.likedSongs.isNotEmpty)
+            FilledButton.icon(
+              key: const ValueKey('library-play-liked-songs'),
+              onPressed: playableSongs.isEmpty
+                  ? null
+                  : () => onPlaySongs(playableSongs),
+              icon: const Icon(Icons.play_arrow_rounded),
+              label: Text(tvMode ? 'Phát tất cả' : 'Phát'),
+            ),
         ],
       ),
-      border: Border.all(color: ZingColors.coral.withValues(alpha: 0.28)),
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: tvMode ? 92 : 72,
-          height: tvMode ? 92 : 72,
-          decoration: BoxDecoration(
-            color: ZingColors.coral.withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(tvMode ? 26 : 20),
-          ),
-          child: Icon(
-            Icons.favorite_rounded,
-            size: tvMode ? 46 : 36,
-            color: ZingColors.coral,
-          ),
-        ),
-        const SizedBox(width: 18),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'BÀI HÁT · LƯU LOCAL',
-                style: TextStyle(
-                  color: ZingColors.lime,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const SizedBox(height: 7),
-              Text(
-                'Bài hát đã thích',
-                style: TextStyle(
-                  fontSize: tvMode ? 28 : 22,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.7,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                '${controller.likedSongs.length} bài · chỉ lưu trên thiết bị này',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
-          ),
-        ),
-        if (controller.likedSongs.isNotEmpty)
-          FilledButton.icon(
-            key: const ValueKey('library-play-liked-songs'),
-            onPressed: () => onPlaySongs(controller.likedSongs),
-            icon: const Icon(Icons.play_arrow_rounded),
-            label: Text(tvMode ? 'Phát tất cả' : 'Phát'),
-          ),
-      ],
-    ),
-  );
+    );
+  }
 
   Widget _buildPlaylists(
     BuildContext context, {
@@ -524,36 +532,71 @@ class _LibraryHubState extends State<LibraryHub> {
           separatorBuilder: (_, __) => const SizedBox(width: 10),
           itemBuilder: (context, index) {
             final song = recentSongs[index];
+            final VoidCallback? playSong = song.isPlaybackEligible
+                ? () => controller.playSong(
+                    song,
+                    queue: recentSongs
+                        .where((item) => item.isPlaybackEligible)
+                        .toList(growable: false),
+                    origin: const PlaybackOrigin(
+                      kind: PlaybackOriginKind.recentlyPlayed,
+                      label: 'Nghe gần đây',
+                    ),
+                  )
+                : null;
             return SizedBox(
               width: 118,
-              child: InkWell(
-                key: ValueKey('library-recent-song-${song.id}'),
-                borderRadius: BorderRadius.circular(18),
-                onTap: () => controller.playSong(
-                  song,
-                  queue: recentSongs,
-                  origin: const PlaybackOrigin(
-                    kind: PlaybackOriginKind.recentlyPlayed,
-                    label: 'Nghe gần đây',
+              child: Semantics(
+                key: ValueKey('library-recent-semantics-${song.id}'),
+                button: true,
+                enabled: song.isPlaybackEligible,
+                label:
+                    '${song.displayTitle}${song.isPlaybackEligible ? '' : ', bị giới hạn phát'}',
+                onTap: playSong,
+                excludeSemantics: true,
+                child: InkWell(
+                  key: ValueKey('library-recent-song-${song.id}'),
+                  borderRadius: BorderRadius.circular(18),
+                  onTap: playSong,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Stack(
+                        children: [
+                          AlbumArt(
+                            imageUrl: song.thumbnail,
+                            semanticLabel: 'Bìa album ${song.displayTitle}',
+                            size: 96,
+                            borderRadius: 18,
+                          ),
+                          if (!song.isPlaybackEligible)
+                            const Positioned.fill(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: Color(0x66000000),
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(18),
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    Icons.lock_outline_rounded,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        song.displayTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ],
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AlbumArt(
-                      imageUrl: song.thumbnail,
-                      semanticLabel: 'Bìa album ${song.displayTitle}',
-                      size: 96,
-                      borderRadius: 18,
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      song.displayTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ],
                 ),
               ),
             );

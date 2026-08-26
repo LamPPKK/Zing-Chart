@@ -45,7 +45,7 @@ import 'package:zmp3chart/widgets/streaming_quality_controls.dart';
 /// Deterministic documentation-only entry point used to capture README images.
 ///
 /// It never calls the proxy or a platform media service. Choose a surface with
-/// `?screen=home|queue|smart-shuffle|stream-quality|settings|desktop-lyrics|realtime-chart|discovery|discovery-recommendations|discovery-mv|discovery-recent|discovery-new-releases|discovery-new-release-chart|live-radio|artist|artist-follow|artist-mv|collection-save|collection-information|hubs|top-100|release-catalog|weekly-chart|search|search-all|search-songs|search-results|new-releases|player|car-mode|song-detail|lyrics|lyric-share|radio|library|playlist-workspace|history-workspace|for-you|analytics|wrapped|tv`.
+/// `?screen=home|queue|smart-shuffle|stream-quality|settings|desktop-lyrics|realtime-chart|discovery|discovery-recommendations|discovery-mv|discovery-recent|discovery-new-releases|discovery-new-release-chart|live-radio|artist|artist-follow|artist-mv|collection-save|collection-information|hubs|top-100|release-catalog|weekly-chart|search|search-all|search-songs|search-results|new-releases|player|car-mode|song-detail|lyrics|lyric-share|radio|library|playlist-workspace|history-workspace|for-you|mix-workspace|analytics|wrapped|tv`.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final audioPlayer = _DocsAudioPlayer();
@@ -438,6 +438,12 @@ Future<void> main() async {
           initialTab: 5,
         ),
         'for-you' => ZingChartScreen(loadSongs: _loadSongs, initialTab: 3),
+        'mix-workspace' => ZingChartScreen(
+          loadSongs: _loadSongs,
+          navigationRoute: const AppNavigationRoute.forYou(
+            mix: ForYouMix.daily,
+          ),
+        ),
         'library' => ZingChartScreen(loadSongs: _loadSongs, initialTab: 4),
         'playlist-workspace' => ZingChartScreen(
           loadSongs: _loadSongs,

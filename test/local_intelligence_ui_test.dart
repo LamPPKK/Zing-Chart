@@ -4,7 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:zmp3chart/analytics_dashboard_screen.dart';
 import 'package:zmp3chart/data/library_repository.dart';
 import 'package:zmp3chart/data/listening_analytics_repository.dart';
+import 'package:zmp3chart/models/app_navigation_route.dart';
+import 'package:zmp3chart/models/live_radio.dart';
 import 'package:zmp3chart/models/listening_analytics.dart';
+import 'package:zmp3chart/models/playback_origin.dart';
 import 'package:zmp3chart/models/song.dart';
 import 'package:zmp3chart/music_player_controller.dart';
 import 'package:zmp3chart/music_player_scope.dart';
@@ -99,6 +102,290 @@ void main() {
     expect(controller.moodMix(MoodTag.chill).songs.first, songs.first);
   });
 
+  testWidgets(
+    'Daily Mix card opens a browse workspace before an explicit Play action',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = await _controller();
+      addTearDown(controller.dispose);
+      var chartLoads = 0;
+      final routes = <AppNavigationRoute>[];
+
+      await tester.pumpWidget(
+        MusicPlayerScope(
+          controller: controller,
+          child: MaterialApp(
+            theme: ThemeData.dark(useMaterial3: true),
+            home: ZingChartScreen(
+              chartRefreshInterval: null,
+              navigationRoute: const AppNavigationRoute.forYou(),
+              onNavigationRouteChanged: (route, {required replace}) =>
+                  routes.add(route),
+              loadSongs: () async {
+                chartLoads++;
+                return songs;
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.currentSong, isNull);
+      expect(find.byKey(const ValueKey('for-you-open-daily')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('for-you-open-daily')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('local-mix-workspace')), findsOneWidget);
+      expect(controller.currentSong, isNull);
+      expect(chartLoads, 1);
+      expect(routes.last.forYouMix, ForYouMix.daily);
+
+      await tester.tap(find.byKey(const ValueKey('catalog-history-back')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('for-you-daily-mix')), findsOneWidget);
+      expect(routes.last.forYouMix, isNull);
+
+      final cardQueue = controller.dailyMixCollection.songs;
+      controller.setShuffleEnabled(true);
+      await tester.tap(find.byKey(const ValueKey('for-you-play-daily')));
+      await tester.pump();
+      expect(controller.currentSong, cardQueue.first);
+      expect(controller.queue, cardQueue);
+      expect(controller.shuffleEnabled, isFalse);
+      expect(controller.nextSong, cardQueue[1]);
+      expect(controller.playbackOrigin.kind, PlaybackOriginKind.forYou);
+      expect(controller.playbackOrigin.label, 'Daily Mix');
+      expect(find.byKey(const ValueKey('local-mix-workspace')), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('for-you-open-daily')));
+      await tester.pumpAndSettle();
+
+      final expectedQueue = controller.dailyMixCollection.songs;
+      await tester.tap(find.byKey(const ValueKey('local-mix-play')));
+      await tester.pump();
+
+      expect(controller.currentSong, expectedQueue.first);
+      expect(controller.queue, expectedQueue);
+      expect(chartLoads, 1);
+    },
+  );
+
+  testWidgets('explicit Local Mix modes replace Live Radio state', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = await _controller(enableLiveRadio: true);
+    addTearDown(controller.dispose);
+    const room = LiveRadioRoom(
+      id: 'local-mix-live',
+      title: 'V-POP',
+      description: 'Nhạc Việt trực tiếp',
+      thumbnail: '',
+      listenerCount: 1200,
+      hostName: 'Zing MP3',
+      hostThumbnail: '',
+    );
+
+    controller.setShuffleEnabled(true);
+    await controller.playLiveRadio(room);
+    await tester.pumpWidget(
+      MusicPlayerScope(
+        controller: controller,
+        child: MaterialApp(
+          theme: ThemeData.dark(useMaterial3: true),
+          home: ZingChartScreen(
+            chartRefreshInterval: null,
+            navigationRoute: const AppNavigationRoute.forYou(),
+            loadSongs: () async => songs,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(controller.isLiveRadio, isTrue);
+    await tester.tap(find.byKey(const ValueKey('for-you-play-daily')));
+    await tester.pump();
+    expect(controller.isLiveRadio, isFalse);
+    expect(controller.shuffleEnabled, isFalse);
+
+    await controller.playLiveRadio(room);
+    await tester.tap(find.byKey(const ValueKey('for-you-open-daily')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('local-mix-shuffle')));
+    await tester.pump();
+
+    expect(controller.isLiveRadio, isFalse);
+    expect(controller.shuffleEnabled, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Mood Mix route restores its exact local snapshot', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(768, 1024);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = await _controller();
+    controller.updateCatalog(songs);
+    controller.toggleMood(songs.last, MoodTag.chill);
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MusicPlayerScope(
+        controller: controller,
+        child: MaterialApp(
+          theme: ThemeData.dark(useMaterial3: true),
+          home: ZingChartScreen(
+            chartRefreshInterval: null,
+            navigationRoute: const AppNavigationRoute.forYou(
+              mix: ForYouMix.chill,
+            ),
+            loadSongs: () async => songs,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final mix = controller.moodMix(MoodTag.chill);
+    expect(find.byKey(const ValueKey('local-mix-workspace')), findsOneWidget);
+    expect(find.text('Chill chậm lại'), findsOneWidget);
+    for (final song in mix.songs) {
+      expect(find.byKey(ValueKey('local-mix-song-${song.id}')), findsOneWidget);
+    }
+    expect(controller.currentSong, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('system Back closes a cold local Mix deep link', (tester) async {
+    tester.view.physicalSize = const Size(768, 1024);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = await _controller();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MusicPlayerScope(
+        controller: controller,
+        child: MaterialApp(
+          theme: ThemeData.dark(useMaterial3: true),
+          home: ZingChartScreen(
+            chartRefreshInterval: null,
+            navigationRoute: const AppNavigationRoute.forYou(
+              mix: ForYouMix.daily,
+            ),
+            loadSongs: () async => songs,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('local-mix-workspace')), findsOneWidget);
+    expect(await tester.binding.handlePopRoute(), isTrue);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('local-mix-workspace')), findsNothing);
+    expect(find.byKey(const ValueKey('for-you-daily-mix')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('TV Escape closes a cold local Mix deep link', (tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = await _controller();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MusicPlayerScope(
+        controller: controller,
+        child: MaterialApp(
+          theme: ThemeData.dark(useMaterial3: true),
+          home: ZingChartScreen(
+            chartRefreshInterval: null,
+            navigationRoute: const AppNavigationRoute.forYou(
+              mix: ForYouMix.gym,
+            ),
+            loadSongs: () async => songs,
+            tvMode: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('local-mix-workspace')), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('local-mix-workspace')), findsNothing);
+    expect(find.byKey(const ValueKey('for-you-daily-mix')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('locked local signals never enter a Mix or playable queue', (
+    tester,
+  ) async {
+    const locked = Song(
+      id: 'locked-local',
+      name: 'locked-local',
+      title: 'Bài Bị Giới Hạn',
+      thumbnail: '',
+      artistsNames: 'Nghệ sĩ khóa',
+      code: 'real-but-locked-code',
+      playable: false,
+    );
+    final controller = await _controller();
+    controller.updateCatalog([...songs, locked]);
+    controller.toggleLike(locked);
+    controller.toggleMood(locked, MoodTag.chill);
+    addTearDown(controller.dispose);
+
+    expect(controller.dailyMixCollection.songs, isNot(contains(locked)));
+    expect(controller.moodMix(MoodTag.chill).songs, isNot(contains(locked)));
+
+    await tester.pumpWidget(
+      MusicPlayerScope(
+        controller: controller,
+        child: MaterialApp(
+          theme: ThemeData.dark(useMaterial3: true),
+          home: ZingChartScreen(
+            chartRefreshInterval: null,
+            navigationRoute: const AppNavigationRoute.forYou(),
+            loadSongs: () async => [...songs, locked],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('for-you-open-daily')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('local-mix-song-locked-local')),
+      findsNothing,
+    );
+    await tester.tap(find.byKey(const ValueKey('local-mix-play')));
+    await tester.pump();
+    expect(controller.queue, isNotEmpty);
+    expect(controller.queue.every((song) => song.isPlaybackEligible), isTrue);
+    expect(controller.queue, isNot(contains(locked)));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('tags a mood from the song context menu', (tester) async {
     final controller = await _controller();
     addTearDown(controller.dispose);
@@ -134,6 +421,41 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('for-you-daily-mix')), findsOneWidget);
+  });
+
+  testWidgets('analytics keeps legacy song stats visible but not playable', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(768, 1024);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = await _controller(lockedAnalytics: true);
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MusicPlayerScope(
+        controller: controller,
+        child: const MaterialApp(home: AnalyticsDashboardScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tile = find.byKey(const ValueKey('analytics-song-one'));
+    expect(tile, findsOneWidget);
+    expect(tester.widget<ListTile>(tile).enabled, isFalse);
+    expect(tester.widget<ListTile>(tile).onTap, isNull);
+    expect(
+      find.descendant(
+        of: tile,
+        matching: find.byIcon(Icons.lock_outline_rounded),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(tile);
+    await tester.pump();
+    expect(controller.currentSong, isNull);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('TV can open and close Wrapped with the remote Back key', (
@@ -229,19 +551,31 @@ void main() {
   });
 }
 
-Future<PlaybackService> _controller() async {
+Future<PlaybackService> _controller({
+  bool lockedAnalytics = false,
+  bool enableLiveRadio = false,
+}) async {
   final now = DateTime.now();
   final date = _dateKey(now);
   final month = date.substring(0, 7);
-  const song = Song(
-    id: 'one',
-    name: 'mot-bai-hat',
-    title: 'Một Bài Hát',
-    thumbnail: '',
-    artistsNames: 'Ca Sĩ A',
-    code: 'code-one',
-  );
-  const aggregate = SongAnalyticsAggregate(
+  final song = lockedAnalytics
+      ? Song.fromJson(const {
+          'id': 'one',
+          'name': 'mot-bai-hat',
+          'title': 'Một Bài Hát',
+          'thumbnail': '',
+          'artists_names': 'Ca Sĩ A',
+          'code': 'code-one',
+        })
+      : const Song(
+          id: 'one',
+          name: 'mot-bai-hat',
+          title: 'Một Bài Hát',
+          thumbnail: '',
+          artistsNames: 'Ca Sĩ A',
+          code: 'code-one',
+        );
+  final aggregate = SongAnalyticsAggregate(
     song: song,
     starts: 8,
     qualifiedPlays: 6,
@@ -254,7 +588,7 @@ Future<PlaybackService> _controller() async {
       DailyListeningBucket(
         sourceId: 'ui-test-device',
         date: date,
-        songs: const {'one': aggregate},
+        songs: {'one': aggregate},
       ),
     ],
     dailyTotals: [
@@ -271,13 +605,16 @@ Future<PlaybackService> _controller() async {
       MonthlySongAggregate(
         sourceId: 'ui-test-device',
         month: month,
-        songs: const {'one': aggregate},
+        songs: {'one': aggregate},
       ),
     ],
   );
   final controller = PlaybackService(
     playbackAudioPlayer: FakePlaybackAudioPlayer(),
     sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+    liveRadioSourceResolver: enableLiveRadio
+        ? (id) async => 'https://audio.example.com/live/$id.m3u8'
+        : null,
     libraryRepository: MemoryLibraryRepository(),
     analyticsRepository: MemoryListeningAnalyticsRepository(analytics),
     systemMediaBridge: NoopSystemMediaBridge(),

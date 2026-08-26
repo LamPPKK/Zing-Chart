@@ -10,14 +10,16 @@ class ForYouHub extends StatelessWidget {
   const ForYouHub({
     super.key,
     required this.controller,
-    required this.onPlaySongs,
+    required this.onOpenMix,
+    required this.onPlayMix,
     required this.onOpenAnalytics,
     required this.onOpenWrapped,
     this.now,
   });
 
   final MusicPlayerController controller;
-  final ValueChanged<List<Song>> onPlaySongs;
+  final ValueChanged<MixCollection> onOpenMix;
+  final ValueChanged<MixCollection> onPlayMix;
   final VoidCallback onOpenAnalytics;
   final VoidCallback onOpenWrapped;
   final DateTime? now;
@@ -47,7 +49,8 @@ class ForYouHub extends StatelessWidget {
           _DailyMixHero(
             mix: daily,
             now: localNow,
-            onPlay: daily.songs.isEmpty ? null : () => onPlaySongs(daily.songs),
+            onOpen: () => onOpenMix(daily),
+            onPlay: daily.songs.isEmpty ? null : () => onPlayMix(daily),
           ),
           const SizedBox(height: 30),
           _SectionHeading(
@@ -79,9 +82,10 @@ class ForYouHub extends StatelessWidget {
                         width: width,
                         child: _MoodCard(
                           mix: mix,
+                          onOpen: () => onOpenMix(mix),
                           onPlay: mix.songs.isEmpty
                               ? null
-                              : () => onPlaySongs(mix.songs),
+                              : () => onPlayMix(mix),
                         ),
                       ),
                     )
@@ -269,122 +273,139 @@ class _DailyMixHero extends StatelessWidget {
   const _DailyMixHero({
     required this.mix,
     required this.now,
+    required this.onOpen,
     required this.onPlay,
   });
 
   final MixCollection mix;
   final DateTime now;
+  final VoidCallback onOpen;
   final VoidCallback? onPlay;
 
   @override
   Widget build(BuildContext context) {
     final date =
         '${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}';
-    return Container(
-      key: const ValueKey('for-you-daily-mix'),
-      constraints: const BoxConstraints(minHeight: 250),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFFF6B4A), Color(0xFF912F25), ZingColors.ink],
-          stops: [0, 0.55, 1],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: ZingColors.coral.withValues(alpha: 0.18),
-            blurRadius: 34,
-            offset: const Offset(0, 16),
+    return Semantics(
+      button: true,
+      label: 'Mở chi tiết ${mix.title}',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Container(
+          key: const ValueKey('for-you-daily-mix'),
+          constraints: const BoxConstraints(minHeight: 250),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFFF6B4A), Color(0xFF912F25), ZingColors.ink],
+              stops: [0, 0.55, 1],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: ZingColors.coral.withValues(alpha: 0.18),
+                blurRadius: 34,
+                offset: const Offset(0, 16),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: Stack(
-          children: [
-            Positioned(
-              right: -24,
-              top: -44,
-              child: Text(
-                date,
-                style: const TextStyle(
-                  color: Color(0x22FFFFFF),
-                  fontSize: 108,
-                  height: 1,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -8,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(30),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: const ValueKey('for-you-open-daily'),
+                onTap: onOpen,
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: -24,
+                      top: -44,
+                      child: Text(
+                        date,
+                        style: const TextStyle(
+                          color: Color(0x22FFFFFF),
+                          fontSize: 108,
+                          height: 1,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -8,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(26),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final compact = constraints.maxWidth < 620;
+                          final copy = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'LOCAL SIGNAL / DAILY',
+                                style: TextStyle(
+                                  color: ZingColors.lime,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.8,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Gu của bạn,\nkhông phải thuật toán đám mây.',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 34,
+                                  height: 0.98,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -1.8,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                mix.subtitle,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFFE7D8D2),
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              FilledButton.icon(
+                                key: const ValueKey('for-you-play-daily'),
+                                onPressed: onPlay,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: ZingColors.lime,
+                                  foregroundColor: ZingColors.ink,
+                                  minimumSize: const Size(144, 48),
+                                ),
+                                icon: const Icon(Icons.play_arrow_rounded),
+                                label: Text(
+                                  mix.songs.isEmpty
+                                      ? 'Chưa đủ dữ liệu'
+                                      : 'Phát ${mix.songs.length} bài',
+                                ),
+                              ),
+                            ],
+                          );
+                          if (compact) return copy;
+                          return Row(
+                            children: [
+                              Expanded(child: copy),
+                              const SizedBox(width: 22),
+                              _CoverStack(songs: mix.songs.take(3).toList()),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(26),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final compact = constraints.maxWidth < 620;
-                  final copy = Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'LOCAL SIGNAL / DAILY',
-                        style: TextStyle(
-                          color: ZingColors.lime,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.8,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Gu của bạn,\nkhông phải thuật toán đám mây.',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 34,
-                          height: 0.98,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -1.8,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        mix.subtitle,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFFE7D8D2),
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      FilledButton.icon(
-                        onPressed: onPlay,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: ZingColors.lime,
-                          foregroundColor: ZingColors.ink,
-                          minimumSize: const Size(144, 48),
-                        ),
-                        icon: const Icon(Icons.play_arrow_rounded),
-                        label: Text(
-                          mix.songs.isEmpty
-                              ? 'Chưa đủ dữ liệu'
-                              : 'Phát ${mix.songs.length} bài',
-                        ),
-                      ),
-                    ],
-                  );
-                  if (compact) return copy;
-                  return Row(
-                    children: [
-                      Expanded(child: copy),
-                      const SizedBox(width: 22),
-                      _CoverStack(songs: mix.songs.take(3).toList()),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -424,9 +445,14 @@ class _CoverStack extends StatelessWidget {
 }
 
 class _MoodCard extends StatelessWidget {
-  const _MoodCard({required this.mix, required this.onPlay});
+  const _MoodCard({
+    required this.mix,
+    required this.onOpen,
+    required this.onPlay,
+  });
 
   final MixCollection mix;
+  final VoidCallback onOpen;
   final VoidCallback? onPlay;
 
   @override
@@ -443,61 +469,68 @@ class _MoodCard extends StatelessWidget {
       MoodTag.focus => Icons.center_focus_strong_rounded,
       null => Icons.music_note_rounded,
     };
-    return Card(
-      child: InkWell(
-        onTap: onPlay,
-        borderRadius: BorderRadius.circular(22),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(15),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Card(
+        child: InkWell(
+          key: ValueKey('for-you-open-${mix.mood?.name ?? 'daily'}'),
+          onTap: onOpen,
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Icon(icon, color: accent),
                     ),
-                    child: Icon(icon, color: accent),
-                  ),
-                  const Spacer(),
-                  IconButton.filledTonal(
-                    tooltip: 'Phát ${mix.title}',
-                    onPressed: onPlay,
-                    icon: const Icon(Icons.play_arrow_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Text(
-                mix.title,
-                style: const TextStyle(
-                  fontSize: 21,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.6,
+                    const Spacer(),
+                    IconButton.filledTonal(
+                      key: ValueKey(
+                        'for-you-play-${mix.mood?.name ?? 'daily'}',
+                      ),
+                      tooltip: 'Phát ${mix.title}',
+                      onPressed: onPlay,
+                      icon: const Icon(Icons.play_arrow_rounded),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                mix.subtitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '${mix.songs.length.toString().padLeft(2, '0')} TRACKS',
-                style: TextStyle(
-                  color: accent,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
+                const SizedBox(height: 20),
+                Text(
+                  mix.title,
+                  style: const TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.6,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text(
+                  mix.subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '${mix.songs.length.toString().padLeft(2, '0')} TRACKS',
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

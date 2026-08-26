@@ -22,15 +22,16 @@ class LocalMixEngine {
         .toSet();
     final candidates = _uniqueSongs(
       catalog.where(
-        (song) =>
-            song.id.isNotEmpty &&
-            song.code.trim().isNotEmpty &&
-            !queueIds.contains(song.id),
+        (song) => song.isPlaybackEligible && !queueIds.contains(song.id),
       ),
     );
     if (candidates.isEmpty) return const [];
 
-    final profileSeed = _profileSeed(analytics, likedSongIds, today);
+    final eligibleLikedSongIds = candidates
+        .where((song) => likedSongIds.contains(song.id))
+        .map((song) => song.id)
+        .toSet();
+    final profileSeed = _profileSeed(analytics, eligibleLikedSongIds, today);
     final queueSeed = queue.map((song) => song.id).join('|');
     final scored =
         candidates.map((song) {
@@ -41,7 +42,7 @@ class LocalMixEngine {
             song,
             _score(
                   song,
-                  liked: likedSongIds.contains(song.id),
+                  liked: eligibleLikedSongIds.contains(song.id),
                   aggregate: analytics.aggregateForSong(song.id),
                   now: today,
                   dailySeed: 'smart|$profileSeed|$queueSeed',
@@ -66,18 +67,24 @@ class LocalMixEngine {
     DateTime? now,
   }) {
     final today = now ?? DateTime.now();
-    final unique = _uniqueSongs(candidates);
+    final unique = _uniqueSongs(
+      candidates.where((song) => song.isPlaybackEligible),
+    );
+    final eligibleLikedIds = unique
+        .where((song) => likedSongIds.contains(song.id))
+        .map((song) => song.id)
+        .toSet();
     final recent = analytics.summary(AnalyticsPeriod.thirtyDays, now: today);
-    final coldStart = recent.qualifiedPlays < 5 && likedSongIds.length < 3;
-    final profileSeed = _profileSeed(analytics, likedSongIds, today);
+    final coldStart = recent.qualifiedPlays < 5 && eligibleLikedIds.length < 3;
+    final profileSeed = _profileSeed(analytics, eligibleLikedIds, today);
     final songs = coldStart
         ? _withArtistDiversitySongs([
-            ...unique.where((song) => likedSongIds.contains(song.id)),
-            ...unique.where((song) => !likedSongIds.contains(song.id)),
+            ...unique.where((song) => eligibleLikedIds.contains(song.id)),
+            ...unique.where((song) => !eligibleLikedIds.contains(song.id)),
           ], limit: 25)
         : _rankPersonalized(
             unique,
-            likedSongIds: likedSongIds,
+            likedSongIds: eligibleLikedIds,
             analytics: analytics,
             now: today,
             profileSeed: profileSeed,
@@ -132,13 +139,25 @@ class LocalMixEngine {
     DateTime? now,
   }) {
     final today = now ?? DateTime.now();
-    final tagged = analytics.songsForMood(mood);
-    final taggedIds = tagged.map((song) => song.id).toSet();
+    final storedTagged = analytics.songsForMood(mood);
+    final taggedIds = storedTagged.map((song) => song.id).toSet();
+    final currentCandidates = {for (final song in candidates) song.id: song};
+    final tagged = storedTagged
+        .map((song) => currentCandidates[song.id] ?? song)
+        .where((song) => song.isPlaybackEligible)
+        .toList(growable: false);
     final taggedArtists = tagged
         .expand(_artists)
         .map((artist) => artist.toLowerCase())
         .toSet();
-    final unique = _uniqueSongs([...tagged, ...candidates]);
+    final unique = _uniqueSongs([
+      ...tagged,
+      ...candidates.where((song) => song.isPlaybackEligible),
+    ]);
+    final eligibleLikedIds = unique
+        .where((song) => likedSongIds.contains(song.id))
+        .map((song) => song.id)
+        .toSet();
     final scored = <_ScoredSong>[];
     for (final song in unique) {
       final aggregate = analytics.aggregateForSong(song.id);
@@ -156,7 +175,7 @@ class LocalMixEngine {
           song,
           _score(
                 song,
-                liked: likedSongIds.contains(song.id),
+                liked: eligibleLikedIds.contains(song.id),
                 aggregate: aggregate,
                 now: today,
                 dailySeed: '${mood.name}-${_dateSeed(today)}',

@@ -149,7 +149,7 @@ void main() {
   );
 
   test(
-    'smart shuffle rejects catalog entries without a playable code',
+    'smart shuffle rejects locked catalog entries with a real code',
     () async {
       final analytics = ListeningAnalyticsService(
         repository: MemoryListeningAnalyticsRepository(),
@@ -163,7 +163,8 @@ void main() {
         title: 'Bị giới hạn',
         thumbnail: '',
         artistsNames: 'Nghệ sĩ khóa',
-        code: '',
+        code: 'real-but-locked-code',
+        playable: false,
       );
 
       final suggestions = const LocalMixEngine().buildSmartShuffle(
@@ -175,6 +176,103 @@ void main() {
       );
 
       expect(suggestions, isEmpty);
+      analytics.dispose();
+    },
+  );
+
+  test('daily and mood mixes reject locked local signals', () async {
+    final analytics = ListeningAnalyticsService(
+      repository: MemoryListeningAnalyticsRepository(),
+      clock: () => now,
+      installationIdFactory: () => 'install-locked-mixes',
+    );
+    await analytics.initialize();
+    const locked = Song(
+      id: 'locked-signal',
+      name: 'locked-signal',
+      title: 'Bài khóa đã thích',
+      thumbnail: '',
+      artistsNames: 'Nghệ sĩ khóa',
+      code: 'real-but-locked-code',
+      playable: false,
+    );
+    analytics.toggleMood(locked, MoodTag.gym);
+
+    final daily = const LocalMixEngine().buildDailyMix(
+      candidates: [...songs, locked],
+      likedSongIds: {locked.id},
+      analytics: analytics,
+      now: now,
+    );
+    final mood = const LocalMixEngine().buildMoodMix(
+      mood: MoodTag.gym,
+      candidates: [...songs, locked],
+      likedSongIds: {locked.id},
+      analytics: analytics,
+      now: now,
+    );
+
+    expect(daily.songs.map((song) => song.id), isNot(contains(locked.id)));
+    expect(mood.songs.map((song) => song.id), isNot(contains(locked.id)));
+    analytics.dispose();
+  });
+
+  test(
+    'legacy mood tags rehydrate only from a playable current candidate',
+    () async {
+      final legacy = ListeningAnalyticsSnapshot.fromJson({
+        'version': 1,
+        'installationId': 'legacy-mood-install',
+        'moods': {
+          'legacy-song': {
+            'song': {
+              'id': 'legacy-song',
+              'name': 'legacy-song',
+              'title': 'Bản lưu cũ',
+              'thumbnail': '',
+              'artists_names': 'Nghệ sĩ cũ',
+              'code': 'legacy-code',
+            },
+            'tags': ['chill'],
+          },
+        },
+      });
+      expect(
+        legacy.moodAssignments['legacy-song']!.song.isPlaybackEligible,
+        isFalse,
+      );
+      final analytics = ListeningAnalyticsService(
+        repository: MemoryListeningAnalyticsRepository(legacy),
+        clock: () => now,
+        installationIdFactory: () => 'unused',
+      );
+      await analytics.initialize();
+      const current = Song(
+        id: 'legacy-song',
+        name: 'legacy-song',
+        title: 'Bản catalog hiện tại',
+        thumbnail: '',
+        artistsNames: 'Nghệ sĩ hiện tại',
+        code: 'current-code',
+      );
+
+      final rehydrated = const LocalMixEngine().buildMoodMix(
+        mood: MoodTag.chill,
+        candidates: const [current],
+        likedSongIds: const {},
+        analytics: analytics,
+        now: now,
+      );
+      final unavailable = const LocalMixEngine().buildMoodMix(
+        mood: MoodTag.chill,
+        candidates: const [],
+        likedSongIds: const {},
+        analytics: analytics,
+        now: now,
+      );
+
+      expect(rehydrated.songs, [current]);
+      expect(unavailable.songs, isEmpty);
       analytics.dispose();
     },
   );

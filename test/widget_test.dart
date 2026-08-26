@@ -86,6 +86,9 @@ void main() {
       expect(song.displayTitle, 'Kẻ Say Tình');
       expect(song.artistsNames, 'Quốc Thiên');
       expect(song.code, 'source-code');
+      expect(song.playable, isFalse);
+      expect(song.isPlaybackEligible, isFalse);
+      expect(songs.first.isPlaybackEligible, isTrue);
     });
 
     test('normalizes absolute and protocol-relative media sources', () {

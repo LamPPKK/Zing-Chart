@@ -197,6 +197,7 @@ void main() {
       expect(search.songs.single.song.id, 'search-one');
       expect(search.songs.single.song.code, 'search-source-one');
       expect(search.songs.single.playable, isTrue);
+      expect(search.songs.single.song.isPlaybackEligible, isTrue);
       expect(search.songs.single.hasLyrics, isTrue);
       expect(search.songs.single.duration, const Duration(seconds: 254));
       expect(search.songs.single.artists.single.id, 'artist-one');

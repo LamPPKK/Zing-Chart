@@ -318,7 +318,10 @@ class PlaybackService extends ChangeNotifier {
   List<Song> get recentlyPlayed {
     final seen = <String>{};
     return _history
-        .where((record) => seen.add(record.song.id))
+        .where(
+          (record) =>
+              record.song.isPlaybackEligible && seen.add(record.song.id),
+        )
         .map((record) => record.song)
         .take(20)
         .toList(growable: false);
@@ -492,8 +495,13 @@ class PlaybackService extends ChangeNotifier {
     Song song, {
     List<Song>? queue,
     PlaybackOrigin? origin,
+    bool? shuffleEnabled,
     bool completedCurrentSong = false,
   }) async {
+    if (!song.isPlaybackEligible) return;
+    final eligibleQueue = queue
+        ?.where((item) => item.isPlaybackEligible)
+        .toList(growable: false);
     final preparedSource = completedCurrentSong
         ? _takePreparedSeamlessSource(song)
         : null;
@@ -511,10 +519,17 @@ class PlaybackService extends ChangeNotifier {
     } else if (wasLiveRadio) {
       _playbackOrigin = const PlaybackOrigin.chart();
     }
-    if (queue != null && queue.isNotEmpty) {
+    if (shuffleEnabled != null) {
+      if (!shuffleEnabled && eligibleQueue == null && _smartShuffleEnabled) {
+        _removeSmartShuffleSongs();
+      }
+      _clearSmartShuffleState();
+      _shuffleEnabled = shuffleEnabled;
+    }
+    if (eligibleQueue != null) {
       _radioSongIds = const {};
       _clearSmartShuffleState();
-      _queue = List<Song>.unmodifiable(_uniqueSongs(queue));
+      _queue = List<Song>.unmodifiable(_uniqueSongs(eligibleQueue));
       _currentIndex = _queue.indexWhere((item) => item.id == song.id);
       if (_currentIndex < 0) {
         _queue = List<Song>.unmodifiable([..._queue, song]);
@@ -934,7 +949,7 @@ class PlaybackService extends ChangeNotifier {
 
   Future<int> startSongRadio([Song? seed]) async {
     final seedSong = seed ?? _currentSong;
-    if (seedSong == null || seedSong.code.trim().isEmpty) {
+    if (seedSong == null || !seedSong.isPlaybackEligible) {
       _radioErrorMessage = 'Bài hát này chưa hỗ trợ Song Radio.';
       _notifyPlaybackChanged();
       return 0;
@@ -1007,9 +1022,10 @@ class PlaybackService extends ChangeNotifier {
   }
 
   void updateCatalog(List<Song> songs) {
-    final nextIds = songs.map((song) => song.id).join('|');
-    final currentIds = _catalog.map((song) => song.id).join('|');
-    if (nextIds == currentIds) return;
+    String signature(Iterable<Song> values) => values
+        .map((song) => '${song.id}:${song.playable ? 1 : 0}:${song.code}')
+        .join('|');
+    if (signature(songs) == signature(_catalog)) return;
     _catalog = List<Song>.unmodifiable(songs);
     _notifyCatalogChanged();
     notifyListeners();
@@ -1023,6 +1039,7 @@ class PlaybackService extends ChangeNotifier {
   }
 
   bool addToQueue(Song song) {
+    if (!song.isPlaybackEligible) return false;
     if (song.id == _currentSong?.id) return false;
 
     _promoteSmartShuffleSong(song.id);
@@ -1795,7 +1812,7 @@ class PlaybackService extends ChangeNotifier {
       final prefix = _visitedQueuePrefix(seed);
       final seen = prefix.map((song) => song.id).toSet();
       final appended = radio.songs
-          .where((song) => song.code.isNotEmpty && seen.add(song.id))
+          .where((song) => song.isPlaybackEligible && seen.add(song.id))
           .take(30)
           .toList(growable: false);
       if (appended.isEmpty) {
@@ -2056,16 +2073,17 @@ class PlaybackService extends ChangeNotifier {
           (collection) => MapEntry(collection.id, collection),
         ),
       );
-    _queue = List<Song>.unmodifiable(snapshot.queue);
-    _currentSong = snapshot.currentSong;
+    _queue = List<Song>.unmodifiable(
+      snapshot.queue.where((song) => song.isPlaybackEligible),
+    );
+    _currentSong = snapshot.currentSong?.isPlaybackEligible == true
+        ? snapshot.currentSong
+        : null;
     _playbackOrigin = snapshot.playbackOrigin;
-    _currentIndex =
-        snapshot.currentIndex >= 0 && snapshot.currentIndex < _queue.length
-        ? snapshot.currentIndex
-        : _queue.indexWhere((song) => song.id == _currentSong?.id);
-    _position = snapshot.position;
-    _restoredPosition = snapshot.position;
-    _restoredSongId = snapshot.currentSong?.id;
+    _currentIndex = _queue.indexWhere((song) => song.id == _currentSong?.id);
+    _position = _currentSong == null ? Duration.zero : snapshot.position;
+    _restoredPosition = _position;
+    _restoredSongId = _currentSong?.id;
     final restoredQueueIds = _queue.map((song) => song.id).toSet();
     _smartShuffleSongIds = Set<String>.unmodifiable(
       snapshot.smartShuffleSongIds.where(restoredQueueIds.contains),

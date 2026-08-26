@@ -335,8 +335,9 @@ clients never call Zing upstream directly.
   route subtypes such as `/new-release/song` versus `/new-release/album`; the
   address bar still uses the client host. Discovery, local Hubs, Library, and
   For You use `?view=discovery`, `?view=hubs`, `?view=library`, and
-  `?view=for-you` respectively. Library may retain a section and opaque local
-  playlist ID, never a playlist name or listening data.
+  `?view=for-you` respectively. Mix details add
+  `mix=daily|chill|gym|focus`; Library may retain a section and opaque local
+  playlist ID. URLs never contain a playlist name, song ID, or listening data.
 - Only committed semantic navigation adds a history entry. Interim results while
   typing are coalesced with replace into the same entry; pagination, scrolling,
   seeking, and queue changes do not spam Browser History.
@@ -364,6 +365,25 @@ data.
 - The local preference is stored in player snapshot v12. This is **Seamless
   Next with a safe fallback**, not a gapless/crossfade claim until the complete
   real-device capability matrix passes.
+
+### Local Mix Workspace v1.3b
+
+- Tapping the body of a Daily, Chill, Gym, or Focus card opens a browseable
+  detail workspace; the card's Play control still starts immediately without
+  changing screens.
+- The workspace uses a Zing-style playlist layout with a cover mosaic,
+  cold-start guidance, separate Play/Shuffle controls, and adaptive phone,
+  tablet, desktop, and TV track rows.
+- Every track exposes Play, Queue, Like, Mood, Playlist, Radio, Share, and Info
+  through the canonical song menu. Selecting a row preserves the exact mix
+  snapshot as its playback queue. Card Play always starts in mix order, records
+  the exact Daily/Mood origin, and clears an older Shuffle state.
+- Locked local signals may retain Like, Mood, and metadata, but are excluded
+  from playable mixes. Play, Queue, and Radio fail closed even for legacy
+  snapshots that predate the persisted playback-eligibility field.
+- Back/Forward and Web links restore the selected mix through the local-safe
+  `?view=for-you&mix=...` route. Opening and browsing a mix calls no external
+  recommendation API and uploads no favorites, moods, or analytics.
 
 ## Screenshots by release
 
@@ -510,6 +530,14 @@ historical binaries and contain no real user data.
 <table>
   <tr>
     <td align="center"><img src="docs/screenshots/v1.3a-seamless-next-settings-desktop.png" alt="#zingChart desktop settings with Automatic or Off Seamless Next"><br><sub><b>Seamless Next with fallback</b> · transiently buffers only the exact first Up Next item in the final 30 seconds, with no offline audio file or persistent cache</sub></td>
+  </tr>
+</table>
+
+### v1.3b — Local Mix Workspace
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3b-local-mix-workspace-desktop.png" alt="Local-first Daily Mix detail on desktop with a cover mosaic and track list"><br><sub><b>Local Mix Workspace</b> · browse before playback, separate Play/Shuffle controls, complete per-track actions, and a local-safe route that exposes no listening data</sub></td>
   </tr>
 </table>
 

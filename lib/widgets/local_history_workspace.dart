@@ -120,6 +120,9 @@ class LocalHistoryWorkspace extends StatelessWidget {
         .expand((group) => group.records)
         .toList(growable: false);
     final queue = buildRecentPlaybackQueue(normalizedRecords);
+    final eligibleQueue = queue
+        .where((song) => song.isPlaybackEligible)
+        .toList(growable: false);
     final activeRecordId = _activeRecordId(normalizedRecords, currentSongId);
     final horizontalPadding = tvMode ? 34.0 : 20.0;
     return SliverMainAxisGroup(
@@ -129,11 +132,12 @@ class LocalHistoryWorkspace extends StatelessWidget {
           child: _HistoryHero(
             records: normalizedRecords,
             queue: queue,
+            eligibleSongCount: eligibleQueue.length,
             tvMode: tvMode,
             showBack: showBack,
             onBack: onBack,
-            onPlayAll: queue.isEmpty ? null : onPlayAll,
-            onShuffle: queue.length < 2 ? null : onShuffle,
+            onPlayAll: eligibleQueue.isEmpty ? null : onPlayAll,
+            onShuffle: eligibleQueue.length < 2 ? null : onShuffle,
             onClear: normalizedRecords.isEmpty ? null : onClear,
           ),
         ),
@@ -148,6 +152,7 @@ class LocalHistoryWorkspace extends StatelessWidget {
             child: _HistorySectionHeading(
               recordCount: normalizedRecords.length,
               songCount: queue.length,
+              eligibleSongCount: eligibleQueue.length,
               tvMode: tvMode,
             ),
           ),
@@ -202,7 +207,9 @@ class LocalHistoryWorkspace extends StatelessWidget {
                         tvMode: tvMode,
                         current: activeRecordId == record.id,
                         playing: isPlaying,
-                        onTap: () => onRecordTap(record),
+                        onTap: record.song.isPlaybackEligible
+                            ? () => onRecordTap(record)
+                            : null,
                         actions: actionResolver(record.song),
                       ),
                     ],
@@ -238,6 +245,7 @@ class _HistoryHero extends StatelessWidget {
   const _HistoryHero({
     required this.records,
     required this.queue,
+    required this.eligibleSongCount,
     required this.tvMode,
     required this.showBack,
     required this.onBack,
@@ -248,6 +256,7 @@ class _HistoryHero extends StatelessWidget {
 
   final List<ListeningRecord> records;
   final List<Song> queue;
+  final int eligibleSongCount;
   final bool tvMode;
   final bool showBack;
   final VoidCallback onBack;
@@ -299,6 +308,7 @@ class _HistoryHero extends StatelessWidget {
             final details = _HistoryHeroDetails(
               recordCount: records.length,
               songCount: queue.length,
+              eligibleSongCount: eligibleSongCount,
               listened: listened,
               tvMode: tvMode,
               compact: compact,
@@ -341,6 +351,7 @@ class _HistoryHeroDetails extends StatelessWidget {
   const _HistoryHeroDetails({
     required this.recordCount,
     required this.songCount,
+    required this.eligibleSongCount,
     required this.listened,
     required this.tvMode,
     required this.compact,
@@ -353,6 +364,7 @@ class _HistoryHeroDetails extends StatelessWidget {
 
   final int recordCount;
   final int songCount;
+  final int eligibleSongCount;
   final Duration listened;
   final bool tvMode;
   final bool compact;
@@ -399,7 +411,7 @@ class _HistoryHeroDetails extends StatelessWidget {
         ),
         const SizedBox(height: 9),
         Text(
-          '$recordCount lượt nghe · $songCount bài · ${_durationLabel(listened)}',
+          '$recordCount lượt nghe · ${_heroSongCountLabel(songCount, eligibleSongCount)} · ${_durationLabel(listened)}',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
             fontSize: tvMode ? 17 : 14,
@@ -563,11 +575,13 @@ class _HistorySectionHeading extends StatelessWidget {
   const _HistorySectionHeading({
     required this.recordCount,
     required this.songCount,
+    required this.eligibleSongCount,
     required this.tvMode,
   });
 
   final int recordCount;
   final int songCount;
+  final int eligibleSongCount;
   final bool tvMode;
 
   @override
@@ -585,7 +599,7 @@ class _HistorySectionHeading extends StatelessWidget {
       Text(
         recordCount == 0
             ? 'Phát một bài để bắt đầu lịch sử riêng tư trên thiết bị.'
-            : '$recordCount lượt · $songCount bài không trùng · mới nhất trước',
+            : '$recordCount lượt · $songCount bài không trùng${eligibleSongCount == songCount ? '' : ' · $eligibleSongCount có thể phát'} · mới nhất trước',
         style: TextStyle(
           color: Theme.of(context).colorScheme.onSurfaceVariant,
           fontSize: tvMode ? 16 : 13,
@@ -644,7 +658,7 @@ class _HistoryRecordRow extends StatefulWidget {
   final bool tvMode;
   final bool current;
   final bool playing;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final SongActionMenuConfiguration actions;
 
   @override
@@ -697,17 +711,22 @@ class _HistoryRecordRowState extends State<_HistoryRecordRow> {
       final highlighted = widget.current || _hovered || _focused;
       final radius = BorderRadius.circular(widget.tvMode ? 16 : 12);
       final song = widget.record.song;
+      final canPlay = song.isPlaybackEligible;
       final localTime = widget.record.playedAt.toLocal();
       final artist = song.artistsNames.isEmpty
           ? 'Nghệ sĩ chưa xác định'
           : song.artistsNames;
       final semanticLabel =
-          '${song.displayTitle}, $artist, lúc ${_timeLabel(localTime)}, ${_durationLabel(widget.record.listened)}';
+          '${song.displayTitle}, $artist, lúc ${_timeLabel(localTime)}, ${_durationLabel(widget.record.listened)}'
+          '${canPlay ? '' : ', không thể phát từ lịch sử cũ'}';
       return Padding(
         padding: const EdgeInsets.only(bottom: 4),
         child: MouseRegion(
-          onEnter: (_) => setState(() => _hovered = true),
-          onExit: (_) => setState(() => _hovered = false),
+          cursor: canPlay
+              ? SystemMouseCursors.click
+              : SystemMouseCursors.forbidden,
+          onEnter: canPlay ? (_) => setState(() => _hovered = true) : null,
+          onExit: canPlay ? (_) => setState(() => _hovered = false) : null,
           child: AnimatedContainer(
             duration: MediaQuery.disableAnimationsOf(context)
                 ? Duration.zero
@@ -734,27 +753,38 @@ class _HistoryRecordRowState extends State<_HistoryRecordRow> {
                 children: [
                   Expanded(
                     child: Semantics(
+                      key: ValueKey(
+                        'local-history-play-target-${widget.record.id}',
+                      ),
                       button: true,
+                      enabled: canPlay,
+                      selected: canPlay && widget.current,
                       label: semanticLabel,
-                      onTap: widget.onTap,
+                      onTap: canPlay ? widget.onTap : null,
                       excludeSemantics: true,
                       child: InkWell(
                         focusNode: _focusNode,
+                        canRequestFocus: canPlay,
                         excludeFromSemantics: true,
                         onFocusChange: _handleFocusChange,
-                        onTap: widget.onTap,
-                        onSecondaryTapDown: (details) => unawaited(
-                          showSongActionContextMenu(
-                            context: context,
-                            globalPosition: details.globalPosition,
-                            keyPrefix:
-                                'local-history-action-${widget.record.id}',
-                            song: song,
-                            handlers: widget.actions.handlers,
-                            isLiked: widget.actions.isLiked,
-                            moods: widget.actions.moods,
-                          ),
-                        ),
+                        mouseCursor: canPlay
+                            ? SystemMouseCursors.click
+                            : SystemMouseCursors.forbidden,
+                        onTap: canPlay ? widget.onTap : null,
+                        onSecondaryTapDown: widget.actions.handlers.hasAny
+                            ? (details) => unawaited(
+                                showSongActionContextMenu(
+                                  context: context,
+                                  globalPosition: details.globalPosition,
+                                  keyPrefix:
+                                      'local-history-action-${widget.record.id}',
+                                  song: song,
+                                  handlers: widget.actions.handlers,
+                                  isLiked: widget.actions.isLiked,
+                                  moods: widget.actions.moods,
+                                ),
+                              )
+                            : null,
                         child: Padding(
                           padding: EdgeInsets.fromLTRB(
                             widget.tvMode ? 16 : 10,
@@ -766,7 +796,19 @@ class _HistoryRecordRowState extends State<_HistoryRecordRow> {
                             children: [
                               SizedBox(
                                 width: widget.tvMode ? 46 : 34,
-                                child: widget.current
+                                child: !canPlay
+                                    ? Tooltip(
+                                        message: 'Không thể phát từ lịch sử cũ',
+                                        child: Icon(
+                                          Icons.lock_outline_rounded,
+                                          key: ValueKey(
+                                            'local-history-lock-${widget.record.id}',
+                                          ),
+                                          size: widget.tvMode ? 26 : 20,
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      )
+                                    : widget.current
                                     ? Icon(
                                         widget.playing
                                             ? Icons.graphic_eq_rounded
@@ -796,9 +838,11 @@ class _HistoryRecordRowState extends State<_HistoryRecordRow> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        color: widget.current
+                                        color: widget.current && canPlay
                                             ? activeColor
-                                            : scheme.onSurface,
+                                            : canPlay
+                                            ? scheme.onSurface
+                                            : scheme.onSurfaceVariant,
                                         fontSize: widget.tvMode ? 20 : 15,
                                         fontWeight: FontWeight.w800,
                                       ),
@@ -962,9 +1006,16 @@ DateTime _localDay(DateTime value) {
 String? _activeRecordId(List<ListeningRecord> records, String? currentSongId) {
   if (currentSongId == null) return null;
   for (final record in records) {
-    if (record.song.id == currentSongId) return record.id;
+    if (record.song.isPlaybackEligible && record.song.id == currentSongId) {
+      return record.id;
+    }
   }
   return null;
+}
+
+String _heroSongCountLabel(int songCount, int eligibleSongCount) {
+  if (songCount == eligibleSongCount) return '$songCount bài';
+  return '$eligibleSongCount/$songCount bài có thể phát';
 }
 
 String _longDateLabel(DateTime day) {

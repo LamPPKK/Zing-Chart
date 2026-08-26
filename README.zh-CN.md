@@ -230,8 +230,9 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 - `open` 参数中的 Zing 官方目标会统一为主域 `https://zingmp3.vn`，移除
   fragment/tracking，并保留 `/new-release/song` 与 `/new-release/album` 等 subtype；
   地址栏仍使用客户端 host。发现、Hub、音乐库和“为你推荐”分别使用
-  `?view=discovery`、`?view=hubs`、`?view=library` 与 `?view=for-you`；音乐库
-  只会保留分区与不透明的本地播放列表 ID，不写入播放列表名称或收听数据。
+  `?view=discovery`、`?view=hubs`、`?view=library` 与 `?view=for-you`；Mix 详情
+  额外使用 `mix=daily|chill|gym|focus`。音乐库只会保留分区与不透明的本地播放
+  列表 ID；URL 不写入播放列表名称、歌曲 ID 或收听数据。
 - 只有已提交的语义化导航才新增历史条目。输入过程中的临时搜索结果会通过 replace
   合并到同一个条目；分页、滚动、seek 与队列变化不会填满浏览器历史。
 - Android HTTPS 交接属于 best-effort：部分设备或旧版系统可能显示选择器，Android
@@ -252,6 +253,20 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   任何预加载错误都会回退到普通 resolve/play。
 - 选项保存在本机 player snapshot v12。这是带安全回退的 **Seamless Next**；在完整真机
   capability matrix 通过前，不宣称 gapless 或 crossfade。
+
+### Local Mix Workspace v1.3b
+
+- 点击 Daily、Chill、Gym 或专注卡片主体会打开可浏览的详情页；卡片上的 Play 按钮仍会
+  立即播放，不切换页面。
+- Workspace 使用接近 Zing 的播放列表布局，包含封面拼贴、cold-start 提示、独立的
+  Play/Shuffle，以及适配手机、平板、桌面和电视的歌曲列表。
+- 每首歌曲都通过统一菜单提供播放、加入队列、喜欢、Mood、播放列表、Radio、分享与
+  详情；点击歌曲会把当前 Mix 的准确快照作为播放队列。卡片 Play 始终按 Mix 顺序
+  开始，记录准确的 Daily/Mood 来源，并清除旧的 Shuffle 状态。
+- 被锁定歌曲的本地信号仍可保留喜欢、Mood 与元数据，但不会进入可播放 Mix；即使
+  导入尚未保存播放资格字段的旧快照，播放、队列与 Radio 也会 fail-closed。
+- Back/Forward 与 Web 链接通过本地安全的 `?view=for-you&mix=...` 恢复所选 Mix。
+  打开和浏览 Mix 不调用外部推荐 API，也不会上传收藏、Mood 或 analytics。
 
 ## 按版本展示界面
 
@@ -397,6 +412,14 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 <table>
   <tr>
     <td align="center"><img src="docs/screenshots/v1.3a-seamless-next-settings-desktop.png" alt="#zingChart 桌面设置中的 Seamless Next 自动或关闭选项"><br><sub><b>带回退的 Seamless Next</b> · 最后 30 秒只临时缓冲准确的第一首待播歌曲，不保存离线音频文件或持久缓存</sub></td>
+  </tr>
+</table>
+
+### v1.3b — Local Mix Workspace
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3b-local-mix-workspace-desktop.png" alt="桌面端本地优先 Daily Mix 详情，包含封面拼贴和歌曲列表"><br><sub><b>Local Mix Workspace</b> · 播放前先浏览、独立 Play/Shuffle、完整单曲操作，以及不暴露收听数据的本地安全路由</sub></td>
   </tr>
 </table>
 

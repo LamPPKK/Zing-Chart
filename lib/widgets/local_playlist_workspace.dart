@@ -121,6 +121,9 @@ class _LocalPlaylistWorkspaceState extends State<LocalPlaylistWorkspace> {
   @override
   Widget build(BuildContext context) {
     final songs = widget.playlist.songs;
+    final playableSongCount = songs
+        .where((song) => song.isPlaybackEligible)
+        .length;
     final horizontalPadding = widget.tvMode ? 34.0 : 20.0;
     return SliverMainAxisGroup(
       key: ValueKey('local-playlist-workspace-${widget.playlist.id}'),
@@ -136,6 +139,7 @@ class _LocalPlaylistWorkspaceState extends State<LocalPlaylistWorkspace> {
             ),
             child: _PlaylistSectionHeading(
               songCount: songs.length,
+              playableSongCount: playableSongCount,
               editing: _editing,
               tvMode: widget.tvMode,
             ),
@@ -177,7 +181,10 @@ class _LocalPlaylistWorkspaceState extends State<LocalPlaylistWorkspace> {
                       tvMode: false,
                       current: widget.currentSongId == songs[index].id,
                       playing: widget.isPlaying,
-                      onTap: () => widget.onSongTap(songs[index]),
+                      canPlay: songs[index].isPlaybackEligible,
+                      onTap: songs[index].isPlaybackEligible
+                          ? () => widget.onSongTap(songs[index])
+                          : null,
                       onRemove: () => widget.onRemove(songs[index]),
                       onMoveUp: null,
                       onMoveDown: null,
@@ -198,7 +205,10 @@ class _LocalPlaylistWorkspaceState extends State<LocalPlaylistWorkspace> {
                       tvMode: widget.tvMode,
                       current: widget.currentSongId == songs[index].id,
                       playing: widget.isPlaying,
-                      onTap: () => widget.onSongTap(songs[index]),
+                      canPlay: songs[index].isPlaybackEligible,
+                      onTap: songs[index].isPlaybackEligible
+                          ? () => widget.onSongTap(songs[index])
+                          : null,
                       onRemove: () => widget.onRemove(songs[index]),
                       onMoveUp: index == 0
                           ? null
@@ -226,6 +236,9 @@ class _LocalPlaylistWorkspaceState extends State<LocalPlaylistWorkspace> {
   Widget _buildHero(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final playableSongCount = widget.playlist.songs
+        .where((song) => song.isPlaybackEligible)
+        .length;
     return Container(
       key: const ValueKey('local-playlist-hero'),
       decoration: BoxDecoration(
@@ -263,12 +276,9 @@ class _LocalPlaylistWorkspaceState extends State<LocalPlaylistWorkspace> {
               tvMode: widget.tvMode,
               compact: compact,
               editing: _editing,
-              onPlayAll: widget.playlist.songs.isEmpty
-                  ? null
-                  : widget.onPlayAll,
-              onShuffle: widget.playlist.songs.length < 2
-                  ? null
-                  : widget.onShuffle,
+              playableSongCount: playableSongCount,
+              onPlayAll: playableSongCount == 0 ? null : widget.onPlayAll,
+              onShuffle: playableSongCount < 2 ? null : widget.onShuffle,
               onEdit: widget.playlist.songs.isEmpty
                   ? null
                   : () => setState(() => _editing = !_editing),
@@ -328,6 +338,7 @@ class _PlaylistHeroDetails extends StatelessWidget {
     required this.tvMode,
     required this.compact,
     required this.editing,
+    required this.playableSongCount,
     required this.onPlayAll,
     required this.onShuffle,
     required this.onEdit,
@@ -339,6 +350,7 @@ class _PlaylistHeroDetails extends StatelessWidget {
   final bool tvMode;
   final bool compact;
   final bool editing;
+  final int playableSongCount;
   final VoidCallback? onPlayAll;
   final VoidCallback? onShuffle;
   final VoidCallback? onEdit;
@@ -383,7 +395,9 @@ class _PlaylistHeroDetails extends StatelessWidget {
         ),
         SizedBox(height: tvMode ? 16 : 12),
         Text(
-          '${playlist.songs.length} bài hát · chỉ lưu trên thiết bị này',
+          playableSongCount == playlist.songs.length
+              ? '${playlist.songs.length} bài hát · chỉ lưu trên thiết bị này'
+              : '$playableSongCount/${playlist.songs.length} bài có thể phát · chỉ lưu trên thiết bị này',
           style: TextStyle(
             color: scheme.onSurfaceVariant,
             fontSize: tvMode ? 18 : 14,
@@ -552,11 +566,13 @@ class _PlaylistCoverFallback extends StatelessWidget {
 class _PlaylistSectionHeading extends StatelessWidget {
   const _PlaylistSectionHeading({
     required this.songCount,
+    required this.playableSongCount,
     required this.editing,
     required this.tvMode,
   });
 
   final int songCount;
+  final int playableSongCount;
   final bool editing;
   final bool tvMode;
 
@@ -581,7 +597,9 @@ class _PlaylistSectionHeading extends StatelessWidget {
                   ? tvMode
                         ? 'Dùng nút Lên/Xuống để đổi thứ tự · Xóa không ảnh hưởng bài gốc'
                         : 'Kéo tay nắm để đổi thứ tự · Xóa có thể hoàn tác'
-                  : '$songCount bài · thứ tự được lưu tự động trên máy',
+                  : playableSongCount == songCount
+                  ? '$songCount bài · thứ tự được lưu tự động trên máy'
+                  : '$playableSongCount/$songCount bài có thể phát · thứ tự được lưu tự động trên máy',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: tvMode ? 16 : 13,
@@ -655,6 +673,7 @@ class _PlaylistSongRow extends StatefulWidget {
     required this.tvMode,
     required this.current,
     required this.playing,
+    required this.canPlay,
     required this.onTap,
     required this.onRemove,
     required this.onMoveUp,
@@ -669,7 +688,8 @@ class _PlaylistSongRow extends StatefulWidget {
   final bool tvMode;
   final bool current;
   final bool playing;
-  final VoidCallback onTap;
+  final bool canPlay;
+  final VoidCallback? onTap;
   final VoidCallback onRemove;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
@@ -695,6 +715,9 @@ class _PlaylistSongRowState extends State<_PlaylistSongRow> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: MouseRegion(
+        cursor: widget.canPlay && !widget.editing
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.basic,
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: AnimatedContainer(
@@ -720,156 +743,172 @@ class _PlaylistSongRowState extends State<_PlaylistSongRow> {
             color: Colors.transparent,
             borderRadius: radius,
             clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onFocusChange: (value) => setState(() => _focused = value),
-              onTap: widget.editing ? null : widget.onTap,
-              onSecondaryTapDown: widget.editing
-                  ? null
-                  : (details) => unawaited(
-                      showSongActionContextMenu(
-                        context: context,
-                        globalPosition: details.globalPosition,
-                        keyPrefix: 'local-playlist-action',
-                        song: widget.song,
-                        handlers: widget.actions.handlers,
-                        isLiked: widget.actions.isLiked,
-                        moods: widget.actions.moods,
+            child: Semantics(
+              key: ValueKey('local-playlist-semantics-${widget.song.id}'),
+              container: true,
+              enabled: widget.canPlay,
+              child: InkWell(
+                canRequestFocus: widget.canPlay && !widget.editing,
+                onFocusChange: (value) => setState(() => _focused = value),
+                mouseCursor: widget.canPlay && !widget.editing
+                    ? SystemMouseCursors.click
+                    : SystemMouseCursors.forbidden,
+                onTap: widget.editing ? null : widget.onTap,
+                onSecondaryTapDown: widget.editing
+                    ? null
+                    : (details) => unawaited(
+                        showSongActionContextMenu(
+                          context: context,
+                          globalPosition: details.globalPosition,
+                          keyPrefix: 'local-playlist-action',
+                          song: widget.song,
+                          handlers: widget.actions.handlers,
+                          isLiked: widget.actions.isLiked,
+                          moods: widget.actions.moods,
+                        ),
                       ),
-                    ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: widget.tvMode ? 16 : 10,
-                  vertical: widget.tvMode ? 12 : 8,
-                ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: widget.tvMode ? 50 : 36,
-                      child: widget.current
-                          ? Icon(
-                              widget.playing
-                                  ? Icons.graphic_eq_rounded
-                                  : Icons.pause_circle_outline_rounded,
-                              color: activeColor,
-                            )
-                          : Text(
-                              '${widget.index + 1}',
-                              textAlign: TextAlign.center,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: widget.tvMode ? 16 : 10,
+                    vertical: widget.tvMode ? 12 : 8,
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: widget.tvMode ? 50 : 36,
+                        child: !widget.canPlay
+                            ? Icon(
+                                Icons.lock_outline_rounded,
+                                semanticLabel: 'Bị giới hạn phát',
+                                color: scheme.onSurfaceVariant,
+                                size: widget.tvMode ? 24 : 20,
+                              )
+                            : widget.current
+                            ? Icon(
+                                widget.playing
+                                    ? Icons.graphic_eq_rounded
+                                    : Icons.pause_circle_outline_rounded,
+                                color: activeColor,
+                              )
+                            : Text(
+                                '${widget.index + 1}',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: scheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                      ),
+                      AlbumArt(
+                        imageUrl: widget.song.thumbnail,
+                        semanticLabel: 'Bìa ${widget.song.displayTitle}',
+                        size: widget.tvMode ? 68 : 50,
+                        borderRadius: widget.tvMode ? 11 : 8,
+                      ),
+                      SizedBox(width: widget.tvMode ? 18 : 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.song.displayTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: widget.current
+                                    ? activeColor
+                                    : scheme.onSurface,
+                                fontSize: widget.tvMode ? 20 : 15,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              widget.song.artistsNames.isEmpty
+                                  ? 'Nghệ sĩ chưa xác định'
+                                  : widget.song.artistsNames,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: scheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w700,
+                                fontSize: widget.tvMode ? 16 : 13,
                               ),
                             ),
-                    ),
-                    AlbumArt(
-                      imageUrl: widget.song.thumbnail,
-                      semanticLabel: 'Bìa ${widget.song.displayTitle}',
-                      size: widget.tvMode ? 68 : 50,
-                      borderRadius: widget.tvMode ? 11 : 8,
-                    ),
-                    SizedBox(width: widget.tvMode ? 18 : 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.song.displayTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: widget.current
-                                  ? activeColor
-                                  : scheme.onSurface,
-                              fontSize: widget.tvMode ? 20 : 15,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            widget.song.artistsNames.isEmpty
-                                ? 'Nghệ sĩ chưa xác định'
-                                : widget.song.artistsNames,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: scheme.onSurfaceVariant,
-                              fontSize: widget.tvMode ? 16 : 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (!compact && !widget.editing) ...[
-                      const SizedBox(width: 12),
-                      Text(
-                        'LOCAL',
-                        style: TextStyle(
-                          color: scheme.onSurfaceVariant,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1,
+                          ],
                         ),
                       ),
-                    ],
-                    SizedBox(width: widget.tvMode ? 16 : 6),
-                    if (widget.editing) ...[
-                      if (widget.tvMode) ...[
-                        IconButton.outlined(
-                          key: ValueKey(
-                            'local-playlist-move-up-${widget.song.id}',
+                      if (!compact && !widget.editing) ...[
+                        const SizedBox(width: 12),
+                        Text(
+                          widget.canPlay ? 'LOCAL' : 'BỊ GIỚI HẠN',
+                          style: TextStyle(
+                            color: scheme.onSurfaceVariant,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1,
                           ),
-                          tooltip: 'Di chuyển lên',
-                          onPressed: widget.onMoveUp,
-                          icon: const Icon(Icons.keyboard_arrow_up_rounded),
                         ),
-                        const SizedBox(width: 8),
-                        IconButton.outlined(
-                          key: ValueKey(
-                            'local-playlist-move-down-${widget.song.id}',
-                          ),
-                          tooltip: 'Di chuyển xuống',
-                          onPressed: widget.onMoveDown,
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                        ),
-                        const SizedBox(width: 8),
                       ],
-                      IconButton(
-                        key: ValueKey(
-                          'local-playlist-remove-${widget.song.id}',
-                        ),
-                        tooltip: 'Xóa khỏi playlist',
-                        onPressed: widget.onRemove,
-                        color: ZingColors.coral,
-                        icon: const Icon(Icons.remove_circle_outline_rounded),
-                      ),
-                      if (!widget.tvMode)
-                        ReorderableDragStartListener(
-                          key: ValueKey(
-                            'local-playlist-handle-${widget.song.id}',
+                      SizedBox(width: widget.tvMode ? 16 : 6),
+                      if (widget.editing) ...[
+                        if (widget.tvMode) ...[
+                          IconButton.outlined(
+                            key: ValueKey(
+                              'local-playlist-move-up-${widget.song.id}',
+                            ),
+                            tooltip: 'Di chuyển lên',
+                            onPressed: widget.onMoveUp,
+                            icon: const Icon(Icons.keyboard_arrow_up_rounded),
                           ),
-                          index: widget.index,
-                          child: Tooltip(
-                            message: 'Kéo để sắp xếp',
-                            child: SizedBox.square(
-                              dimension: 48,
-                              child: Icon(
-                                Icons.drag_handle_rounded,
-                                color: scheme.onSurfaceVariant,
+                          const SizedBox(width: 8),
+                          IconButton.outlined(
+                            key: ValueKey(
+                              'local-playlist-move-down-${widget.song.id}',
+                            ),
+                            tooltip: 'Di chuyển xuống',
+                            onPressed: widget.onMoveDown,
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        IconButton(
+                          key: ValueKey(
+                            'local-playlist-remove-${widget.song.id}',
+                          ),
+                          tooltip: 'Xóa khỏi playlist',
+                          onPressed: widget.onRemove,
+                          color: ZingColors.coral,
+                          icon: const Icon(Icons.remove_circle_outline_rounded),
+                        ),
+                        if (!widget.tvMode)
+                          ReorderableDragStartListener(
+                            key: ValueKey(
+                              'local-playlist-handle-${widget.song.id}',
+                            ),
+                            index: widget.index,
+                            child: Tooltip(
+                              message: 'Kéo để sắp xếp',
+                              child: SizedBox.square(
+                                dimension: 48,
+                                child: Icon(
+                                  Icons.drag_handle_rounded,
+                                  color: scheme.onSurfaceVariant,
+                                ),
                               ),
                             ),
                           ),
+                      ] else
+                        SongActionOverflowButton(
+                          keyPrefix: 'local-playlist-action',
+                          song: widget.song,
+                          handlers: widget.actions.handlers,
+                          isLiked: widget.actions.isLiked,
+                          moods: widget.actions.moods,
+                          iconSize: widget.tvMode ? 30 : 24,
+                          iconColor: scheme.onSurfaceVariant,
                         ),
-                    ] else
-                      SongActionOverflowButton(
-                        keyPrefix: 'local-playlist-action',
-                        song: widget.song,
-                        handlers: widget.actions.handlers,
-                        isLiked: widget.actions.isLiked,
-                        moods: widget.actions.moods,
-                        iconSize: widget.tvMode ? 30 : 24,
-                        iconColor: scheme.onSurfaceVariant,
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

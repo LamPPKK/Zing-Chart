@@ -225,6 +225,85 @@ void main() {
       controller.dispose();
     });
 
+    test('fails closed for locked songs across playback and queue', () async {
+      const locked = Song(
+        id: 'locked',
+        name: 'locked',
+        title: 'Bài bị giới hạn',
+        thumbnail: '',
+        artistsNames: 'Nghệ sĩ khóa',
+        code: 'real-but-locked-code',
+        playable: false,
+      );
+      final audio = FakePlaybackAudioPlayer();
+      final controller = PlaybackService(
+        playbackAudioPlayer: audio,
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        libraryRepository: MemoryLibraryRepository(),
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await controller.initialize();
+
+      await controller.playSong(locked, queue: [locked, songs.first]);
+      expect(controller.currentSong, isNull);
+      expect(controller.queue, isEmpty);
+      expect(audio.playedSources, isEmpty);
+      expect(controller.addToQueue(locked), isFalse);
+
+      await controller.playSong(songs.first, queue: [locked, ...songs]);
+      expect(controller.currentSong, songs.first);
+      expect(controller.queue, songs);
+      expect(controller.queue, isNot(contains(locked)));
+
+      await controller.playSong(songs.last, queue: const [locked]);
+      expect(controller.currentSong, songs.last);
+      expect(controller.queue, [songs.last]);
+      controller.dispose();
+    });
+
+    test(
+      'applies explicit shuffle inside a blocked play transaction',
+      () async {
+        final audio = BlockingStopPlaybackAudioPlayer();
+        final controller = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: MemoryLibraryRepository(),
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: songs);
+        var notifications = 0;
+        controller.addListener(() => notifications++);
+        final notificationsBeforePlay = notifications;
+        audio.blockNextStop();
+
+        final pending = controller.playSong(
+          songs.last,
+          queue: songs.reversed.toList(growable: false),
+          origin: const PlaybackOrigin(
+            kind: PlaybackOriginKind.forYou,
+            label: 'Daily Mix',
+          ),
+          shuffleEnabled: true,
+        );
+        await audio.stopStarted;
+
+        expect(notifications, notificationsBeforePlay);
+        expect(controller.currentSong, songs.first);
+        audio.releaseStop();
+        await pending;
+
+        expect(controller.currentSong, songs.last);
+        expect(controller.shuffleEnabled, isTrue);
+        expect(controller.queue, songs.reversed);
+        expect(controller.playbackOrigin.kind, PlaybackOriginKind.forYou);
+        expect(controller.playbackOrigin.label, 'Daily Mix');
+        expect(notifications, greaterThan(notificationsBeforePlay));
+        controller.dispose();
+      },
+    );
+
     test('retries source resolution after an initial failure', () async {
       final audio = FakePlaybackAudioPlayer();
       var attempts = 0;

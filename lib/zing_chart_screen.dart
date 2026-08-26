@@ -47,6 +47,7 @@ import 'widgets/for_you_hub.dart';
 import 'widgets/library_hub.dart';
 import 'widgets/live_radio_hub.dart';
 import 'widgets/local_history_workspace.dart';
+import 'widgets/local_mix_workspace.dart';
 import 'widgets/local_playlist_workspace.dart';
 import 'widgets/mini_player.dart';
 import 'widgets/official_content_share_dialog.dart';
@@ -139,6 +140,7 @@ class _CatalogNavigationState {
     required this.discoveryHome,
     required this.selectedPlaylistId,
     required this.librarySection,
+    required this.selectedForYouMix,
     required this.releaseContentType,
     required this.releaseRegion,
     required this.weeklyRegion,
@@ -168,6 +170,7 @@ class _CatalogNavigationState {
   final DiscoveryHome discoveryHome;
   final String? selectedPlaylistId;
   final LibrarySection librarySection;
+  final ForYouMix? selectedForYouMix;
   final ReleaseContentType releaseContentType;
   final ReleaseRegion releaseRegion;
   final WeeklyChartRegion weeklyRegion;
@@ -185,6 +188,7 @@ class _CatalogNavigationState {
     selectedDiscoveryCategoryId,
     selectedPlaylistId,
     librarySection.name,
+    selectedForYouMix?.name,
     releaseContentType.name,
     releaseRegion.name,
     weeklyRegion.name,
@@ -358,6 +362,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   int _currentMvRequestId = 0;
   String? _selectedPlaylistId;
   LibrarySection _librarySection = LibrarySection.overview;
+  ForYouMix? _selectedForYouMix;
   Timer? _searchDebounce;
   Timer? _searchSuggestionDebounce;
   CatalogSearchResult? _searchResult;
@@ -708,6 +713,23 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     return null;
   }
 
+  MixCollection? _selectedLocalMix(MusicPlayerController controller) {
+    return switch (_selectedForYouMix) {
+      ForYouMix.daily => controller.dailyMixCollection,
+      ForYouMix.chill => controller.moodMix(MoodTag.chill),
+      ForYouMix.gym => controller.moodMix(MoodTag.gym),
+      ForYouMix.focus => controller.moodMix(MoodTag.focus),
+      null => null,
+    };
+  }
+
+  ForYouMix _routeForMix(MixCollection mix) => switch (mix.mood) {
+    MoodTag.chill => ForYouMix.chill,
+    MoodTag.gym => ForYouMix.gym,
+    MoodTag.focus => ForYouMix.focus,
+    null => ForYouMix.daily,
+  };
+
   _CatalogNavigationState _captureNavigationState({String? searchQuery}) =>
       _CatalogNavigationState(
         selectedTab: _selectedTab,
@@ -735,6 +757,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         discoveryHome: _discoveryHome,
         selectedPlaylistId: _selectedPlaylistId,
         librarySection: _librarySection,
+        selectedForYouMix: _selectedForYouMix,
         releaseContentType: _releaseContentType,
         releaseRegion: _releaseRegion,
         weeklyRegion: _weeklyRegion,
@@ -755,7 +778,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       return _officialNavigationRoute('https://zingmp3.vn/radio');
     }
     if (state.selectedTab == _forYouTab) {
-      return const AppNavigationRoute.forYou();
+      return AppNavigationRoute.forYou(mix: state.selectedForYouMix);
     }
     if (state.selectedTab == _libraryTab) {
       return AppNavigationRoute.library(
@@ -892,7 +915,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
               route.officialLink?.canonicalUri.toString() &&
           previous?.shellDestination == route.shellDestination &&
           previous?.librarySection == route.librarySection &&
-          previous?.playlistId == route.playlistId;
+          previous?.playlistId == route.playlistId &&
+          previous?.forYouMix == route.forYouMix;
       if (sameIdentity && samePresentation) {
         // A warm platform route can settle before the initial async catalog
         // loader enables reporting. Consume its initial-replace intent here so
@@ -999,7 +1023,15 @@ class _ZingChartScreenState extends State<ZingChartScreen>
           });
           _scrollContentToStart();
         case AppShellDestination.forYou:
+          final needsSeparateOrigin =
+              _selectedTab == _forYouTab &&
+              _selectedForYouMix != route.forYouMix;
+          if (needsSeparateOrigin) _recordNavigationOrigin();
           _selectTab(_forYouTab);
+          if (_selectedForYouMix != route.forYouMix) {
+            setState(() => _selectedForYouMix = route.forYouMix);
+            _scrollContentToStart();
+          }
       }
     } finally {
       _restoringNavigation = wasRestoring;
@@ -1191,6 +1223,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _discoveryHome = target.discoveryHome;
       _selectedPlaylistId = target.selectedPlaylistId;
       _librarySection = target.librarySection;
+      _selectedForYouMix = target.selectedForYouMix;
       _releaseContentType = target.releaseContentType;
       _releaseRegion = target.releaseRegion;
       _weeklyRegion = target.weeklyRegion;
@@ -1278,6 +1311,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
 
   bool get _canUseToolbarBack =>
       _canNavigateBack ||
+      _selectedForYouMix != null ||
       _selectedPlaylistId != null ||
       (_selectedTab == _libraryTab &&
           _librarySection == LibrarySection.recent) ||
@@ -1290,6 +1324,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   void _navigateToolbarBack() {
     if (_canNavigateBack) {
       _navigateBack();
+      return;
+    }
+    if (_selectedForYouMix != null) {
+      _closeLocalMix();
       return;
     }
     if (_selectedPlaylistId != null) {
@@ -3238,9 +3276,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       );
     }
     if (_selectedTab == _forYouTab) {
-      return const PlaybackOrigin(
+      final mix = _selectedLocalMix(_playerController);
+      return PlaybackOrigin(
         kind: PlaybackOriginKind.forYou,
-        label: 'Dành cho bạn',
+        label: mix?.title ?? 'Dành cho bạn',
       );
     }
     if (_selectedTab == _libraryTab) {
@@ -3312,13 +3351,23 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     return 'Khám phá';
   }
 
-  void _selectSong(Song song, List<Song> queue, {PlaybackOrigin? origin}) {
+  void _selectSong(
+    Song song,
+    List<Song> queue, {
+    PlaybackOrigin? origin,
+    bool? shuffleEnabled,
+  }) {
+    if (!song.isPlaybackEligible) {
+      _showUnavailable(song);
+      return;
+    }
     final controller = _playerController;
     unawaited(
       controller.playSong(
         song,
         queue: queue,
         origin: origin ?? _visiblePlaybackOrigin(),
+        shuffleEnabled: shuffleEnabled,
       ),
     );
     if (widget.tvMode) {
@@ -3427,6 +3476,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                 _selectedArtist == null &&
                 _selectedCollection == null &&
                 _selectedHub == null &&
+                _selectedForYouMix == null &&
+                _selectedPlaylistId == null &&
                 _catalogBrowseView == _CatalogBrowseView.discovery &&
                 (!widget.tvMode ||
                     (_selectedTab == _chartTab && !_searchFocusNode.hasFocus)),
@@ -3600,6 +3651,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       setState(() => _desktopPlayerVisible = false);
       return;
     }
+    if (_selectedForYouMix != null) {
+      _navigateBackOr(_closeLocalMix);
+      return;
+    }
     if (_selectedPlaylistId != null) {
       _navigateBackOr(_closeLocalPlaylist);
       return;
@@ -3749,6 +3804,11 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     final selectedPlaylist = _selectedPlaylist(controller);
     final localPlaylistRequested =
         _selectedTab == _libraryTab && _selectedPlaylistId != null;
+    final localMixRequested =
+        _selectedTab == _forYouTab && _selectedForYouMix != null;
+    final selectedLocalMix = localMixRequested
+        ? _selectedLocalMix(controller)
+        : null;
     final localHistoryRequested =
         _selectedTab == _libraryTab &&
         _selectedPlaylistId == null &&
@@ -3884,11 +3944,44 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                     ),
                   ),
                 ),
-              if (!localPlaylistRequested && !localHistoryRequested)
+              if (!localPlaylistRequested &&
+                  !localHistoryRequested &&
+                  !localMixRequested)
                 SliverToBoxAdapter(
                   child: _buildHeader(pinCatalogToolbar: pinCatalogToolbar),
                 ),
-              if (localHistoryRequested)
+              if (localMixRequested && selectedLocalMix != null)
+                LocalMixWorkspace(
+                  mix: selectedLocalMix,
+                  tvMode: widget.tvMode,
+                  showBack: !pinCatalogToolbar,
+                  currentSongId: controller.currentSong?.id,
+                  isPlaying: controller.isPlaying,
+                  onBack: () => _navigateBackOr(_closeLocalMix),
+                  onPlayAll: () =>
+                      _playLocalMix(selectedLocalMix, shuffle: false),
+                  onShuffle: () =>
+                      _playLocalMix(selectedLocalMix, shuffle: true),
+                  onSongTap: (song) {
+                    if (!song.isPlaybackEligible) {
+                      _showUnavailable(song);
+                      return;
+                    }
+                    _selectSong(
+                      song,
+                      selectedLocalMix.songs
+                          .where((item) => item.isPlaybackEligible)
+                          .toList(growable: false),
+                      origin: PlaybackOrigin(
+                        kind: PlaybackOriginKind.forYou,
+                        label: selectedLocalMix.title,
+                      ),
+                    );
+                  },
+                  actionResolver: (song) =>
+                      _localMixSongActions(controller, selectedLocalMix, song),
+                )
+              else if (localHistoryRequested)
                 LocalHistoryWorkspace(
                   records: controller.history,
                   tvMode: widget.tvMode,
@@ -3896,16 +3989,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                   currentSongId: controller.currentSong?.id,
                   isPlaying: controller.isPlaying,
                   onBack: () => _navigateBackOr(_closeLocalHistory),
-                  onPlayAll: () => _playRecentHistory(
-                    controller,
-                    recentHistoryQueue,
-                    shuffle: false,
-                  ),
-                  onShuffle: () => _playRecentHistory(
-                    controller,
-                    recentHistoryQueue,
-                    shuffle: true,
-                  ),
+                  onPlayAll: () =>
+                      _playRecentHistory(recentHistoryQueue, shuffle: false),
+                  onShuffle: () =>
+                      _playRecentHistory(recentHistoryQueue, shuffle: true),
                   onClear: () =>
                       unawaited(_confirmClearListeningHistory(controller)),
                   onRecordTap: (record) => _selectSong(
@@ -3930,16 +4017,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                   currentSongId: controller.currentSong?.id,
                   isPlaying: controller.isPlaying,
                   onBack: () => _navigateBackOr(_closeLocalPlaylist),
-                  onPlayAll: () => _playLocalPlaylist(
-                    controller,
-                    selectedPlaylist,
-                    shuffle: false,
-                  ),
-                  onShuffle: () => _playLocalPlaylist(
-                    controller,
-                    selectedPlaylist,
-                    shuffle: true,
-                  ),
+                  onPlayAll: () =>
+                      _playLocalPlaylist(selectedPlaylist, shuffle: false),
+                  onShuffle: () =>
+                      _playLocalPlaylist(selectedPlaylist, shuffle: true),
                   onRename: () =>
                       _showRenamePlaylist(controller, selectedPlaylist),
                   onDelete: () =>
@@ -4554,9 +4635,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                 SliverToBoxAdapter(
                   child: ForYouHub(
                     controller: controller,
-                    onPlaySongs: (songs) {
-                      if (songs.isNotEmpty) _selectSong(songs.first, songs);
-                    },
+                    onOpenMix: _openLocalMix,
+                    onPlayMix: (mix) => _playLocalMix(mix, shuffle: false),
                     onOpenAnalytics: _openAnalytics,
                     onOpenWrapped: _openWrapped,
                   ),
@@ -4575,7 +4655,12 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                     onDeletePlaylist: (playlist) =>
                         _confirmDeletePlaylist(controller, playlist),
                     onPlaySongs: (songs) {
-                      if (songs.isNotEmpty) _selectSong(songs.first, songs);
+                      final playable = songs
+                          .where((song) => song.isPlaybackEligible)
+                          .toList(growable: false);
+                      if (playable.isNotEmpty) {
+                        _selectSong(playable.first, playable);
+                      }
                     },
                     onExportBackup: () => _exportBackupFile(controller),
                     onImportBackup: () => _importBackupFile(controller),
@@ -5196,6 +5281,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         plainTrackNumber ??
         (collectionKind == CatalogCollectionKind.album ? index + 1 : null);
     final canPlay =
+        song.isPlaybackEligible &&
         surfacePlaybackEnabled &&
         (_selectedCollection == null
             ? catalogSong?.playable ?? !officialSearchRow
@@ -5235,11 +5321,14 @@ class _ZingChartScreenState extends State<ZingChartScreen>
             : null);
     final playableQueue = _selectedTab == _chartTab
         ? _songs
+              .where((item) => item.isPlaybackEligible)
+              .toList(growable: false)
         : catalogSong == null
         ? (surfacePlaybackEnabled ? visibleSongs : const <Song>[])
         : visibleSongs
               .where(
                 (item) =>
+                    item.isPlaybackEligible &&
                     surfacePlaybackEnabled &&
                     (_catalogSongFor(item)?.playable ?? !officialSearchRow),
               )
@@ -5683,6 +5772,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _selectedArtist == null &&
         _selectedCollection == null &&
         _selectedHub == null &&
+        _selectedForYouMix == null &&
         _catalogBrowseView == _CatalogBrowseView.discovery;
     if (isSameRoot) return;
     _recordNavigationOrigin();
@@ -5717,6 +5807,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _hubDetail = null;
       _hubDetailErrorMessage = null;
       _isHubDetailLoading = false;
+      _selectedForYouMix = null;
       if (index != _discoveryTab) {
         _searchController.clear();
         _lastObservedSearchQuery = '';
@@ -5827,6 +5918,25 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     _scrollContentToStart();
   }
 
+  void _openLocalMix(MixCollection mix) {
+    final target = _routeForMix(mix);
+    if (_selectedTab == _forYouTab && _selectedForYouMix == target) return;
+    if (_selectedTab != _forYouTab) {
+      _selectTab(_forYouTab);
+    } else {
+      _recordNavigationOrigin();
+    }
+    setState(() => _selectedForYouMix = target);
+    _scrollContentToStart();
+  }
+
+  void _closeLocalMix() {
+    if (_selectedForYouMix == null) return;
+    _replaceNextRouteReport = true;
+    setState(() => _selectedForYouMix = null);
+    _scrollContentToStart();
+  }
+
   void _focusSearch() {
     _enterDiscovery();
     _searchFocusNode.requestFocus();
@@ -5896,16 +6006,14 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   Future<void> _openSettings(MusicPlayerController controller) =>
       showAppSettings(context, controller: controller, tvMode: widget.tvMode);
 
-  void _playRecentHistory(
-    MusicPlayerController controller,
-    List<Song> queue, {
-    required bool shuffle,
-  }) {
-    if (queue.isEmpty) return;
-    controller.setShuffleEnabled(shuffle);
-    _selectSong(
-      queue.first,
-      queue,
+  void _playRecentHistory(List<Song> queue, {required bool shuffle}) {
+    final playable = queue
+        .where((song) => song.isPlaybackEligible)
+        .toList(growable: false);
+    if (playable.isEmpty) return;
+    _playExplicitQueue(
+      playable,
+      shuffle: shuffle,
       origin: const PlaybackOrigin(
         kind: PlaybackOriginKind.recentlyPlayed,
         label: 'Nghe gần đây',
@@ -5917,29 +6025,42 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     MusicPlayerController controller,
     List<Song> queue,
     Song song,
-  ) => SongActionMenuConfiguration(
-    isLiked: controller.isLiked(song),
-    moods: controller.moodsFor(song),
-    handlers: SongActionHandlers(
-      onPlay: () => _selectSong(
-        song,
-        queue,
-        origin: const PlaybackOrigin(
-          kind: PlaybackOriginKind.recentlyPlayed,
-          label: 'Nghe gần đây',
-        ),
+  ) {
+    final canPlay = song.isPlaybackEligible;
+    final playable = queue
+        .where((item) => item.isPlaybackEligible)
+        .toList(growable: false);
+    return SongActionMenuConfiguration(
+      isLiked: controller.isLiked(song),
+      moods: controller.moodsFor(song),
+      handlers: SongActionHandlers(
+        onPlay: canPlay
+            ? () => _selectSong(
+                song,
+                playable,
+                origin: const PlaybackOrigin(
+                  kind: PlaybackOriginKind.recentlyPlayed,
+                  label: 'Nghe gần đây',
+                ),
+              )
+            : null,
+        onOpenDetail: () =>
+            unawaited(_openSongDetail(song, playable, canPlay: canPlay)),
+        onAddToQueue: canPlay
+            ? () => _addSongToQueueWithFeedback(controller, song)
+            : null,
+        onStartRadio: canPlay
+            ? () => unawaited(
+                startSongRadioWithFeedback(context, controller, song),
+              )
+            : null,
+        onAddToPlaylist: () => unawaited(_showPlaylistPicker(controller, song)),
+        onShare: () => unawaited(_shareSong(song, _catalogSongFor(song))),
+        onToggleLike: () => controller.toggleLike(song),
+        onToggleMood: (mood) => controller.toggleMood(song, mood),
       ),
-      onOpenDetail: () =>
-          unawaited(_openSongDetail(song, queue, canPlay: true)),
-      onAddToQueue: () => _addSongToQueueWithFeedback(controller, song),
-      onStartRadio: () =>
-          unawaited(startSongRadioWithFeedback(context, controller, song)),
-      onAddToPlaylist: () => unawaited(_showPlaylistPicker(controller, song)),
-      onShare: () => unawaited(_shareSong(song, _catalogSongFor(song))),
-      onToggleLike: () => controller.toggleLike(song),
-      onToggleMood: (mood) => controller.toggleMood(song, mood),
-    ),
-  );
+    );
+  }
 
   Future<void> _confirmClearListeningHistory(
     MusicPlayerController controller,
@@ -5976,19 +6097,78 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     );
   }
 
-  void _playLocalPlaylist(
-    MusicPlayerController controller,
-    LocalPlaylist playlist, {
-    required bool shuffle,
-  }) {
-    if (playlist.songs.isEmpty) return;
-    controller.setShuffleEnabled(shuffle);
-    _selectSong(
-      playlist.songs.first,
-      playlist.songs,
+  void _playLocalPlaylist(LocalPlaylist playlist, {required bool shuffle}) {
+    final playable = playlist.songs
+        .where((song) => song.isPlaybackEligible)
+        .toList(growable: false);
+    if (playable.isEmpty) return;
+    _playExplicitQueue(
+      playable,
+      shuffle: shuffle,
       origin: PlaybackOrigin(
         kind: PlaybackOriginKind.playlist,
         label: playlist.name,
+      ),
+    );
+  }
+
+  void _playLocalMix(MixCollection mix, {required bool shuffle}) {
+    final queue = mix.songs
+        .where((song) => song.isPlaybackEligible)
+        .toList(growable: false);
+    if (queue.isEmpty) return;
+    _playExplicitQueue(
+      queue,
+      shuffle: shuffle,
+      origin: PlaybackOrigin(kind: PlaybackOriginKind.forYou, label: mix.title),
+    );
+  }
+
+  void _playExplicitQueue(
+    List<Song> queue, {
+    required bool shuffle,
+    required PlaybackOrigin origin,
+  }) {
+    _selectSong(queue.first, queue, origin: origin, shuffleEnabled: shuffle);
+  }
+
+  SongActionMenuConfiguration _localMixSongActions(
+    MusicPlayerController controller,
+    MixCollection mix,
+    Song song,
+  ) {
+    final canPlay = song.isPlaybackEligible;
+    final queue = mix.songs
+        .where((item) => item.isPlaybackEligible)
+        .toList(growable: false);
+    return SongActionMenuConfiguration(
+      isLiked: controller.isLiked(song),
+      moods: controller.moodsFor(song),
+      handlers: SongActionHandlers(
+        onPlay: canPlay
+            ? () => _selectSong(
+                song,
+                queue,
+                origin: PlaybackOrigin(
+                  kind: PlaybackOriginKind.forYou,
+                  label: mix.title,
+                ),
+              )
+            : null,
+        onOpenDetail: () =>
+            unawaited(_openSongDetail(song, queue, canPlay: canPlay)),
+        onAddToQueue: canPlay
+            ? () => _addSongToQueueWithFeedback(controller, song)
+            : null,
+        onStartRadio: canPlay
+            ? () => unawaited(
+                startSongRadioWithFeedback(context, controller, song),
+              )
+            : null,
+        onAddToPlaylist: () => unawaited(_showPlaylistPicker(controller, song)),
+        onShare: () => unawaited(_shareSong(song, _catalogSongFor(song))),
+        onToggleLike: () => controller.toggleLike(song),
+        onToggleMood: (mood) => controller.toggleMood(song, mood),
       ),
     );
   }
@@ -5997,31 +6177,44 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     MusicPlayerController controller,
     LocalPlaylist playlist,
     Song song,
-  ) => SongActionMenuConfiguration(
-    isLiked: controller.isLiked(song),
-    moods: controller.moodsFor(song),
-    handlers: SongActionHandlers(
-      onPlay: () => _selectSong(
-        song,
-        playlist.songs,
-        origin: PlaybackOrigin(
-          kind: PlaybackOriginKind.playlist,
-          label: playlist.name,
-        ),
+  ) {
+    final canPlay = song.isPlaybackEligible;
+    final playable = playlist.songs
+        .where((item) => item.isPlaybackEligible)
+        .toList(growable: false);
+    return SongActionMenuConfiguration(
+      isLiked: controller.isLiked(song),
+      moods: controller.moodsFor(song),
+      handlers: SongActionHandlers(
+        onPlay: canPlay
+            ? () => _selectSong(
+                song,
+                playable,
+                origin: PlaybackOrigin(
+                  kind: PlaybackOriginKind.playlist,
+                  label: playlist.name,
+                ),
+              )
+            : null,
+        onOpenDetail: () =>
+            unawaited(_openSongDetail(song, playable, canPlay: canPlay)),
+        onAddToQueue: canPlay
+            ? () => _addSongToQueueWithFeedback(controller, song)
+            : null,
+        onStartRadio: canPlay
+            ? () => unawaited(
+                startSongRadioWithFeedback(context, controller, song),
+              )
+            : null,
+        onAddToPlaylist: () => unawaited(_showPlaylistPicker(controller, song)),
+        onRemoveFromPlaylist: () =>
+            _removePlaylistSongWithUndo(controller, playlist.id, song),
+        onShare: () => unawaited(_shareSong(song, _catalogSongFor(song))),
+        onToggleLike: () => controller.toggleLike(song),
+        onToggleMood: (mood) => controller.toggleMood(song, mood),
       ),
-      onOpenDetail: () =>
-          unawaited(_openSongDetail(song, playlist.songs, canPlay: true)),
-      onAddToQueue: () => _addSongToQueueWithFeedback(controller, song),
-      onStartRadio: () =>
-          unawaited(startSongRadioWithFeedback(context, controller, song)),
-      onAddToPlaylist: () => unawaited(_showPlaylistPicker(controller, song)),
-      onRemoveFromPlaylist: () =>
-          _removePlaylistSongWithUndo(controller, playlist.id, song),
-      onShare: () => unawaited(_shareSong(song, _catalogSongFor(song))),
-      onToggleLike: () => controller.toggleLike(song),
-      onToggleMood: (mood) => controller.toggleMood(song, mood),
-    ),
-  );
+    );
+  }
 
   void _removePlaylistSongWithUndo(
     MusicPlayerController controller,

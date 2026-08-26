@@ -104,7 +104,9 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                   onPlay: (song) {
                     final queue = summary.topSongs
                         .map((stat) => stat.song)
+                        .where((item) => item.isPlaybackEligible)
                         .toList(growable: false);
+                    if (!song.isPlaybackEligible || queue.isEmpty) return;
                     controller.playSong(song, queue: queue);
                   },
                 ),
@@ -233,10 +235,14 @@ class _RankedSongs extends StatelessWidget {
       if (songs.isEmpty)
         const _EmptyAnalytics(message: 'Chưa có lượt nghe hợp lệ trong kỳ này.')
       else
-        ...songs.indexed.map(
-          (entry) => Card(
+        ...songs.indexed.map((entry) {
+          final song = entry.$2.song;
+          final canPlay = song.isPlaybackEligible;
+          return Card(
             child: ListTile(
-              onTap: () => onPlay(entry.$2.song),
+              key: ValueKey('analytics-song-${song.id}'),
+              enabled: canPlay,
+              onTap: canPlay ? () => onPlay(song) : null,
               leading: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -248,22 +254,35 @@ class _RankedSongs extends StatelessWidget {
                     ),
                   ),
                   AlbumArt(
-                    imageUrl: entry.$2.song.thumbnail,
-                    semanticLabel: 'Bìa ${entry.$2.song.displayTitle}',
+                    imageUrl: song.thumbnail,
+                    semanticLabel: 'Bìa ${song.displayTitle}',
                     size: 46,
                     borderRadius: 12,
                   ),
                 ],
               ),
-              title: Text(entry.$2.song.displayTitle),
-              subtitle: Text(entry.$2.song.artistsNames),
-              trailing: Text(
-                '${entry.$2.aggregate.qualifiedPlays} lượt',
-                style: const TextStyle(fontWeight: FontWeight.w800),
+              title: Text(song.displayTitle),
+              subtitle: Text(song.artistsNames),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!canPlay) ...[
+                    const Icon(
+                      Icons.lock_outline_rounded,
+                      semanticLabel: 'Bị giới hạn phát',
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    '${entry.$2.aggregate.qualifiedPlays} lượt',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ],
               ),
             ),
-          ),
-        ),
+          );
+        }),
     ],
   );
 }

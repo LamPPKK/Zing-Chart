@@ -4,6 +4,8 @@ enum AppShellDestination { discovery, hubs, library, forYou }
 
 enum LibrarySection { overview, songs, recent, playlists, albums, artists }
 
+enum ForYouMix { daily, chill, gym, focus }
+
 /// A bounded, serializable destination for the app shell.
 ///
 /// Only public catalog identity is written to a URL. Loaded catalog payloads,
@@ -14,7 +16,11 @@ class AppNavigationRoute {
     this.officialLink,
     this.librarySection = LibrarySection.overview,
     this.playlistId,
-  }) : assert((shellDestination == null) != (officialLink == null));
+    this.forYouMix,
+  }) : assert((shellDestination == null) != (officialLink == null)),
+       assert(
+         forYouMix == null || shellDestination == AppShellDestination.forYou,
+       );
 
   const AppNavigationRoute.discovery()
     : this._(shellDestination: AppShellDestination.discovery);
@@ -22,8 +28,8 @@ class AppNavigationRoute {
   const AppNavigationRoute.hubs()
     : this._(shellDestination: AppShellDestination.hubs);
 
-  const AppNavigationRoute.forYou()
-    : this._(shellDestination: AppShellDestination.forYou);
+  const AppNavigationRoute.forYou({ForYouMix? mix})
+    : this._(shellDestination: AppShellDestination.forYou, forYouMix: mix);
 
   const AppNavigationRoute.library({
     LibrarySection section = LibrarySection.overview,
@@ -41,6 +47,7 @@ class AppNavigationRoute {
   final OfficialZingLink? officialLink;
   final LibrarySection librarySection;
   final String? playlistId;
+  final ForYouMix? forYouMix;
 
   bool get isOfficial => officialLink != null;
 
@@ -50,7 +57,10 @@ class AppNavigationRoute {
     return switch (shellDestination!) {
       AppShellDestination.discovery => 'shell:discovery',
       AppShellDestination.hubs => 'shell:hubs',
-      AppShellDestination.forYou => 'shell:for-you',
+      AppShellDestination.forYou =>
+        forYouMix == null
+            ? 'shell:for-you'
+            : 'shell:for-you:${forYouMix!.name}',
       AppShellDestination.library =>
         'shell:library:${librarySection.name}:${playlistId ?? ''}',
     };
@@ -77,7 +87,10 @@ class AppNavigationRoute {
       ),
       AppShellDestination.forYou => Uri(
         path: '/',
-        queryParameters: const {'view': 'for-you'},
+        queryParameters: {
+          'view': 'for-you',
+          if (forYouMix case final mix?) 'mix': mix.name,
+        },
       ),
       AppShellDestination.library => Uri(
         path: '/',
@@ -122,12 +135,21 @@ class AppNavigationRoute {
       final viewValues = parameters['view']!;
       if (viewValues.length != 1) return null;
       final view = viewValues.single;
-      if (view == 'discovery' || view == 'hubs' || view == 'for-you') {
+      if (view == 'for-you') {
+        if (parameters.keys.any((key) => key != 'view' && key != 'mix')) {
+          return null;
+        }
+        final mixValues = parameters['mix'];
+        if (mixValues != null && mixValues.length != 1) return null;
+        final mix = mixValues == null ? null : _forYouMix(mixValues.single);
+        if (mixValues != null && mix == null) return null;
+        return AppNavigationRoute.forYou(mix: mix);
+      }
+      if (view == 'discovery' || view == 'hubs') {
         if (parameters.length != 1) return null;
         return switch (view) {
           'discovery' => const AppNavigationRoute.discovery(),
-          'hubs' => const AppNavigationRoute.hubs(),
-          _ => const AppNavigationRoute.forYou(),
+          _ => const AppNavigationRoute.hubs(),
         };
       }
       if (view != 'library' ||
@@ -202,5 +224,13 @@ LibrarySection? _librarySection(String value) => switch (value) {
   'playlists' => LibrarySection.playlists,
   'albums' => LibrarySection.albums,
   'artists' => LibrarySection.artists,
+  _ => null,
+};
+
+ForYouMix? _forYouMix(String value) => switch (value) {
+  'daily' => ForYouMix.daily,
+  'chill' => ForYouMix.chill,
+  'gym' => ForYouMix.gym,
+  'focus' => ForYouMix.focus,
   _ => null,
 };

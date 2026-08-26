@@ -327,8 +327,9 @@ proxy Node/TypeScript do người triển khai tự host.
   `https://zingmp3.vn`, bỏ fragment/tracking và giữ đúng subtype như
   `/new-release/song` hoặc `/new-release/album`; thanh địa chỉ vẫn dùng host của
   client. Khám phá, Hub local, Thư viện và Dành cho bạn lần lượt dùng
-  `?view=discovery`, `?view=hubs`, `?view=library` và `?view=for-you`. Thư viện
-  có thể giữ `section` và ID playlist local, không ghi tên playlist hay dữ liệu
+  `?view=discovery`, `?view=hubs`, `?view=library` và `?view=for-you`. Trang chi
+  tiết mix dùng thêm `mix=daily|chill|gym|focus`; Thư viện có thể giữ `section`
+  và ID playlist local. URL không chứa tên playlist, ID bài hát hay dữ liệu
   nghe.
 - Chỉ thao tác điều hướng ngữ nghĩa đã commit mới thêm history entry. Các kết quả
   tạm thời khi gõ tìm kiếm được gộp bằng replace trong cùng một entry; tải thêm
@@ -381,6 +382,22 @@ adapter share/save không khả dụng.
 - Preference được lưu local trong player snapshot v12. Đây là **Seamless Next
   có fallback**, chưa tuyên bố gapless/crossfade cho tới khi vượt capability test
   trên toàn bộ thiết bị thật.
+
+### Local Mix Workspace v1.3b
+
+- Chạm vào thân card Daily Mix, Chill, Gym hoặc Tập trung sẽ mở trang chi tiết;
+  nút Play trên card vẫn phát ngay mà không đổi màn hình.
+- Workspace dùng bố cục playlist kiểu Zing với cover mosaic, mô tả cold start,
+  Play/Shuffle và danh sách bài thích ứng cho điện thoại, tablet, desktop và TV.
+- Mỗi bài có Play, Queue, Like, Mood, Playlist, Radio, Share và Thông tin qua
+  menu chuẩn; chọn một bài tạo hàng đợi đúng snapshot mix đang xem. Play trên
+  card luôn bắt đầu đúng thứ tự mix, đặt đúng nguồn Daily/Mood và tắt Shuffle cũ.
+- Tín hiệu local của bài bị khóa vẫn có thể giữ cho Like/Mood/metadata, nhưng bị
+  loại khỏi Mix phát được; Play, Queue và Radio luôn fail-closed kể cả khi import
+  snapshot cũ chưa có trường quyền phát.
+- Back/Forward và liên kết Web khôi phục đúng mix bằng route local-safe
+  `?view=for-you&mix=...`. Việc mở/duyệt mix không gọi API recommendation và
+  không gửi favorites, mood hoặc analytics lên mạng.
 
 ## Ảnh giao diện theo phiên bản
 
@@ -527,6 +544,14 @@ không chứa dữ liệu người dùng thật.
 <table>
   <tr>
     <td align="center"><img src="docs/screenshots/v1.3a-seamless-next-settings-desktop.png" alt="Cài đặt desktop của #zingChart với lựa chọn Seamless Next Tự động hoặc Tắt"><br><sub><b>Seamless Next có fallback</b> · chỉ buffer tạm đúng bài đầu tiên của Tiếp theo trong 30 giây cuối, không lưu file audio/cache offline</sub></td>
+  </tr>
+</table>
+
+### v1.3b — Local Mix Workspace
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3b-local-mix-workspace-desktop.png" alt="Trang chi tiết Daily Mix local-first trên desktop với cover mosaic và danh sách bài hát"><br><sub><b>Local Mix Workspace</b> · mở card để duyệt trước, Play/Shuffle riêng, thao tác đầy đủ cho từng bài và route local-safe không lộ dữ liệu nghe</sub></td>
   </tr>
 </table>
 

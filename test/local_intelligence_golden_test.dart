@@ -91,7 +91,8 @@ void main() {
               child: ForYouHub(
                 controller: controller,
                 now: DateTime(2026, 8, 15),
-                onPlaySongs: (_) {},
+                onOpenMix: (_) {},
+                onPlayMix: (_) {},
                 onOpenAnalytics: () {},
                 onOpenWrapped: () {},
               ),

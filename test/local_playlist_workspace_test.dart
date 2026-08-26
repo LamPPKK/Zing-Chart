@@ -66,6 +66,10 @@ void main() {
     LocalPlaylist? value,
     PlaylistSongMoveCallback? onMoveItem,
     ValueChanged<Song>? onRemove,
+    VoidCallback? onPlayAll,
+    VoidCallback? onShuffle,
+    ValueChanged<Song>? onSongTap,
+    PlaylistSongActionResolver? actionResolver,
     ThemeData? theme,
   }) => MaterialApp(
     theme: theme ?? buildZingDarkTheme(tvMode: tvMode),
@@ -80,17 +84,19 @@ void main() {
               currentSongId: songs.first.id,
               isPlaying: true,
               onBack: () {},
-              onPlayAll: () {},
-              onShuffle: () {},
+              onPlayAll: onPlayAll ?? () {},
+              onShuffle: onShuffle ?? () {},
               onRename: () {},
               onDelete: () {},
-              onSongTap: (_) {},
+              onSongTap: onSongTap ?? (_) {},
               onReorderItem: (_, __) {},
               onMoveItem: onMoveItem ?? (_, __) {},
               onRemove: onRemove ?? (_) {},
-              actionResolver: (_) => const SongActionMenuConfiguration(
-                handlers: SongActionHandlers(),
-              ),
+              actionResolver:
+                  actionResolver ??
+                  (_) => const SongActionMenuConfiguration(
+                    handlers: SongActionHandlers(),
+                  ),
             ),
           ],
         ),
@@ -309,6 +315,179 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final configuration in [
+    (size: const Size(360, 844), tvMode: false),
+    (size: const Size(1920, 1080), tvMode: true),
+  ]) {
+    testWidgets('legacy locked playlist fails closed without overflow at '
+        '${configuration.size.width.toInt()}px', (tester) async {
+      tester.view.physicalSize = configuration.size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final legacyLocked = Song.fromJson(const {
+        'id': 'playlist-legacy-locked',
+        'name': 'playlist-legacy-locked',
+        'title': 'Bài lưu từ snapshot cũ',
+        'thumbnail': '',
+        'artists_names': 'Nghệ sĩ cũ',
+        'code': 'legacy-real-code',
+      });
+      var playAllCount = 0;
+      var shuffleCount = 0;
+      Song? selected;
+      var detailCount = 0;
+
+      expect(legacyLocked.isPlaybackEligible, isFalse);
+      await tester.pumpWidget(
+        workspaceHarness(
+          size: configuration.size,
+          tvMode: configuration.tvMode,
+          value: playlist(tracks: [legacyLocked]),
+          onPlayAll: () => playAllCount++,
+          onShuffle: () => shuffleCount++,
+          onSongTap: (song) => selected = song,
+          actionResolver: (_) => SongActionMenuConfiguration(
+            handlers: SongActionHandlers(onOpenDetail: () => detailCount++),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.byKey(const ValueKey('local-playlist-play')),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.byKey(const ValueKey('local-playlist-shuffle')),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(find.textContaining('0/1 bài có thể phát'), findsNWidgets(2));
+
+      final row = find.byKey(
+        const ValueKey('local-playlist-song-playlist-legacy-locked'),
+      );
+      await tester.scrollUntilVisible(
+        row,
+        420,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(row);
+      expect(selected, isNull);
+      expect(playAllCount, 0);
+      expect(shuffleCount, 0);
+      expect(
+        find.descendant(
+          of: row,
+          matching: find.byIcon(Icons.lock_outline_rounded),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<MouseRegion>(
+              find
+                  .descendant(of: row, matching: find.byType(MouseRegion))
+                  .first,
+            )
+            .cursor,
+        SystemMouseCursors.basic,
+      );
+      final rowInkWell = tester.widget<InkWell>(
+        find.descendant(of: row, matching: find.byType(InkWell)).first,
+      );
+      expect(rowInkWell.canRequestFocus, isFalse);
+      expect(rowInkWell.mouseCursor, SystemMouseCursors.forbidden);
+      expect(
+        tester
+            .widget<Semantics>(
+              find.byKey(
+                const ValueKey(
+                  'local-playlist-semantics-playlist-legacy-locked',
+                ),
+              ),
+            )
+            .properties
+            .enabled,
+        isFalse,
+      );
+
+      await tester.tap(
+        find.byKey(
+          const ValueKey('local-playlist-action-menu-playlist-legacy-locked'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(
+          const ValueKey(
+            'local-playlist-action-menu-item-detail-playlist-legacy-locked',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(detailCount, 1);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('one eligible playlist song enables Play but not Shuffle', (
+    tester,
+  ) async {
+    const size = Size(768, 1024);
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const locked = Song(
+      id: 'playlist-locked-threshold',
+      name: 'playlist-locked-threshold',
+      title: 'Bài bị khóa',
+      thumbnail: '',
+      artistsNames: 'Nghệ sĩ khóa',
+      code: 'locked-real-code',
+      playable: false,
+    );
+
+    await tester.pumpWidget(
+      workspaceHarness(
+        size: size,
+        tvMode: false,
+        value: playlist(tracks: [locked, songs.first]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const ValueKey('local-playlist-play')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const ValueKey('local-playlist-shuffle')),
+          )
+          .onPressed,
+      isNull,
+    );
+    expect(find.textContaining('1/2 bài có thể phát'), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('screen removes with Undo and creates from playlist picker', (
     tester,
   ) async {
@@ -401,6 +580,64 @@ void main() {
       find.byKey(
         const ValueKey('local-playlist-workspace-playlist-local-workspace'),
       ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('system Back closes a cold local playlist deep link', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(768, 1024);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final initialPlaylist = playlist();
+    final controller = PlaybackService(
+      playbackAudioPlayer: FakePlaybackAudioPlayer(),
+      libraryRepository: MemoryLibraryRepository(
+        PlayerSnapshot(playlists: [initialPlaylist]),
+      ),
+      systemMediaBridge: NoopSystemMediaBridge(),
+    );
+    await controller.initialize();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MusicPlayerScope(
+        controller: controller,
+        child: MaterialApp(
+          theme: buildZingDarkTheme(tvMode: false),
+          home: ZingChartScreen(
+            chartRefreshInterval: null,
+            navigationRoute: AppNavigationRoute.library(
+              section: LibrarySection.playlists,
+              playlistId: initialPlaylist.id,
+            ),
+            loadSongs: () async => songs,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        const ValueKey('local-playlist-workspace-playlist-local-workspace'),
+      ),
+      findsOneWidget,
+    );
+    expect(await tester.binding.handlePopRoute(), isTrue);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        const ValueKey('local-playlist-workspace-playlist-local-workspace'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('library-section-playlists')),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
