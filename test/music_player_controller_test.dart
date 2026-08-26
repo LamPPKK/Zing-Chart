@@ -45,6 +45,14 @@ void main() {
       code: 'code-three',
     ),
   ];
+  const fourthSong = Song(
+    id: 'four',
+    name: 'bon',
+    title: 'Bài Bốn',
+    thumbnail: 'https://images.example.com/four.jpg',
+    artistsNames: 'Ca Sĩ D',
+    code: 'code-four',
+  );
   const followedArtist = CatalogArtist(
     id: 'artist-a',
     name: 'Ca Sĩ A',
@@ -362,8 +370,65 @@ void main() {
       ]);
       expect(controller.nextSong, isNotNull);
       expect(controller.isRadioSong(controller.nextSong!), isTrue);
+      final radioQueue = controller.queue.map((song) => song.id).toList();
+      final originalFirst = controller.nextSong;
+      expect(controller.reorderUpNext(1, 0), isTrue);
+      expect(controller.queue.map((song) => song.id), radioQueue);
+      expect(controller.nextSong, isNot(originalFirst));
+      expect(controller.isRadioSong(controller.nextSong!), isTrue);
       controller.dispose();
     });
+
+    test(
+      'explicit Song Radio keeps provider order after an edited future overlap',
+      () async {
+        const radioFirst = Song(
+          id: 'radio-first',
+          name: 'radio-first',
+          title: 'Radio Đầu',
+          thumbnail: '',
+          artistsNames: 'Radio Artist',
+          code: 'radio-first-code',
+        );
+        const radioLast = Song(
+          id: 'radio-last',
+          name: 'radio-last',
+          title: 'Radio Cuối',
+          thumbnail: '',
+          artistsNames: 'Radio Artist',
+          code: 'radio-last-code',
+        );
+        final controller = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          songRadioLoader: (code) async => SongRadio(
+            seedId: code,
+            recommendations: [
+              _radioSong(radioFirst),
+              _radioSong(songs[2]),
+              _radioSong(radioLast),
+            ],
+          ),
+          libraryRepository: MemoryLibraryRepository(),
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: [...songs, fourthSong]);
+        expect(controller.reorderUpNext(2, 0), isTrue);
+        expect(controller.upNextSongs, [fourthSong, songs[1], songs[2]]);
+
+        await controller.startSongRadio();
+
+        expect(controller.queue, [
+          songs.first,
+          radioFirst,
+          songs[2],
+          radioLast,
+        ]);
+        expect(controller.upNextSongs, [radioFirst, songs[2], radioLast]);
+        controller.dispose();
+      },
+    );
 
     test('coalesces concurrent radio loads and advances only once', () async {
       final audio = FakePlaybackAudioPlayer();
@@ -634,6 +699,7 @@ void main() {
       () async {
         final audio = FakePlaybackAudioPlayer();
         final repository = MemoryLibraryRepository();
+        final bridge = RecordingSystemMediaBridge();
         var sourceCalls = 0;
         final controller = PlaybackService(
           playbackAudioPlayer: audio,
@@ -643,7 +709,7 @@ void main() {
             return 'https://proxy.example.com/v1/live-streams/$id-token';
           },
           libraryRepository: repository,
-          systemMediaBridge: NoopSystemMediaBridge(),
+          systemMediaBridge: bridge,
         );
         await controller.initialize();
 
@@ -666,6 +732,8 @@ void main() {
         expect(repository.snapshot.currentSong, isNull);
         expect(repository.snapshot.queue, isEmpty);
         expect(repository.snapshot.position, Duration.zero);
+        expect(bridge.snapshots.last.queue, [controller.currentSong]);
+        expect(bridge.snapshots.last.queueIndex, 0);
 
         await controller.seek(const Duration(minutes: 5));
         expect(audio.seekTargets, isEmpty);
@@ -872,6 +940,41 @@ void main() {
       controller.dispose();
     });
 
+    test(
+      'pending navigation rollback preserves a later Up Next edit',
+      () async {
+        final pendingSource = Completer<String>();
+        final controller = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) => code == songs[1].code
+              ? pendingSource.future
+              : Future.value('https://audio.example.com/$code.mp3'),
+          libraryRepository: MemoryLibraryRepository(),
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: [...songs, fourthSong]);
+
+        final staleNext = controller.next();
+        await _flushAsync();
+        expect(controller.currentSong, songs[1]);
+        expect(controller.upNextSongs, [songs[2], fourthSong]);
+        expect(controller.reorderUpNext(1, 0), isTrue);
+        expect(controller.upNextSongs, [fourthSong, songs[2]]);
+
+        await controller.playSong(fourthSong);
+
+        expect(controller.currentSong, fourthSong);
+        expect(controller.upNextSongs, [songs[2]]);
+        pendingSource.complete('https://audio.example.com/stale-two.mp3');
+        await staleNext;
+        expect(controller.currentSong, fourthSong);
+        await controller.next();
+        expect(controller.currentSong, songs[2]);
+        controller.dispose();
+      },
+    );
+
     test('Repeat All keeps an exact Up Next preview at cycle end', () async {
       for (final shuffled in [false, true]) {
         final controller = _controller(FakePlaybackAudioPlayer());
@@ -889,6 +992,420 @@ void main() {
         expect(controller.currentSong, preview);
         controller.dispose();
       }
+    });
+
+    test(
+      'pending shuffled Repeat All boundary keeps its concrete future on direct selection',
+      () async {
+        final pendingSource = Completer<String>();
+        String? blockedCode;
+        var shouldBlock = false;
+        final controller = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) {
+            if (shouldBlock && code == blockedCode) {
+              shouldBlock = false;
+              return pendingSource.future;
+            }
+            return Future.value('https://audio.example.com/$code.mp3');
+          },
+          libraryRepository: MemoryLibraryRepository(),
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: [...songs, fourthSong]);
+        controller.setShuffleEnabled(true);
+        while (controller.canGoNext) {
+          await controller.next();
+        }
+        controller.setRepeatMode(PlayerRepeatMode.all);
+        final preparedCycle = controller.upNextSongs;
+        final pendingSong = preparedCycle.first;
+        final committedTail = preparedCycle.skip(1).toList(growable: false);
+        blockedCode = pendingSong.code;
+        shouldBlock = true;
+
+        final staleNext = controller.next();
+        await _flushAsync();
+        expect(controller.currentSong, pendingSong);
+        expect(controller.isLoading, isTrue);
+        expect(controller.upNextSongs, committedTail);
+
+        const selectedIndex = 1;
+        final selectedSong = committedTail[selectedIndex];
+        final expectedRemaining = [...committedTail]..removeAt(selectedIndex);
+        final revision = controller.upNextRevision;
+        expect(await controller.playUpNext(selectedIndex, revision), isTrue);
+        expect(controller.currentSong, selectedSong);
+        expect(controller.upNextSongs, expectedRemaining);
+
+        pendingSource.complete('https://audio.example.com/stale-boundary.mp3');
+        await staleNext;
+        expect(controller.currentSong, selectedSong);
+        expect(controller.upNextSongs, expectedRemaining);
+        controller.dispose();
+      },
+    );
+
+    test(
+      'reorders the actual shuffle future and restores the edited branch',
+      () async {
+        final repository = MemoryLibraryRepository();
+        final source = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await source.initialize();
+        final sourceQueue = [...songs, fourthSong];
+        await source.playSong(sourceQueue.first, queue: sourceQueue);
+        source.setShuffleEnabled(true);
+        final originalQueueIds = source.queue.map((song) => song.id).toList();
+        final before = source.upNextSongs;
+        final moved = before.last;
+
+        expect(source.reorderUpNext(before.length - 1, 0), isTrue);
+        expect(source.upNextSongs.first, moved);
+        expect(source.queue.map((song) => song.id), originalQueueIds);
+        expect(source.playbackTimelineSongs.first, source.currentSong);
+        expect(source.playbackTimelineSongs.skip(1), source.upNextSongs);
+        await _flushAsync();
+
+        final restored = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await restored.initialize();
+
+        expect(
+          restored.upNextSongs.map((song) => song.id),
+          source.upNextSongs.map((song) => song.id),
+        );
+        expect(restored.reorderUpNext(-1, 0), isFalse);
+        await restored.next();
+        expect(restored.currentSong, moved);
+        source.dispose();
+        restored.dispose();
+      },
+    );
+
+    test(
+      'reordering forward history keeps the played Previous prefix',
+      () async {
+        final controller = _controller(FakePlaybackAudioPlayer());
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: [...songs, fourthSong]);
+        await controller.next();
+        await controller.next();
+        await controller.previous();
+        expect(controller.currentSong, songs[1]);
+        expect(controller.upNextSongs, [songs[2], fourthSong]);
+
+        expect(controller.reorderUpNext(1, 0), isTrue);
+        expect(controller.upNextSongs, [fourthSong, songs[2]]);
+        await controller.next();
+        expect(controller.currentSong, fourthSong);
+        await controller.previous();
+        expect(controller.currentSong, songs[1]);
+        expect(controller.upNextSongs, [fourthSong, songs[2]]);
+        controller.dispose();
+      },
+    );
+
+    test(
+      'direct play consumes the selected item from an edited future',
+      () async {
+        final controller = _controller(FakePlaybackAudioPlayer());
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: [...songs, fourthSong]);
+        expect(controller.reorderUpNext(2, 0), isTrue);
+        expect(controller.upNextSongs, [fourthSong, songs[1], songs[2]]);
+
+        await controller.playSong(fourthSong);
+
+        expect(controller.currentSong, fourthSong);
+        expect(controller.upNextSongs, [songs[1], songs[2]]);
+        await controller.next();
+        expect(controller.currentSong, songs[1]);
+        controller.dispose();
+      },
+    );
+
+    test(
+      'plays the exact selected Up Next occurrence when IDs repeat',
+      () async {
+        final controller = _controller(FakePlaybackAudioPlayer());
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: songs);
+        await controller.next();
+        await controller.next();
+        controller.setRepeatMode(PlayerRepeatMode.all);
+        await controller.next();
+        await controller.next();
+        await controller.previous();
+        await controller.previous();
+        await controller.previous();
+        expect(controller.upNextSongs, [
+          songs[2],
+          songs[0],
+          songs[1],
+          songs[2],
+        ]);
+        expect(controller.reorderUpNext(3, 1), isTrue);
+        expect(controller.reorderUpNext(1, 2), isTrue);
+        expect(controller.upNextSongs, [
+          songs[2],
+          songs[0],
+          songs[2],
+          songs[1],
+        ]);
+
+        final revision = controller.upNextRevision;
+        expect(await controller.playUpNext(2, revision), isTrue);
+
+        expect(controller.currentSong, songs[2]);
+        expect(controller.upNextSongs, [songs[2], songs[0], songs[1]]);
+        controller.dispose();
+      },
+    );
+
+    test(
+      'same-ID Up Next occurrence supersedes a stale navigation lock',
+      () async {
+        final staleSource = Completer<String>();
+        var thirdSongSourceCalls = 0;
+        final controller = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) {
+            if (code == songs[2].code) {
+              thirdSongSourceCalls++;
+              if (thirdSongSourceCalls == 3) return staleSource.future;
+            }
+            return Future.value('https://audio.example.com/$code.mp3');
+          },
+          libraryRepository: MemoryLibraryRepository(),
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: songs);
+        await controller.next();
+        await controller.next();
+        controller.setRepeatMode(PlayerRepeatMode.all);
+        await controller.next();
+        await controller.next();
+        await controller.previous();
+        await controller.previous();
+        await controller.previous();
+        expect(controller.reorderUpNext(3, 1), isTrue);
+        expect(controller.upNextSongs, [
+          songs[2],
+          songs[2],
+          songs[0],
+          songs[1],
+        ]);
+
+        final staleNext = controller.next();
+        await _flushAsync();
+        expect(controller.currentSong, songs[2]);
+        expect(controller.isLoading, isTrue);
+        expect(controller.upNextSongs.first, songs[2]);
+
+        final revision = controller.upNextRevision;
+        expect(await controller.playUpNext(0, revision), isTrue);
+        expect(controller.currentSong, songs[2]);
+        await controller.next().timeout(const Duration(seconds: 1));
+        expect(controller.currentSong, songs[0]);
+
+        staleSource.complete('https://audio.example.com/stale-three.mp3');
+        await staleNext;
+        expect(controller.currentSong, songs[0]);
+        controller.dispose();
+      },
+    );
+
+    test(
+      'stale Up Next revision rejects a rapid tap while stop hangs',
+      () async {
+        final audio = BlockingStopPlaybackAudioPlayer();
+        final controller = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: MemoryLibraryRepository(),
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: songs);
+        await controller.next();
+        await controller.next();
+        controller.setRepeatMode(PlayerRepeatMode.all);
+        await controller.next();
+        await controller.next();
+        await controller.previous();
+        await controller.previous();
+        await controller.previous();
+        expect(controller.reorderUpNext(3, 1), isTrue);
+        expect(controller.reorderUpNext(1, 2), isTrue);
+        expect(controller.upNextSongs, [
+          songs[2],
+          songs[0],
+          songs[2],
+          songs[1],
+        ]);
+        final staleRevision = controller.upNextRevision;
+        audio.blockNextStop();
+
+        final firstTap = controller.playUpNext(2, staleRevision);
+        await audio.stopStarted;
+        expect(controller.upNextSongs, [songs[2], songs[0], songs[1]]);
+
+        expect(
+          await controller
+              .playUpNext(2, staleRevision)
+              .timeout(const Duration(seconds: 1)),
+          isFalse,
+        );
+        expect(controller.upNextSongs, [songs[2], songs[0], songs[1]]);
+
+        audio.releaseStop();
+        expect(await firstTap, isTrue);
+        expect(controller.currentSong, songs[2]);
+        controller.dispose();
+      },
+    );
+
+    test('reorders and restores a Repeat All boundary timeline', () async {
+      final repository = MemoryLibraryRepository();
+      final source = PlaybackService(
+        playbackAudioPlayer: FakePlaybackAudioPlayer(),
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        libraryRepository: repository,
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await source.initialize();
+      await source.playSong(songs.first, queue: songs);
+      while (source.canGoNext) {
+        await source.next();
+      }
+      source.setRepeatMode(PlayerRepeatMode.all);
+      final before = source.upNextSongs;
+      final moved = before.last;
+
+      expect(source.reorderUpNext(before.length - 1, 0), isTrue);
+      expect(source.nextSong, moved);
+      await _flushAsync();
+
+      final restored = PlaybackService(
+        playbackAudioPlayer: FakePlaybackAudioPlayer(),
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        libraryRepository: repository,
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await restored.initialize();
+      expect(restored.nextSong, moved);
+      final unconsumedBoundary = restored.upNextSongs;
+      restored.setRepeatMode(PlayerRepeatMode.off);
+      expect(restored.upNextSongs, isEmpty);
+      expect(restored.canGoNext, isFalse);
+      restored.setRepeatMode(PlayerRepeatMode.all);
+      expect(restored.upNextSongs, isNot(unconsumedBoundary));
+      expect(restored.upNextSongs, hasLength(songs.length));
+      await restored.next();
+      expect(restored.currentSong, isNotNull);
+      source.dispose();
+      restored.dispose();
+    });
+
+    test(
+      'Repeat All boundary provenance becomes a normal cycle after Next',
+      () async {
+        final repository = MemoryLibraryRepository();
+        final source = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await source.initialize();
+        await source.playSong(songs.first, queue: songs);
+        while (source.canGoNext) {
+          await source.next();
+        }
+        source.setRepeatMode(PlayerRepeatMode.all);
+        final boundary = source.upNextSongs;
+        expect(source.reorderUpNext(0, boundary.length - 1), isTrue);
+        await source.next();
+        final remainingCycle = source.upNextSongs;
+        expect(remainingCycle, hasLength(songs.length - 1));
+        await _flushAsync();
+
+        final restored = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await restored.initialize();
+        expect(restored.upNextSongs, remainingCycle);
+
+        restored.setRepeatMode(PlayerRepeatMode.off);
+
+        expect(restored.upNextSongs, remainingCycle);
+        while (restored.canGoNext) {
+          await restored.next();
+        }
+        expect(restored.canGoNext, isFalse);
+        source.dispose();
+        restored.dispose();
+      },
+    );
+
+    test('direct Up Next selection crosses the Repeat All boundary', () async {
+      final controller = _controller(FakePlaybackAudioPlayer());
+      await controller.initialize();
+      await controller.playSong(songs.first, queue: songs);
+      while (controller.canGoNext) {
+        await controller.next();
+      }
+      controller.setRepeatMode(PlayerRepeatMode.all);
+      final preparedCycle = controller.upNextSongs;
+
+      final revision = controller.upNextRevision;
+      expect(await controller.playUpNext(1, revision), isTrue);
+      expect(controller.currentSong, preparedCycle[1]);
+      final remainingCycle = controller.upNextSongs;
+      controller.setRepeatMode(PlayerRepeatMode.off);
+
+      expect(controller.upNextSongs, remainingCycle);
+      expect(controller.upNextSongs, hasLength(songs.length - 1));
+      controller.dispose();
+    });
+
+    test('system repeat callback clears an unconsumed boundary plan', () async {
+      final bridge = RecordingSystemMediaBridge();
+      final controller = PlaybackService(
+        playbackAudioPlayer: FakePlaybackAudioPlayer(),
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        libraryRepository: MemoryLibraryRepository(),
+        systemMediaBridge: bridge,
+      );
+      await controller.initialize();
+      await controller.playSong(songs.first, queue: songs);
+      while (controller.canGoNext) {
+        await controller.next();
+      }
+      controller.setRepeatMode(PlayerRepeatMode.all);
+      expect(controller.reorderUpNext(0, songs.length - 1), isTrue);
+      expect(controller.upNextSongs, hasLength(songs.length));
+
+      bridge.callbacks.setRepeatMode(SystemRepeatMode.none);
+
+      expect(controller.repeatMode, PlayerRepeatMode.off);
+      expect(controller.upNextSongs, isEmpty);
+      expect(controller.canGoNext, isFalse);
+      controller.dispose();
     });
 
     test(
@@ -968,6 +1485,22 @@ void main() {
       expect(bridge.snapshots.last.canGoPrevious, isFalse);
       expect(bridge.snapshots.last.canGoNext, isTrue);
       bridge.callbacks.setShuffle(true);
+      final before = controller.upNextSongs;
+      final beforeTimeline = [
+        controller.currentSong!.id,
+        ...before.map((song) => song.id),
+      ];
+      expect(controller.reorderUpNext(before.length - 1, 0), isTrue);
+      await _flushAsync();
+      expect(
+        bridge.snapshots.last.queue.map((song) => song.id),
+        controller.playbackTimelineSongs.map((song) => song.id),
+      );
+      expect(bridge.snapshots.last.queueIndex, 0);
+      expect(
+        bridge.snapshots.last.queue.map((song) => song.id),
+        isNot(beforeTimeline),
+      );
       bridge.callbacks.setRepeatMode(SystemRepeatMode.one);
       await bridge.callbacks.next();
 
@@ -1083,6 +1616,10 @@ void main() {
           .toSet();
       expect(actualUpcomingIds.toSet(), {'two', 'three', 'four', ...smartIds});
       expect(smartIds, isNot(contains(actualUpcomingIds.last)));
+      final smartQueue = controller.queue.map((song) => song.id).toList();
+      expect(controller.reorderUpNext(actualUpcomingIds.length - 1, 0), isTrue);
+      expect(controller.queue.map((song) => song.id), smartQueue);
+      expect(controller.nextSong?.id, actualUpcomingIds.last);
 
       expect(controller.setSmartShuffleEnabled(false), isTrue);
       expect(controller.smartShuffleEnabled, isFalse);
@@ -1580,6 +2117,36 @@ PlaybackService _controller(FakePlaybackAudioPlayer audio) => PlaybackService(
 Future<void> _flushAsync() async {
   await Future<void>.delayed(Duration.zero);
   await Future<void>.delayed(Duration.zero);
+}
+
+class BlockingStopPlaybackAudioPlayer extends FakePlaybackAudioPlayer {
+  Completer<void>? _stopGate;
+  Completer<void>? _stopStarted;
+
+  void blockNextStop() {
+    _stopGate = Completer<void>();
+    _stopStarted = Completer<void>();
+  }
+
+  Future<void> get stopStarted => _stopStarted!.future;
+
+  void releaseStop() {
+    final gate = _stopGate;
+    if (gate != null && !gate.isCompleted) gate.complete();
+  }
+
+  @override
+  Future<void> stop() async {
+    final gate = _stopGate;
+    if (gate != null && !gate.isCompleted) {
+      final started = _stopStarted;
+      if (started != null && !started.isCompleted) started.complete();
+      await gate.future;
+      _stopGate = null;
+      _stopStarted = null;
+    }
+    await super.stop();
+  }
 }
 
 class RecordingSystemMediaBridge implements SystemMediaBridge {

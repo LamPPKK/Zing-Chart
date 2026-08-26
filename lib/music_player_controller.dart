@@ -138,6 +138,12 @@ class PlaybackService extends ChangeNotifier {
   Future<void> _snapshotSaveFuture = Future<void>.value();
   PlayerSnapshot? _pendingSnapshot;
   bool _snapshotSaveScheduled = false;
+  int _upNextRevision = 0;
+  bool _upNextRevisionInitialized = false;
+  String? _upNextRevisionCurrentId;
+  PlayerRepeatMode? _upNextRevisionRepeatMode;
+  List<String> _upNextRevisionIds = const [];
+  List<bool> _upNextRevisionRepeatAllFlags = const [];
 
   Song? get currentSong => _currentSong;
   PlaybackOrigin get playbackOrigin => _playbackOrigin;
@@ -163,6 +169,17 @@ class PlaybackService extends ChangeNotifier {
   }
 
   Song? get nextSong => upNextSongs.firstOrNull;
+  int get upNextRevision {
+    _refreshUpNextRevision();
+    return _upNextRevision;
+  }
+
+  List<Song> get playbackTimelineSongs {
+    final current = _currentSong;
+    if (current == null) return const [];
+    return List<Song>.unmodifiable([current, ...upNextSongs]);
+  }
+
   List<Song> get likedSongs => List<Song>.unmodifiable(_likedSongs.values);
   List<CatalogArtist> get followedArtists => List<CatalogArtist>.unmodifiable(
     _followedArtists.values.toList()
@@ -370,11 +387,7 @@ class PlaybackService extends ChangeNotifier {
             SystemRepeatMode.all => PlayerRepeatMode.all,
             SystemRepeatMode.one => PlayerRepeatMode.one,
           };
-          if (_repeatMode != target) {
-            _repeatMode = target;
-            _notifyPlaybackChanged();
-            unawaited(_saveSnapshot());
-          }
+          setRepeatMode(target);
         },
       ),
     );
@@ -700,12 +713,19 @@ class PlaybackService extends ChangeNotifier {
   Future<void> _next() async {
     if (isLiveRadio) return;
     if (_queue.isEmpty || _currentSong == null) return;
+    final repeatAll = _repeatMode == PlayerRepeatMode.all;
+    final crossesRepeatAllBoundary = repeatAll && !_queueNavigator.canGoNext();
+    if (crossesRepeatAllBoundary) {
+      _queueNavigator.upcomingIdsFor(repeatAll: true);
+    }
     final previousNavigatorState = _queueNavigator.state;
-    final nextId = _queueNavigator.moveNext(
-      repeatAll: _repeatMode == PlayerRepeatMode.all,
-    );
+    final nextId = _queueNavigator.moveNext(repeatAll: repeatAll);
     if (nextId != null) {
-      await _playQueueSong(nextId, rollbackState: previousNavigatorState);
+      await _playQueueSong(
+        nextId,
+        rollbackState: previousNavigatorState,
+        crossedRepeatAllBoundary: crossesRepeatAllBoundary,
+      );
       return;
     }
 
@@ -848,6 +868,7 @@ class PlaybackService extends ChangeNotifier {
     if (isLiveRadio) return;
     if (_repeatMode == mode) return;
     _repeatMode = mode;
+    _queueNavigator.setRepeatAllEnabled(mode == PlayerRepeatMode.all);
     _notifyPlaybackChanged();
     unawaited(_saveSnapshot());
   }
@@ -1042,6 +1063,82 @@ class PlaybackService extends ChangeNotifier {
   void reorderQueueItem(int oldIndex, int newIndex) {
     if (oldIndex < 0 || oldIndex >= _queue.length) return;
     _moveQueueItem(oldIndex, newIndex);
+  }
+
+  /// Reorders the real future traversal shown by [upNextSongs].
+  ///
+  /// Both indexes use final-index semantics, matching Flutter's
+  /// `onReorderItem`: the moved song ends exactly at [newIndex]. Editing the
+  /// future intentionally branches forward history while preserving Previous.
+  bool reorderUpNext(int oldIndex, int newIndex) {
+    if (isLiveRadio || _currentSong == null) return false;
+    final changed = _queueNavigator.reorderUpcomingItem(
+      oldIndex,
+      newIndex,
+      repeatAll: _repeatMode == PlayerRepeatMode.all,
+    );
+    if (!changed) return false;
+    _notifyPlaybackChanged();
+    unawaited(_saveSnapshot());
+    return true;
+  }
+
+  /// Plays one exact occurrence from [upNextSongs].
+  ///
+  /// Queue IDs may repeat after rewinding across Repeat All cycles, so row
+  /// interactions must use their occurrence index instead of selecting by ID.
+  Future<bool> playUpNext(int index, int expectedRevision) async {
+    if (isLiveRadio || _currentSong == null) return false;
+    _refreshUpNextRevision();
+    if (expectedRevision != _upNextRevision) return false;
+    final upcomingIds = _queueNavigator.upcomingIdsFor(
+      repeatAll: _repeatMode == PlayerRepeatMode.all,
+    );
+    if (index < 0 || index >= upcomingIds.length) return false;
+    final targetId = upcomingIds[index];
+    final pending = _pendingQueueNavigation;
+    if (pending?.targetId == targetId) {
+      // This is a different occurrence of the same queue ID. The first
+      // occurrence is already represented by the current/history state, so a
+      // rollback would select the wrong occurrence. Supersede only the stale
+      // transaction and detach its coalescing lock.
+      _pendingQueueNavigation = null;
+      _queueNavigationFuture = null;
+    } else {
+      _cancelPendingQueueNavigationFor(targetId);
+    }
+    final refreshedUpcomingIds = _queueNavigator.upcomingIdsFor(
+      repeatAll: _repeatMode == PlayerRepeatMode.all,
+    );
+    final occurrence = upcomingIds
+        .take(index + 1)
+        .where((id) => id == targetId)
+        .length;
+    var refreshedIndex = -1;
+    var seen = 0;
+    for (
+      var candidateIndex = 0;
+      candidateIndex < refreshedUpcomingIds.length;
+      candidateIndex++
+    ) {
+      if (refreshedUpcomingIds[candidateIndex] != targetId) continue;
+      seen++;
+      if (seen == occurrence) {
+        refreshedIndex = candidateIndex;
+        break;
+      }
+    }
+    if (refreshedIndex < 0) return false;
+    final rollbackState = _queueNavigator.state;
+    final selectedId = _queueNavigator.selectUpcomingItem(
+      refreshedIndex,
+      repeatAll: _repeatMode == PlayerRepeatMode.all,
+    );
+    if (selectedId == null) return false;
+    _refreshUpNextRevision();
+    _notifyPlaybackChanged(catalogChanged: false);
+    await _playQueueSong(selectedId, rollbackState: rollbackState);
+    return true;
   }
 
   void _moveQueueItem(int oldIndex, int newIndex) {
@@ -1522,6 +1619,7 @@ class PlaybackService extends ChangeNotifier {
       _queue = List<Song>.unmodifiable([...prefix, ...appended]);
       _currentIndex = _queue.indexWhere((song) => song.id == _currentSong?.id);
       _syncQueueNavigator();
+      _queueNavigator.replaceUpcoming(appended.map((song) => song.id));
       final retainedIds = prefix.map((song) => song.id).toSet();
       _radioSongIds = Set<String>.unmodifiable({
         ..._radioSongIds.where(retainedIds.contains),
@@ -1612,6 +1710,7 @@ class PlaybackService extends ChangeNotifier {
   Future<void> _playQueueSong(
     String songId, {
     required PlaybackQueueNavigatorState rollbackState,
+    bool crossedRepeatAllBoundary = false,
   }) async {
     final index = _queue.indexWhere((song) => song.id == songId);
     if (index < 0) {
@@ -1621,6 +1720,10 @@ class PlaybackService extends ChangeNotifier {
     final transaction = _PendingQueueNavigation(
       targetId: songId,
       rollbackState: rollbackState,
+      plannedUpcomingIdsAtStart: _queueNavigator.plannedUpcomingIds,
+      plannedUpcomingRepeatAllFlagsAtStart:
+          _queueNavigator.plannedUpcomingRepeatAllFlags,
+      crossedRepeatAllBoundary: crossedRepeatAllBoundary,
     );
     _pendingQueueNavigation = transaction;
     _currentIndex = index;
@@ -1636,6 +1739,27 @@ class PlaybackService extends ChangeNotifier {
   void _cancelPendingQueueNavigationFor(String selectedSongId) {
     final pending = _pendingQueueNavigation;
     if (pending == null || pending.targetId == selectedSongId) return;
+    final currentPlannedUpcomingIds = _queueNavigator.plannedUpcomingIds;
+    final currentPlannedUpcomingRepeatAllFlags =
+        _queueNavigator.plannedUpcomingRepeatAllFlags;
+    final preserveEditedFuture =
+        pending.crossedRepeatAllBoundary ||
+        pending.rollbackState.plannedUpcomingIds.isNotEmpty ||
+        pending.plannedUpcomingIdsAtStart.isNotEmpty ||
+        !listEquals(
+          currentPlannedUpcomingIds,
+          pending.plannedUpcomingIdsAtStart,
+        ) ||
+        !listEquals(
+          currentPlannedUpcomingRepeatAllFlags,
+          pending.plannedUpcomingRepeatAllFlagsAtStart,
+        );
+    final editedUpcomingIds = preserveEditedFuture
+        ? _queueNavigator.upcomingIds
+        : null;
+    final editedUpcomingRepeatAllFlags = preserveEditedFuture
+        ? _queueNavigator.upcomingRepeatAllFlags
+        : null;
     _pendingQueueNavigation = null;
     // The stale audio request may remain unresolved indefinitely. Detach its
     // coalescing guard now; the identity check in _runQueueNavigation prevents
@@ -1645,6 +1769,12 @@ class PlaybackService extends ChangeNotifier {
       pending.rollbackState,
       queueIds: _queue.map((song) => song.id),
     );
+    if (editedUpcomingIds != null) {
+      _queueNavigator.replaceUpcoming(
+        editedUpcomingIds,
+        repeatAllFlags: editedUpcomingRepeatAllFlags,
+      );
+    }
   }
 
   void _resetQueueNavigator({String? currentId}) {
@@ -1768,6 +1898,9 @@ class PlaybackService extends ChangeNotifier {
           historyIds: snapshot.playbackHistoryIds,
           historyCursor: snapshot.playbackHistoryCursor,
           currentId: _currentSong?.id,
+          plannedUpcomingIds: snapshot.playbackUpcomingIds,
+          plannedUpcomingRepeatAllFlags:
+              snapshot.playbackUpcomingRepeatAllFlags,
         ),
         queueIds: _queue.map((song) => song.id),
         currentId: _currentSong?.id,
@@ -1778,6 +1911,7 @@ class PlaybackService extends ChangeNotifier {
           0,
           PlayerRepeatMode.values.length - 1,
         )];
+    _queueNavigator.setRepeatAllEnabled(_repeatMode == PlayerRepeatMode.all);
     _autoplayRecommendationsEnabled =
         _songRadioLoader != null && snapshot.autoplayRecommendationsEnabled;
     _alwaysOpenFullscreenPlayer = snapshot.alwaysOpenFullscreenPlayer;
@@ -1830,6 +1964,12 @@ class PlaybackService extends ChangeNotifier {
       playbackHistoryIds: persistPlayback
           ? navigatorState.historyIds
           : const [],
+      playbackUpcomingIds: persistPlayback
+          ? navigatorState.plannedUpcomingIds
+          : const [],
+      playbackUpcomingRepeatAllFlags: persistPlayback
+          ? navigatorState.plannedUpcomingRepeatAllFlags
+          : const [],
       playbackCursor: persistPlayback ? navigatorState.traversalCursor : -1,
       playbackHistoryCursor: persistPlayback
           ? navigatorState.historyCursor
@@ -1871,15 +2011,17 @@ class PlaybackService extends ChangeNotifier {
   }
 
   void _notifyPlaybackChanged({bool catalogChanged = true}) {
+    _refreshUpNextRevision();
     if (catalogChanged) _notifyCatalogChanged();
     notifyListeners();
     _publishCompanionSnapshot();
     final bridge = _systemMediaBridge;
     if (bridge == null) return;
+    final mediaQueue = playbackTimelineSongs;
     _pendingMediaSnapshot = SystemMediaSnapshot(
       song: currentSong,
-      queue: queue,
-      queueIndex: currentIndex,
+      queue: mediaQueue,
+      queueIndex: mediaQueue.isEmpty ? -1 : 0,
       status: isLoading
           ? SystemPlaybackStatus.loading
           : switch (state) {
@@ -1911,6 +2053,30 @@ class PlaybackService extends ChangeNotifier {
 
   void _notifyCatalogChanged() {
     _catalogRevision.value++;
+  }
+
+  void _refreshUpNextRevision() {
+    final ids = _queueNavigator.upcomingIdsFor(
+      repeatAll: _repeatMode == PlayerRepeatMode.all,
+    );
+    final navigatorFlags = _queueNavigator.upcomingRepeatAllFlags;
+    final flags = navigatorFlags.length == ids.length
+        ? navigatorFlags
+        : List<bool>.filled(ids.length, _repeatMode == PlayerRepeatMode.all);
+    final currentId = _queueNavigator.currentId;
+    if (_upNextRevisionInitialized &&
+        currentId == _upNextRevisionCurrentId &&
+        _repeatMode == _upNextRevisionRepeatMode &&
+        listEquals(ids, _upNextRevisionIds) &&
+        listEquals(flags, _upNextRevisionRepeatAllFlags)) {
+      return;
+    }
+    _upNextRevisionInitialized = true;
+    _upNextRevisionCurrentId = currentId;
+    _upNextRevisionRepeatMode = _repeatMode;
+    _upNextRevisionIds = List.unmodifiable(ids);
+    _upNextRevisionRepeatAllFlags = List.unmodifiable(flags);
+    _upNextRevision++;
   }
 
   void _recordPlaybackStarted(Song song) {
@@ -2022,10 +2188,16 @@ class _PendingQueueNavigation {
   const _PendingQueueNavigation({
     required this.targetId,
     required this.rollbackState,
+    required this.plannedUpcomingIdsAtStart,
+    required this.plannedUpcomingRepeatAllFlagsAtStart,
+    required this.crossedRepeatAllBoundary,
   });
 
   final String targetId;
   final PlaybackQueueNavigatorState rollbackState;
+  final List<String> plannedUpcomingIdsAtStart;
+  final List<bool> plannedUpcomingRepeatAllFlagsAtStart;
+  final bool crossedRepeatAllBoundary;
 }
 
 class _MutableSongStat {

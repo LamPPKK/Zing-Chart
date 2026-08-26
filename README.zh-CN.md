@@ -180,6 +180,10 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   上一首/下一首遵循真实播放历史，全部循环会开启新周期并避免边界处立即重复。
   手机、桌面与电视上的“下一首”卡片会准确显示 Smart Shuffle、Song Radio 或
   “加入队列”之后真正要播放的歌曲；顺序与游标仅保存在本机，重启后仍可继续。
+- “接下来播放”列表会把当前歌曲与可编辑的后续队列分开，并直接调整真实播放顺序，
+  即使已开启随机播放或全部循环也保持一致。手机与桌面支持拖动排序；电视提供适配
+  D-pad 的上移、下移与移除按钮。系统媒体控制使用同一条时间线，因此应用、锁屏与
+  遥控器的“下一首”始终一致；所有编辑仅保存在本机，重启后仍会恢复。
 - Smart Shuffle 从当前已加载的目录中穿插最多 10 首推荐，使用设备端点赞与统计排序，
   并为每首自动加入的歌曲标记 `SMART`；收听偏好、收藏和历史不会发送到代理。
 - LIVE 电台展示 V-Pop、Bolero、欧美、K-Pop 及当前节目；HLS 播放列表和媒体均
@@ -362,7 +366,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-song-radio-desktop.png" alt="桌面播放器面板中的 Song Radio 与自动播放"><br><sub><b>Song Radio</b> · 获授权推荐、自动扩展队列，以及手机/桌面/电视控制</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="桌面队列中的真实下一首顺序、Smart Shuffle 与清晰标记的推荐歌曲"><br><sub><b>公平随机与 Smart Shuffle</b> · 一个周期内不重复、准确显示下一首，并明确标记每首本地优先推荐</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="桌面队列中的真实下一首顺序、Smart Shuffle 与清晰标记的推荐歌曲"><br><sub><b>真实接下来播放、公平随机与 Smart Shuffle</b> · 当前歌曲独立显示、后续播放顺序可编辑、一个周期内不重复，并明确标记每首本地优先推荐</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-stream-quality-desktop.png" alt="Auto 128 与 320 kbps 在线音质选择器"><br><sub><b>真实在线音质</b> · Auto 优先 320 后回退 128；明确选择 128/320 时，签名中继会保持该码率</sub></td>

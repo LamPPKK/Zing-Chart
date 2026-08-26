@@ -14,11 +14,24 @@ class PlaybackQueueNavigatorState {
     required Iterable<String> historyIds,
     required this.historyCursor,
     required this.currentId,
+    Iterable<String> plannedUpcomingIds = const [],
+    Iterable<bool> plannedUpcomingRepeatAllFlags = const [],
+    Iterable<String> preparedRepeatOrderIds = const [],
   }) : queueIds = List.unmodifiable(_uniqueIds(queueIds)),
        traversalOrderIds = List.unmodifiable(_uniqueIds(traversalOrderIds)),
-       historyIds = List.unmodifiable(_historyIds(historyIds));
+       historyIds = List.unmodifiable(_historyIds(historyIds)),
+       plannedUpcomingIds = List.unmodifiable(_historyIds(plannedUpcomingIds)),
+       plannedUpcomingRepeatAllFlags = List.unmodifiable(
+         _alignedRepeatAllFlags(
+           plannedUpcomingRepeatAllFlags,
+           _historyIds(plannedUpcomingIds).length,
+         ),
+       ),
+       preparedRepeatOrderIds = List.unmodifiable(
+         _uniqueIds(preparedRepeatOrderIds),
+       );
 
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 4;
 
   final List<String> queueIds;
   final bool shuffleEnabled;
@@ -27,6 +40,14 @@ class PlaybackQueueNavigatorState {
   final List<String> historyIds;
   final int historyCursor;
   final String? currentId;
+
+  /// An explicit future branch created by queue editing.
+  ///
+  /// Unlike a traversal cycle, this list may contain the same queue ID more
+  /// than once after the listener rewinds across a Repeat All boundary.
+  final List<String> plannedUpcomingIds;
+  final List<bool> plannedUpcomingRepeatAllFlags;
+  final List<String> preparedRepeatOrderIds;
 
   Map<String, dynamic> toJson() => {
     'schemaVersion': schemaVersion,
@@ -37,6 +58,9 @@ class PlaybackQueueNavigatorState {
     'historyIds': historyIds,
     'historyCursor': historyCursor,
     'currentId': currentId,
+    'plannedUpcomingIds': plannedUpcomingIds,
+    'plannedUpcomingRepeatAllFlags': plannedUpcomingRepeatAllFlags,
+    'preparedRepeatOrderIds': preparedRepeatOrderIds,
   };
 
   factory PlaybackQueueNavigatorState.fromJson(Map<String, dynamic> json) {
@@ -48,6 +72,11 @@ class PlaybackQueueNavigatorState {
       historyIds: _stringList(json['historyIds']),
       historyCursor: _intValue(json['historyCursor'], fallback: -1),
       currentId: _validId(json['currentId']),
+      plannedUpcomingIds: _stringList(json['plannedUpcomingIds']),
+      plannedUpcomingRepeatAllFlags: _boolList(
+        json['plannedUpcomingRepeatAllFlags'],
+      ),
+      preparedRepeatOrderIds: _stringList(json['preparedRepeatOrderIds']),
     );
   }
 }
@@ -88,7 +117,13 @@ class PlaybackQueueNavigator {
     final navigator = PlaybackQueueNavigator._(random: random ?? Random());
     navigator._restore(state);
     if (queueIds != null || currentId != null) {
+      final preparedRepeatOrder = navigator._preparedRepeatOrderIds;
       navigator.syncQueue(queueIds ?? state.queueIds, currentId: currentId);
+      if (preparedRepeatOrder.isNotEmpty &&
+          navigator._activeUpcomingIds().isEmpty &&
+          navigator._isCompleteQueueOrder(preparedRepeatOrder)) {
+        navigator._preparedRepeatOrderIds = preparedRepeatOrder;
+      }
     }
     return navigator;
   }
@@ -103,6 +138,8 @@ class PlaybackQueueNavigator {
   int _historyCursor = -1;
   String? _currentId;
   List<String> _preparedRepeatOrderIds = const [];
+  List<String>? _plannedUpcomingIds;
+  List<bool>? _plannedUpcomingRepeatAllFlags;
 
   List<String> get queueIds => List.unmodifiable(_queueIds);
 
@@ -122,17 +159,39 @@ class PlaybackQueueNavigator {
 
   String? get currentId => _currentId;
 
+  /// Remaining items in a user-edited future branch.
+  ///
+  /// Forward playback history is kept separately and is visited before this
+  /// list. Exposing only the explicit branch keeps snapshot persistence
+  /// lossless without counting future entries against the 500-item history
+  /// retention limit.
+  List<String> get plannedUpcomingIds =>
+      List.unmodifiable(_plannedUpcomingIds ?? const <String>[]);
+
+  /// Per-occurrence provenance for [plannedUpcomingIds].
+  ///
+  /// `true` means the occurrence exists only because a Repeat All boundary was
+  /// previewed. Once that boundary is crossed, the remaining cycle becomes a
+  /// normal active traversal and these flags are cleared.
+  List<bool> get plannedUpcomingRepeatAllFlags =>
+      List.unmodifiable(_plannedUpcomingRepeatAllFlags ?? const <bool>[]);
+
   bool get canGoPrevious => _historyCursor > 0;
 
   bool canGoNext({bool repeatAll = false}) {
     if (_currentId == null || _queueIds.isEmpty) return false;
     return _historyCursor + 1 < _historyIds.length ||
+        (_plannedUpcomingIds?.isNotEmpty ?? false) ||
         _traversalCursor + 1 < _traversalOrderIds.length ||
         repeatAll;
   }
 
   /// IDs that Next will visit, starting with any forward playback history.
   List<String> get upcomingIds => upcomingIdsFor();
+
+  /// Provenance aligned with [upcomingIds].
+  List<bool> get upcomingRepeatAllFlags =>
+      List.unmodifiable(_activeUpcomingRepeatAllFlags());
 
   /// Returns the real future traversal for the current repeat policy.
   ///
@@ -142,7 +201,9 @@ class PlaybackQueueNavigator {
     final upcoming = <String>[
       if (_historyCursor + 1 < _historyIds.length)
         ..._historyIds.skip(_historyCursor + 1),
-      if (_traversalCursor + 1 < _traversalOrderIds.length)
+      if (_plannedUpcomingIds case final planned?)
+        ...planned
+      else if (_traversalCursor + 1 < _traversalOrderIds.length)
         ..._traversalOrderIds.skip(_traversalCursor + 1),
     ];
     if (upcoming.isNotEmpty || !repeatAll || _queueIds.isEmpty) {
@@ -160,6 +221,9 @@ class PlaybackQueueNavigator {
     historyIds: _historyIds,
     historyCursor: _historyCursor,
     currentId: _currentId,
+    plannedUpcomingIds: _plannedUpcomingIds ?? const [],
+    plannedUpcomingRepeatAllFlags: _plannedUpcomingRepeatAllFlags ?? const [],
+    preparedRepeatOrderIds: _preparedRepeatOrderIds,
   );
 
   /// Moves through forward history first, then advances the active cycle.
@@ -174,6 +238,25 @@ class PlaybackQueueNavigator {
       _historyCursor++;
       _currentId = _historyIds[_historyCursor];
       return _currentId;
+    }
+
+    final planned = _plannedUpcomingIds;
+    if (planned != null && planned.isNotEmpty) {
+      final nextId = planned.first;
+      final repeatAllFlags = _plannedUpcomingRepeatAllFlags!;
+      final crossesRepeatAllBoundary = repeatAllFlags.first;
+      if (planned.length == 1) {
+        _plannedUpcomingIds = null;
+        _plannedUpcomingRepeatAllFlags = null;
+      } else {
+        _plannedUpcomingIds = List.unmodifiable(planned.skip(1));
+        _plannedUpcomingRepeatAllFlags = List.unmodifiable(
+          crossesRepeatAllBoundary
+              ? List<bool>.filled(planned.length - 1, false)
+              : repeatAllFlags.skip(1),
+        );
+      }
+      return _recordCurrent(nextId);
     }
 
     if (_traversalCursor + 1 < _traversalOrderIds.length) {
@@ -208,7 +291,11 @@ class PlaybackQueueNavigator {
         ? _traversalOrderIds.length - 1
         : currentIndex - 1;
     final previousId = _traversalOrderIds[previousIndex];
-    return selectCurrent(previousId) ? previousId : null;
+    _historyIds = List.unmodifiable([previousId, ..._historyIds]);
+    _historyCursor = 0;
+    _currentId = previousId;
+    _capHistoryAroundCursor();
+    return previousId;
   }
 
   /// Explicitly selects an ID without treating skipped shuffle items as played.
@@ -222,6 +309,27 @@ class PlaybackQueueNavigator {
     if (_currentId == id) return true;
 
     _invalidatePreparedRepeatOrder();
+    final planned = _plannedUpcomingIds;
+    if (planned != null) {
+      final future = _activeUpcomingIds().toList(growable: true);
+      final repeatAllFlags = _activeUpcomingRepeatAllFlags().toList(
+        growable: true,
+      );
+      final selectedFutureIndex = future.indexOf(id);
+      var crossesRepeatAllBoundary = false;
+      if (selectedFutureIndex >= 0) {
+        future.removeAt(selectedFutureIndex);
+        crossesRepeatAllBoundary = repeatAllFlags.removeAt(selectedFutureIndex);
+      }
+      if (crossesRepeatAllBoundary) {
+        repeatAllFlags.fillRange(0, repeatAllFlags.length, false);
+      }
+      _truncateForwardHistory();
+      _recordCurrent(id);
+      _replaceUpcomingWithPlan(future, repeatAllFlags: repeatAllFlags);
+      return true;
+    }
+
     _truncateForwardHistory();
     if (_shuffleEnabled) {
       final targetIndex = _traversalOrderIds.indexOf(id);
@@ -244,6 +352,35 @@ class PlaybackQueueNavigator {
     return true;
   }
 
+  /// Selects one exact occurrence from the actual upcoming traversal.
+  ///
+  /// Unlike [selectCurrent], this API is index-aware and remains unambiguous
+  /// when Repeat All history contains the same queue ID more than once.
+  String? selectUpcomingItem(int index, {bool repeatAll = false}) {
+    final future = _activeUpcomingIds().toList(growable: true);
+    final repeatAllFlags = _activeUpcomingRepeatAllFlags().toList(
+      growable: true,
+    );
+    if (future.isEmpty && repeatAll && _queueIds.isNotEmpty) {
+      _prepareRepeatOrder();
+      future.addAll(_preparedRepeatOrderIds);
+      repeatAllFlags.addAll(
+        List<bool>.filled(_preparedRepeatOrderIds.length, true),
+      );
+    }
+    if (index < 0 || index >= future.length) return null;
+    final selectedId = future.removeAt(index);
+    final crossesRepeatAllBoundary = repeatAllFlags.removeAt(index);
+    if (crossesRepeatAllBoundary) {
+      repeatAllFlags.fillRange(0, repeatAllFlags.length, false);
+    }
+    _invalidatePreparedRepeatOrder();
+    _truncateForwardHistory();
+    _recordCurrent(selectedId);
+    _replaceUpcomingWithPlan(future, repeatAllFlags: repeatAllFlags);
+    return selectedId;
+  }
+
   /// Enables or disables shuffle while preserving playback history.
   ///
   /// Forward history is discarded because changing the mode creates a new
@@ -252,8 +389,31 @@ class PlaybackQueueNavigator {
     if (_shuffleEnabled == enabled) return;
     _shuffleEnabled = enabled;
     _invalidatePreparedRepeatOrder();
+    _plannedUpcomingIds = null;
+    _plannedUpcomingRepeatAllFlags = null;
     _truncateForwardHistory();
     _resetTraversalFromCurrent();
+  }
+
+  /// Applies the active Repeat All policy to a prepared future branch.
+  ///
+  /// Disabling Repeat All removes only occurrences that have not yet crossed
+  /// the Repeat All boundary. Explicit queue edits remain. Once the first
+  /// repeat-derived occurrence has played, [moveNext] promotes the rest of that
+  /// cycle to normal upcoming items, so disabling repeat lets it finish.
+  void setRepeatAllEnabled(bool enabled) {
+    if (enabled || _plannedUpcomingIds == null) return;
+    final activeIds = _activeUpcomingIds();
+    final flags = _activeUpcomingRepeatAllFlags();
+    if (!flags.contains(true)) return;
+    final retainedIds = <String>[];
+    final retainedFlags = <bool>[];
+    for (var index = 0; index < activeIds.length; index++) {
+      if (flags[index]) continue;
+      retainedIds.add(activeIds[index]);
+      retainedFlags.add(false);
+    }
+    _replaceUpcomingWithPlan(retainedIds, repeatAllFlags: retainedFlags);
   }
 
   /// Reconciles add/remove/reorder mutations with the active traversal.
@@ -268,6 +428,14 @@ class PlaybackQueueNavigator {
       return;
     }
 
+    final previousQueue = _queueIds;
+    final hadPlannedUpcoming = _plannedUpcomingIds != null;
+    final previousFuture = hadPlannedUpcoming
+        ? _activeUpcomingIds().toList(growable: false)
+        : const <String>[];
+    final previousFutureRepeatAllFlags = hadPlannedUpcoming
+        ? _activeUpcomingRepeatAllFlags().toList(growable: false)
+        : const <bool>[];
     final previousCurrent = _currentId;
     final requestedCurrent = nextQueue.contains(currentId)
         ? currentId
@@ -305,6 +473,38 @@ class PlaybackQueueNavigator {
       _reconcileOrderedTraversal();
     }
 
+    if (hadPlannedUpcoming) {
+      final validIds = nextQueue.toSet();
+      final reconciledFuture = <String>[];
+      final reconciledRepeatAllFlags = <bool>[];
+      for (var index = 0; index < previousFuture.length; index++) {
+        if (!validIds.contains(previousFuture[index])) continue;
+        reconciledFuture.add(previousFuture[index]);
+        reconciledRepeatAllFlags.add(previousFutureRepeatAllFlags[index]);
+      }
+      final additions = nextQueue.where(
+        (id) =>
+            !previousQueue.contains(id) &&
+            id != _currentId &&
+            !reconciledFuture.contains(id),
+      );
+      reconciledFuture.addAll(additions);
+      reconciledRepeatAllFlags.addAll(
+        List<bool>.filled(
+          reconciledFuture.length - reconciledRepeatAllFlags.length,
+          false,
+        ),
+      );
+      _replaceUpcomingWithPlan(
+        reconciledFuture,
+        repeatAllFlags: reconciledRepeatAllFlags,
+      );
+    }
+
+    // Reconcile the saved branch before selecting a different current item.
+    // selectCurrent then consumes that item's first future occurrence. Doing
+    // this in the opposite order would rebuild the stale pre-selection future
+    // and make the newly selected song play twice.
     if (currentWasRemoved || _currentId != requestedCurrent) {
       selectCurrent(requestedCurrent!);
     }
@@ -322,32 +522,74 @@ class PlaybackQueueNavigator {
     }
     if (id == _currentId) return false;
 
+    final future = _activeUpcomingIds().toList(growable: true);
+    final repeatAllFlags = _activeUpcomingRepeatAllFlags().toList(
+      growable: true,
+    );
+    final existingFutureIndex = future.indexOf(id);
+    if (existingFutureIndex >= 0) {
+      future.removeAt(existingFutureIndex);
+      repeatAllFlags.removeAt(existingFutureIndex);
+    }
     _invalidatePreparedRepeatOrder();
     final mutableQueue = [..._queueIds]..remove(id);
     final currentQueueIndex = mutableQueue.indexOf(_currentId!);
     mutableQueue.insert(currentQueueIndex + 1, id);
     _queueIds = List.unmodifiable(mutableQueue);
-    _truncateForwardHistory();
-
-    if (_shuffleEnabled) {
-      final mutableOrder = [..._traversalOrderIds];
-      final oldIndex = mutableOrder.indexOf(id);
-      if (oldIndex >= 0) {
-        mutableOrder.removeAt(oldIndex);
-        if (oldIndex <= _traversalCursor) _traversalCursor--;
-      }
-      final insertionIndex = (_traversalCursor + 1).clamp(
-        0,
-        mutableOrder.length,
-      );
-      mutableOrder.insert(insertionIndex, id);
-      _traversalOrderIds = List.unmodifiable(mutableOrder);
-    } else {
-      _traversalOrderIds = List.unmodifiable(_queueIds);
-      _traversalCursor = _queueIds.indexOf(_currentId!);
-    }
+    _replaceUpcomingWithPlan(
+      [id, ...future],
+      repeatAllFlags: [false, ...repeatAllFlags],
+    );
 
     return true;
+  }
+
+  /// Moves one item inside the actual future playback order.
+  ///
+  /// [oldIndex] and [newIndex] use final-index semantics: after the operation,
+  /// the moved item is exactly at [newIndex]. Editing intentionally branches
+  /// any forward playback history while preserving the already-played prefix
+  /// used by Previous. At a Repeat All boundary, [repeatAll] materializes and
+  /// persists the prepared next cycle before applying the edit.
+  bool reorderUpcomingItem(
+    int oldIndex,
+    int newIndex, {
+    bool repeatAll = false,
+  }) {
+    final upcoming = _activeUpcomingIds().toList(growable: true);
+    final repeatAllFlags = _activeUpcomingRepeatAllFlags().toList(
+      growable: true,
+    );
+    if (upcoming.isEmpty && repeatAll && _queueIds.isNotEmpty) {
+      _prepareRepeatOrder();
+      upcoming.addAll(_preparedRepeatOrderIds);
+      repeatAllFlags.addAll(
+        List<bool>.filled(_preparedRepeatOrderIds.length, true),
+      );
+    }
+    if (oldIndex < 0 ||
+        oldIndex >= upcoming.length ||
+        newIndex < 0 ||
+        newIndex >= upcoming.length ||
+        oldIndex == newIndex) {
+      return false;
+    }
+
+    final moved = upcoming.removeAt(oldIndex);
+    final movedRepeatAllFlag = repeatAllFlags.removeAt(oldIndex);
+    upcoming.insert(newIndex, moved);
+    repeatAllFlags.insert(newIndex, movedRepeatAllFlag);
+    _replaceUpcomingWithPlan(upcoming, repeatAllFlags: repeatAllFlags);
+    return true;
+  }
+
+  /// Replaces the future traversal while preserving the played Previous path.
+  ///
+  /// This is intended for an explicit source switch such as Song Radio, where
+  /// the provider's order is authoritative and must not be merged with an
+  /// earlier user-edited branch.
+  void replaceUpcoming(Iterable<String> ids, {Iterable<bool>? repeatAllFlags}) {
+    _replaceUpcomingWithPlan(ids, repeatAllFlags: repeatAllFlags);
   }
 
   /// Distributes newly suggested IDs through the remaining traversal.
@@ -361,26 +603,30 @@ class PlaybackQueueNavigator {
     );
     if (suggestions.isEmpty) return;
 
-    _invalidatePreparedRepeatOrder();
-    _truncateForwardHistory();
     final suggestionSet = suggestions.toSet();
-    final consumed = _traversalOrderIds
-        .take(_traversalCursor + 1)
-        .where((id) => !suggestionSet.contains(id))
-        .toList(growable: true);
-    if (!consumed.contains(_currentId)) consumed.add(_currentId!);
-    final remaining = _traversalOrderIds
-        .skip(_traversalCursor + 1)
-        .where((id) => !suggestionSet.contains(id))
-        .toList(growable: false);
+    final activeIds = _activeUpcomingIds();
+    final activeFlags = _activeUpcomingRepeatAllFlags();
+    final remaining = <String>[];
+    final remainingFlags = <bool>[];
+    for (var index = 0; index < activeIds.length; index++) {
+      if (suggestionSet.contains(activeIds[index])) continue;
+      remaining.add(activeIds[index]);
+      remainingFlags.add(activeFlags[index]);
+    }
     final distributed = <String>[];
+    final distributedFlags = <bool>[];
     final length = max(remaining.length, suggestions.length);
     for (var index = 0; index < length; index++) {
-      if (index < remaining.length) distributed.add(remaining[index]);
-      if (index < suggestions.length) distributed.add(suggestions[index]);
+      if (index < remaining.length) {
+        distributed.add(remaining[index]);
+        distributedFlags.add(remainingFlags[index]);
+      }
+      if (index < suggestions.length) {
+        distributed.add(suggestions[index]);
+        distributedFlags.add(false);
+      }
     }
-    _traversalOrderIds = List.unmodifiable([...consumed, ...distributed]);
-    _traversalCursor = consumed.length - 1;
+    _replaceUpcomingWithPlan(distributed, repeatAllFlags: distributedFlags);
   }
 
   void _initialize(Iterable<String> queueIds, {String? currentId}) {
@@ -393,6 +639,8 @@ class PlaybackQueueNavigator {
     _currentId = normalized.contains(currentId) ? currentId : normalized.first;
     _historyIds = List.unmodifiable([_currentId!]);
     _historyCursor = 0;
+    _plannedUpcomingIds = null;
+    _plannedUpcomingRepeatAllFlags = null;
     _resetTraversalFromCurrent();
   }
 
@@ -405,6 +653,14 @@ class PlaybackQueueNavigator {
     }
 
     final validIds = _queueIds.toSet();
+    final restoredPreparedRepeatOrder = _uniqueIds(
+      state.preparedRepeatOrderIds.where(validIds.contains),
+    );
+    _preparedRepeatOrderIds =
+        restoredPreparedRepeatOrder.length == _queueIds.length &&
+            restoredPreparedRepeatOrder.toSet().containsAll(validIds)
+        ? List.unmodifiable(restoredPreparedRepeatOrder)
+        : const [];
     final restoredHistory = state.historyIds
         .where(validIds.contains)
         .toList(growable: false);
@@ -430,6 +686,21 @@ class PlaybackQueueNavigator {
       _recordCurrent(restoredCurrent!);
     }
 
+    final maxPlannedEntries = maxHistoryEntries + _queueIds.length;
+    final restoredPlanned = <String>[];
+    final restoredRepeatAllFlags = <bool>[];
+    for (
+      var index = 0;
+      index < state.plannedUpcomingIds.length &&
+          restoredPlanned.length < maxPlannedEntries;
+      index++
+    ) {
+      final id = state.plannedUpcomingIds[index];
+      if (!validIds.contains(id)) continue;
+      restoredPlanned.add(id);
+      restoredRepeatAllFlags.add(state.plannedUpcomingRepeatAllFlags[index]);
+    }
+
     if (!_shuffleEnabled) {
       final restoredOrder = _uniqueIds(
         state.traversalOrderIds.where(validIds.contains),
@@ -446,6 +717,13 @@ class PlaybackQueueNavigator {
       _traversalCursor = restoredCursor >= 0
           ? restoredCursor
           : _queueIds.indexOf(_currentId!);
+      if (restoredPlanned.isNotEmpty) {
+        _plannedUpcomingIds = List.unmodifiable(restoredPlanned);
+        _plannedUpcomingRepeatAllFlags = List.unmodifiable(
+          restoredRepeatAllFlags,
+        );
+        _traversalCursor = _traversalOrderIds.length - 1;
+      }
       return;
     }
 
@@ -463,6 +741,66 @@ class PlaybackQueueNavigator {
     if (_historyCursor == _historyIds.length - 1 &&
         currentOrderIndex > _traversalCursor) {
       _traversalCursor = currentOrderIndex;
+    }
+    if (restoredPlanned.isNotEmpty) {
+      _plannedUpcomingIds = List.unmodifiable(restoredPlanned);
+      _plannedUpcomingRepeatAllFlags = List.unmodifiable(
+        restoredRepeatAllFlags,
+      );
+      _traversalCursor = _traversalOrderIds.length - 1;
+    }
+  }
+
+  List<String> _activeUpcomingIds() => <String>[
+    if (_historyCursor + 1 < _historyIds.length)
+      ..._historyIds.skip(_historyCursor + 1),
+    if (_plannedUpcomingIds case final planned?)
+      ...planned
+    else if (_traversalCursor + 1 < _traversalOrderIds.length)
+      ..._traversalOrderIds.skip(_traversalCursor + 1),
+  ];
+
+  List<bool> _activeUpcomingRepeatAllFlags() => <bool>[
+    if (_historyCursor + 1 < _historyIds.length)
+      ...List<bool>.filled(_historyIds.length - _historyCursor - 1, false),
+    if (_plannedUpcomingIds != null)
+      ..._plannedUpcomingRepeatAllFlags!
+    else if (_traversalCursor + 1 < _traversalOrderIds.length)
+      ...List<bool>.filled(
+        _traversalOrderIds.length - _traversalCursor - 1,
+        false,
+      ),
+  ];
+
+  void _replaceUpcomingWithPlan(
+    Iterable<String> ids, {
+    Iterable<bool>? repeatAllFlags,
+  }) {
+    final validIds = _queueIds.toSet();
+    final maxPlannedEntries = maxHistoryEntries + _queueIds.length;
+    final candidates = ids.toList(growable: false);
+    final candidateFlags = repeatAllFlags?.toList(growable: false);
+    final flagsAreAligned = candidateFlags?.length == candidates.length;
+    final planned = <String>[];
+    final plannedFlags = <bool>[];
+    for (
+      var index = 0;
+      index < candidates.length && planned.length < maxPlannedEntries;
+      index++
+    ) {
+      if (!validIds.contains(candidates[index])) continue;
+      planned.add(candidates[index]);
+      plannedFlags.add(flagsAreAligned ? candidateFlags![index] : false);
+    }
+    _invalidatePreparedRepeatOrder();
+    _truncateForwardHistory();
+    _traversalCursor = _traversalOrderIds.length - 1;
+    if (planned.isEmpty) {
+      _plannedUpcomingIds = null;
+      _plannedUpcomingRepeatAllFlags = null;
+    } else {
+      _plannedUpcomingIds = List.unmodifiable(planned);
+      _plannedUpcomingRepeatAllFlags = List.unmodifiable(plannedFlags);
     }
   }
 
@@ -527,6 +865,8 @@ class PlaybackQueueNavigator {
   }
 
   void _resetTraversalFromCurrent() {
+    _plannedUpcomingIds = null;
+    _plannedUpcomingRepeatAllFlags = null;
     if (_queueIds.isEmpty || _currentId == null) {
       _traversalOrderIds = const [];
       _traversalCursor = -1;
@@ -561,6 +901,12 @@ class PlaybackQueueNavigator {
   void _prepareRepeatOrder() {
     if (_preparedRepeatOrderIds.isNotEmpty) return;
     _preparedRepeatOrderIds = _freshCycle(avoidFirstId: _currentId);
+  }
+
+  bool _isCompleteQueueOrder(Iterable<String> ids) {
+    final order = ids.toList(growable: false);
+    return order.length == _queueIds.length &&
+        order.toSet().containsAll(_queueIds);
   }
 
   void _invalidatePreparedRepeatOrder() {
@@ -612,6 +958,8 @@ class PlaybackQueueNavigator {
     _historyCursor = -1;
     _currentId = null;
     _preparedRepeatOrderIds = const [];
+    _plannedUpcomingIds = null;
+    _plannedUpcomingRepeatAllFlags = null;
   }
 }
 
@@ -630,6 +978,14 @@ List<String> _historyIds(Iterable<String> ids) =>
 List<String> _stringList(Object? value) => value is List
     ? value.whereType<String>().where(_isValidId).toList(growable: false)
     : const [];
+
+List<bool> _boolList(Object? value) =>
+    value is List ? value.whereType<bool>().toList(growable: false) : const [];
+
+List<bool> _alignedRepeatAllFlags(Iterable<bool> flags, int length) {
+  final values = flags.toList(growable: false);
+  return values.length == length ? values : List<bool>.filled(length, false);
+}
 
 String? _validId(Object? value) =>
     value is String && _isValidId(value) ? value : null;

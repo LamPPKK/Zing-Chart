@@ -267,6 +267,12 @@ clients never call Zing upstream directly.
   and the **UP NEXT** card on phone, desktop, and TV shows the real next song
   after Smart Shuffle, Song Radio, or Add to Queue. Order and cursors persist
   locally across restart.
+- The **Up Next** list separates the current track from the editable future and
+  reorders the actual playback traversal, including while Shuffle or Repeat All
+  is active. Phone and desktop support drag reorder; TV exposes D-pad-friendly
+  Up, Down, and Remove controls. System media receives the same timeline, so
+  Next stays consistent across the app, lock screen, and remote. Every edit is
+  persisted locally across restart.
 - Smart Shuffle interleaves up to 10 suggestions from the currently loaded
   catalog, ranks them with on-device likes/analytics, and marks every inserted
   item as `SMART`. Listening taste, favorites, and history never reach the proxy.
@@ -467,7 +473,7 @@ historical binaries and contain no real user data.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-song-radio-desktop.png" alt="Song Radio and autoplay in the desktop player panel"><br><sub><b>Song Radio</b> · authorized recommendations, queue extension, and autoplay controls on phone/desktop/TV</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="Desktop queue with the real Up Next order, Smart Shuffle, and clearly marked inserted songs"><br><sub><b>Fair Shuffle & Smart Shuffle</b> · avoid repeats for a full cycle, expose the real Up Next song, and label every local-first suggestion</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="Desktop queue with the real Up Next order, Smart Shuffle, and clearly marked inserted songs"><br><sub><b>True Up Next, Fair Shuffle & Smart Shuffle</b> · separate the current track, reorder the real future, avoid repeats for a full cycle, and label every local-first suggestion</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-stream-quality-desktop.png" alt="Auto 128 and 320 kbps streaming-quality picker"><br><sub><b>Real streaming quality</b> · Auto prefers 320 then 128, while explicit 128/320 keeps the selected bitrate through the signed relay</sub></td>

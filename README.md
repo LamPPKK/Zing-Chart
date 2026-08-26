@@ -256,6 +256,11 @@ proxy Node/TypeScript do người triển khai tự host.
   desktop và TV luôn hiện bài thật sự sẽ phát sau Smart Shuffle, Song Radio hoặc
   thao tác Thêm vào hàng đợi. Thứ tự và con trỏ được lưu local để mở lại app vẫn
   tiếp tục đúng phiên.
+- Danh sách **Tiếp theo** tách bài đang phát khỏi phần chờ và cho đổi đúng thứ tự
+  phát thực tế, kể cả khi Shuffle/Repeat All đang bật. Mobile và desktop hỗ trợ
+  kéo thả; TV có nút Lên/Xuống/Xóa dùng được bằng D-pad. System media cũng nhận
+  chính timeline này, nên nút Next trên app, màn hình khóa và remote luôn thống
+  nhất. Mọi chỉnh sửa được lưu local và giữ nguyên sau khi mở lại app.
 - Smart Shuffle xen tối đa 10 gợi ý vào hàng đợi từ catalog hiện tại, xếp
   hạng bằng likes/analytics local và đánh dấu `SMART` cho từng bài tự thêm.
   Tính năng không gửi gu nghe nhạc, favorites hoặc lịch sử lên proxy.
@@ -485,7 +490,7 @@ không chứa dữ liệu người dùng thật.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-song-radio-desktop.png" alt="Song Radio và tự động phát trong panel desktop"><br><sub><b>Song Radio</b> · gợi ý được phép, tự nối hàng đợi và điều khiển autoplay trên mobile/desktop/TV</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="Hàng đợi desktop với thứ tự Tiếp theo thật, Smart Shuffle và các bài tự thêm được đánh dấu"><br><sub><b>Fair Shuffle & Smart Shuffle</b> · không lặp trong một chu kỳ, hiện đúng bài Tiếp theo và gắn nhãn rõ cho từng gợi ý local-first</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="Hàng đợi desktop với thứ tự Tiếp theo thật, Smart Shuffle và các bài tự thêm được đánh dấu"><br><sub><b>True Up Next, Fair Shuffle & Smart Shuffle</b> · bài đang phát tách riêng, phần chờ đổi thứ tự phát thật, không lặp trong một chu kỳ và gắn nhãn rõ cho gợi ý local-first</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-stream-quality-desktop.png" alt="Bộ chọn chất lượng phát Auto 128 và 320 kbps"><br><sub><b>Chất lượng phát thật</b> · Auto ưu tiên 320 rồi về 128; chế độ 128/320 giữ đúng bitrate đã chọn qua relay ký số</sub></td>

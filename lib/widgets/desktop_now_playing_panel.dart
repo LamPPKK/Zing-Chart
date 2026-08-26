@@ -2,15 +2,18 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../models/song.dart';
 import '../music_player_controller.dart';
 import '../music_player_scope.dart';
 import 'album_art.dart';
 import 'artwork_backdrop.dart';
 import 'clear_playback_queue_dialog.dart';
 import 'mood_selector.dart';
+import 'playback_queue_item_key.dart';
 import 'song_detail_panel.dart';
 import 'song_lyrics_panel.dart';
 import 'song_radio_controls.dart';
+import 'smart_shuffle_controls.dart';
 import 'up_next_preview.dart';
 
 class DesktopNowPlayingPanel extends StatelessWidget {
@@ -444,7 +447,10 @@ class DesktopNowPlayingPanel extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 10),
                               ],
-                              _DesktopQueue(controller: controller),
+                              _DesktopQueue(
+                                controller: controller,
+                                tvMode: tvMode,
+                              ),
                             ],
                           ],
                         ),
@@ -459,56 +465,161 @@ class DesktopNowPlayingPanel extends StatelessWidget {
 }
 
 class _DesktopQueue extends StatelessWidget {
-  const _DesktopQueue({required this.controller});
+  const _DesktopQueue({required this.controller, required this.tvMode});
 
   final MusicPlayerController controller;
+  final bool tvMode;
 
   @override
-  Widget build(BuildContext context) => ReorderableListView.builder(
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    buildDefaultDragHandles: true,
-    itemCount: controller.queue.length,
-    onReorderItem: controller.reorderQueueItem,
-    itemBuilder: (context, index) {
-      final queuedSong = controller.queue[index];
-      final isCurrent = index == controller.currentIndex;
-      return ListTile(
-        key: ValueKey('desktop-queue-${queuedSong.id}'),
-        dense: true,
-        contentPadding: EdgeInsets.zero,
-        leading: isCurrent
-            ? const Icon(Icons.graphic_eq_rounded, color: Color(0xFFB8F43D))
-            : Text('${index + 1}'.padLeft(2, '0')),
-        title: Text(
-          queuedSong.displayTitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              queuedSong.artistsNames,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+  Widget build(BuildContext context) {
+    final currentSong = controller.currentSong;
+    final upNextSongs = controller.upNextSongs;
+    final upNextRevision = controller.upNextRevision;
+    return ReorderableListView.builder(
+      key: const ValueKey('now-playing-up-next-list'),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      buildDefaultDragHandles: !tvMode,
+      header: currentSong == null
+          ? null
+          : _NowPlayingQueueTile(
+              key: ValueKey('desktop-current-${currentSong.id}'),
+              controller: controller,
+              song: currentSong,
+              current: true,
+              tvMode: tvMode,
             ),
-            if (controller.isRadioSong(queuedSong)) ...[
-              const SizedBox(height: 3),
-              const SongRadioBadge(compact: true),
-            ],
-          ],
-        ),
-        trailing: isCurrent
-            ? null
-            : IconButton(
+      itemCount: upNextSongs.length,
+      onReorderItem: controller.reorderUpNext,
+      itemBuilder: (context, index) {
+        final queuedSong = upNextSongs[index];
+        return _NowPlayingQueueTile(
+          key: playbackQueueItemKey('desktop-queue', upNextSongs, index),
+          controller: controller,
+          song: queuedSong,
+          position: index + 1,
+          tvMode: tvMode,
+          moveUpKey: playbackQueueItemKey(
+            'tv-up-next-move-up',
+            upNextSongs,
+            index,
+          ),
+          moveDownKey: playbackQueueItemKey(
+            'tv-up-next-move-down',
+            upNextSongs,
+            index,
+          ),
+          removeKey: playbackQueueItemKey(
+            'tv-up-next-remove',
+            upNextSongs,
+            index,
+          ),
+          onMoveUp: index > 0
+              ? () => controller.reorderUpNext(index, index - 1)
+              : null,
+          onMoveDown: index + 1 < upNextSongs.length
+              ? () => controller.reorderUpNext(index, index + 1)
+              : null,
+          onRemove: queuedSong.id == currentSong?.id
+              ? null
+              : () => controller.removeFromQueue(queuedSong),
+          onTap: () => unawaited(controller.playUpNext(index, upNextRevision)),
+        );
+      },
+    );
+  }
+}
+
+class _NowPlayingQueueTile extends StatelessWidget {
+  const _NowPlayingQueueTile({
+    super.key,
+    required this.controller,
+    required this.song,
+    required this.tvMode,
+    this.position,
+    this.current = false,
+    this.moveUpKey,
+    this.moveDownKey,
+    this.removeKey,
+    this.onMoveUp,
+    this.onMoveDown,
+    this.onRemove,
+    this.onTap,
+  });
+
+  final MusicPlayerController controller;
+  final Song song;
+  final bool tvMode;
+  final int? position;
+  final bool current;
+  final Key? moveUpKey;
+  final Key? moveDownKey;
+  final Key? removeKey;
+  final VoidCallback? onMoveUp;
+  final VoidCallback? onMoveDown;
+  final VoidCallback? onRemove;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    dense: true,
+    contentPadding: EdgeInsets.zero,
+    leading: current
+        ? const Icon(Icons.graphic_eq_rounded, color: Color(0xFFB8F43D))
+        : Text('${position ?? 0}'.padLeft(2, '0')),
+    title: Text(
+      song.displayTitle,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    ),
+    subtitle: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(song.artistsNames, maxLines: 1, overflow: TextOverflow.ellipsis),
+        if (controller.isRadioSong(song)) ...[
+          const SizedBox(height: 3),
+          const SongRadioBadge(compact: true),
+        ],
+        if (controller.isSmartShuffleSong(song)) ...[
+          const SizedBox(height: 3),
+          const SmartShuffleBadge(compact: true),
+        ],
+      ],
+    ),
+    trailing: current
+        ? const Text('Đang phát')
+        : tvMode
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                key: moveUpKey,
+                tooltip: 'Đưa lên trước',
+                onPressed: onMoveUp,
+                icon: const Icon(Icons.keyboard_arrow_up_rounded),
+              ),
+              IconButton(
+                key: moveDownKey,
+                tooltip: 'Đưa xuống sau',
+                onPressed: onMoveDown,
+                icon: const Icon(Icons.keyboard_arrow_down_rounded),
+              ),
+              IconButton(
+                key: removeKey,
                 tooltip: 'Xóa khỏi hàng đợi',
-                onPressed: () => controller.removeFromQueue(queuedSong),
+                onPressed: onRemove,
                 icon: const Icon(Icons.close_rounded),
               ),
-        onTap: isCurrent ? null : () => controller.playSong(queuedSong),
-      );
-    },
+            ],
+          )
+        : onRemove == null
+        ? null
+        : IconButton(
+            tooltip: 'Xóa khỏi hàng đợi',
+            onPressed: onRemove,
+            icon: const Icon(Icons.close_rounded),
+          ),
+    onTap: onTap,
   );
 }
 

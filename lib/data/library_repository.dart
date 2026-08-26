@@ -23,6 +23,8 @@ class PlayerSnapshot {
     this.smartShuffleSongIds = const [],
     this.playbackOrderIds = const [],
     this.playbackHistoryIds = const [],
+    this.playbackUpcomingIds = const [],
+    this.playbackUpcomingRepeatAllFlags = const [],
     this.playbackCursor = -1,
     this.playbackHistoryCursor = -1,
     this.repeatModeIndex = 0,
@@ -51,6 +53,8 @@ class PlayerSnapshot {
   final List<String> smartShuffleSongIds;
   final List<String> playbackOrderIds;
   final List<String> playbackHistoryIds;
+  final List<String> playbackUpcomingIds;
+  final List<bool> playbackUpcomingRepeatAllFlags;
   final int playbackCursor;
   final int playbackHistoryCursor;
   final int repeatModeIndex;
@@ -79,6 +83,8 @@ class PlayerSnapshot {
     'smartShuffleSongIds': smartShuffleSongIds,
     'playbackOrderIds': playbackOrderIds,
     'playbackHistoryIds': playbackHistoryIds,
+    'playbackUpcomingIds': playbackUpcomingIds,
+    'playbackUpcomingRepeatAllFlags': playbackUpcomingRepeatAllFlags,
     'playbackCursor': playbackCursor,
     'playbackHistoryCursor': playbackHistoryCursor,
     'repeatModeIndex': repeatModeIndex,
@@ -104,6 +110,7 @@ class PlayerSnapshot {
         : const [];
 
     final currentSongJson = json['currentSong'];
+    final queue = readSongs(json['queue']);
     final playbackOrderState = _readPlaybackNavigatorState(
       json['playbackOrderIds'],
       json['playbackCursor'],
@@ -114,11 +121,19 @@ class PlayerSnapshot {
       json['playbackHistoryCursor'],
       maxIds: _maxPlaybackHistoryIds,
     );
+    final playbackUpcomingIds = _readPlaybackUpcomingIds(
+      json['playbackUpcomingIds'],
+      queueIds: queue.map((song) => song.id),
+    );
+    final playbackUpcomingRepeatAllFlags = _readPlaybackUpcomingRepeatAllFlags(
+      json['playbackUpcomingRepeatAllFlags'],
+      playbackUpcomingIds.length,
+    );
     return PlayerSnapshot(
       likedSongs: readSongs(json['likedSongs']),
       followedArtists: _readArtistList(json['followedArtists']),
       savedCollections: _readCollectionList(json['savedCollections']),
-      queue: readSongs(json['queue']),
+      queue: queue,
       currentSong: currentSongJson is Map<String, dynamic>
           ? Song.fromJson(currentSongJson)
           : null,
@@ -132,6 +147,8 @@ class PlayerSnapshot {
       smartShuffleSongIds: _readQueueMarkerIds(json['smartShuffleSongIds']),
       playbackOrderIds: playbackOrderState.ids,
       playbackHistoryIds: playbackHistoryState.ids,
+      playbackUpcomingIds: playbackUpcomingIds,
+      playbackUpcomingRepeatAllFlags: playbackUpcomingRepeatAllFlags,
       playbackCursor: playbackOrderState.cursor,
       playbackHistoryCursor: playbackHistoryState.cursor,
       repeatModeIndex: (json['repeatModeIndex'] as num?)?.toInt() ?? 0,
@@ -304,8 +321,10 @@ class SharedPreferencesLibraryRepository implements LibraryRepository {
   SharedPreferencesLibraryRepository({SharedPreferencesAsync? preferences})
     : _preferences = preferences;
 
-  static const _snapshotKey = 'player_snapshot_v9';
-  static const _legacySnapshotKey = 'player_snapshot_v8';
+  static const _snapshotKey = 'player_snapshot_v11';
+  static const _legacySnapshotKey = 'player_snapshot_v10';
+  static const _legacySnapshotKeyV9 = 'player_snapshot_v9';
+  static const _legacySnapshotKeyV8 = 'player_snapshot_v8';
   static const _legacySnapshotKeyV7 = 'player_snapshot_v7';
   static const _legacySnapshotKeyV6 = 'player_snapshot_v6';
   static const _legacySnapshotKeyV5 = 'player_snapshot_v5';
@@ -321,6 +340,8 @@ class SharedPreferencesLibraryRepository implements LibraryRepository {
       final encoded =
           await preferences.getString(_snapshotKey) ??
           await preferences.getString(_legacySnapshotKey) ??
+          await preferences.getString(_legacySnapshotKeyV9) ??
+          await preferences.getString(_legacySnapshotKeyV8) ??
           await preferences.getString(_legacySnapshotKeyV7) ??
           await preferences.getString(_legacySnapshotKeyV6) ??
           await preferences.getString(_legacySnapshotKeyV5) ??
@@ -356,6 +377,37 @@ List<String> _readQueueMarkerIds(Object? value) => value is List
 
 const _maxPlaybackHistoryIds = 500;
 final _safePlaybackIdPattern = RegExp(r'^[A-Za-z0-9_-]{1,128}$');
+
+List<String> _readPlaybackUpcomingIds(
+  Object? value, {
+  required Iterable<String> queueIds,
+}) {
+  if (value is! List) return const [];
+  final validQueueIds = queueIds.toSet();
+  if (validQueueIds.isEmpty) return const [];
+  final maxIds = _maxPlaybackHistoryIds + validQueueIds.length;
+  return List<String>.unmodifiable(
+    value
+        .whereType<String>()
+        .map((id) => id.trim())
+        .where(
+          (id) =>
+              _safePlaybackIdPattern.hasMatch(id) && validQueueIds.contains(id),
+        )
+        .take(maxIds),
+  );
+}
+
+List<bool> _readPlaybackUpcomingRepeatAllFlags(Object? value, int length) {
+  if (value is! List || value.length != length) {
+    return List<bool>.unmodifiable(List<bool>.filled(length, false));
+  }
+  final flags = value.whereType<bool>().toList(growable: false);
+  if (flags.length != length) {
+    return List<bool>.unmodifiable(List<bool>.filled(length, false));
+  }
+  return List<bool>.unmodifiable(flags);
+}
 
 class _SanitizedPlaybackIds {
   const _SanitizedPlaybackIds(this.ids, this.cursor);

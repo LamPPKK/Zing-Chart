@@ -11,6 +11,7 @@ import 'widgets/album_art.dart';
 import 'widgets/artwork_backdrop.dart';
 import 'widgets/clear_playback_queue_dialog.dart';
 import 'widgets/mood_selector.dart';
+import 'widgets/playback_queue_item_key.dart';
 import 'widgets/smart_shuffle_controls.dart';
 import 'widgets/song_lyrics_panel.dart';
 import 'widgets/song_detail_panel.dart';
@@ -346,130 +347,113 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
       isScrollControlled: true,
       builder: (sheetContext) => AnimatedBuilder(
         animation: controller,
-        builder: (context, _) => FractionallySizedBox(
-          heightFactor: 0.9,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Danh sách phát · ${controller.queue.length} bài',
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                'Đang phát từ ${controller.playbackOrigin.label}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (controller.canClearPlaybackQueue)
-                          TextButton(
-                            key: const ValueKey('mobile-clear-playback-queue'),
-                            onPressed: () => unawaited(
-                              showClearPlaybackQueueDialog(
-                                context,
-                                controller: controller,
-                              ),
-                            ),
-                            child: const Text('XÓA'),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    SmartShuffleControlCard(controller: controller),
-                    const SizedBox(height: 10),
-                    SongRadioControlCard(controller: controller),
-                    if (controller.nextSong != null) ...[
-                      const SizedBox(height: 10),
-                      UpNextPreview(controller: controller),
-                    ],
-                  ],
-                ),
-              ),
-              Expanded(
-                child: ReorderableListView.builder(
-                  scrollCacheExtent: const ScrollCacheExtent.pixels(320),
-                  itemCount: controller.queue.length,
-                  onReorderItem: controller.reorderQueueItem,
-                  itemBuilder: (context, index) {
-                    final queuedSong = controller.queue[index];
-                    final isCurrent =
-                        queuedSong.id == controller.currentSong?.id;
-                    return ListTile(
-                      key: ValueKey('queue-${queuedSong.id}'),
-                      leading: isCurrent
-                          ? const Icon(
-                              Icons.graphic_eq_rounded,
-                              color: Color(0xFFB8F43D),
-                            )
-                          : Text('${index + 1}'.padLeft(2, '0')),
-                      title: Text(
-                        queuedSong.displayTitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+        builder: (context, _) {
+          final currentSong = controller.currentSong;
+          final upNextSongs = controller.upNextSongs;
+          final upNextRevision = controller.upNextRevision;
+          return FractionallySizedBox(
+            heightFactor: 0.9,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Text(
-                            queuedSong.artistsNames,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Danh sách phát · ${controller.queue.length} bài',
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  'Đang phát từ ${controller.playbackOrigin.label}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          if (controller.isRadioSong(queuedSong)) ...[
-                            const SizedBox(height: 4),
-                            const SongRadioBadge(compact: true),
-                          ],
-                          if (controller.isSmartShuffleSong(queuedSong)) ...[
-                            const SizedBox(height: 4),
-                            const SmartShuffleBadge(compact: true),
-                          ],
+                          if (controller.canClearPlaybackQueue)
+                            TextButton(
+                              key: const ValueKey(
+                                'mobile-clear-playback-queue',
+                              ),
+                              onPressed: () => unawaited(
+                                showClearPlaybackQueueDialog(
+                                  context,
+                                  controller: controller,
+                                ),
+                              ),
+                              child: const Text('XÓA'),
+                            ),
                         ],
                       ),
-                      trailing: isCurrent
-                          ? const Text('Đang phát')
-                          : IconButton(
-                              tooltip: 'Xóa khỏi hàng đợi',
-                              onPressed: () =>
-                                  controller.removeFromQueue(queuedSong),
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                      onTap: isCurrent
-                          ? null
-                          : () {
-                              Navigator.pop(sheetContext);
-                              unawaited(controller.playSong(queuedSong));
-                            },
-                    );
-                  },
+                      const SizedBox(height: 12),
+                      SmartShuffleControlCard(controller: controller),
+                      const SizedBox(height: 10),
+                      SongRadioControlCard(controller: controller),
+                      if (controller.nextSong != null) ...[
+                        const SizedBox(height: 10),
+                        UpNextPreview(controller: controller),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
+                Expanded(
+                  child: ReorderableListView.builder(
+                    key: const ValueKey('mobile-up-next-list'),
+                    scrollCacheExtent: const ScrollCacheExtent.pixels(320),
+                    header: currentSong == null
+                        ? null
+                        : _MobileQueueSongTile(
+                            key: ValueKey('queue-current-${currentSong.id}'),
+                            controller: controller,
+                            song: currentSong,
+                            current: true,
+                          ),
+                    itemCount: upNextSongs.length,
+                    onReorderItem: controller.reorderUpNext,
+                    itemBuilder: (context, index) {
+                      final queuedSong = upNextSongs[index];
+                      return _MobileQueueSongTile(
+                        key: playbackQueueItemKey('queue', upNextSongs, index),
+                        controller: controller,
+                        song: queuedSong,
+                        position: index + 1,
+                        onRemove: queuedSong.id == currentSong?.id
+                            ? null
+                            : () => controller.removeFromQueue(queuedSong),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          unawaited(
+                            controller.playUpNext(index, upNextRevision),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -521,6 +505,61 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
       ),
     );
   }
+}
+
+class _MobileQueueSongTile extends StatelessWidget {
+  const _MobileQueueSongTile({
+    super.key,
+    required this.controller,
+    required this.song,
+    this.position,
+    this.current = false,
+    this.onRemove,
+    this.onTap,
+  });
+
+  final MusicPlayerController controller;
+  final Song song;
+  final int? position;
+  final bool current;
+  final VoidCallback? onRemove;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    leading: current
+        ? const Icon(Icons.graphic_eq_rounded, color: Color(0xFFB8F43D))
+        : Text('${position ?? 0}'.padLeft(2, '0')),
+    title: Text(
+      song.displayTitle,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    ),
+    subtitle: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(song.artistsNames, maxLines: 1, overflow: TextOverflow.ellipsis),
+        if (controller.isRadioSong(song)) ...[
+          const SizedBox(height: 4),
+          const SongRadioBadge(compact: true),
+        ],
+        if (controller.isSmartShuffleSong(song)) ...[
+          const SizedBox(height: 4),
+          const SmartShuffleBadge(compact: true),
+        ],
+      ],
+    ),
+    trailing: current
+        ? const Text('Đang phát')
+        : onRemove == null
+        ? null
+        : IconButton(
+            tooltip: 'Xóa khỏi hàng đợi',
+            onPressed: onRemove,
+            icon: const Icon(Icons.close_rounded),
+          ),
+    onTap: onTap,
+  );
 }
 
 String _sleepTimerLabel(MusicPlayerController controller) {

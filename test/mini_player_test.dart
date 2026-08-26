@@ -419,9 +419,9 @@ void main() {
       final list = tester.widget<ReorderableListView>(
         find.byKey(const ValueKey('desktop-playing-queue-list')),
       );
-      list.onReorderItem!(2, 1);
+      list.onReorderItem!(1, 0);
       await tester.pump();
-      expect(controller.queue, const [_song, _songThree, _songTwo]);
+      expect(controller.upNextSongs, const [_songThree, _songTwo]);
 
       await tester.tap(find.byKey(const ValueKey('desktop-queue-song-three')));
       await tester.pumpAndSettle();

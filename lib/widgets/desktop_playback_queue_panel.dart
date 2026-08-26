@@ -9,6 +9,7 @@ import '../music_player_scope.dart';
 import '../theme/app_theme.dart';
 import 'album_art.dart';
 import 'clear_playback_queue_dialog.dart';
+import 'playback_queue_item_key.dart';
 import 'smart_shuffle_controls.dart';
 import 'song_lyrics_panel.dart';
 import 'song_radio_controls.dart';
@@ -290,7 +291,8 @@ class _PlayingQueue extends StatelessWidget {
       );
     }
 
-    final queue = controller.queue;
+    final upNextSongs = controller.upNextSongs;
+    final upNextRevision = controller.upNextRevision;
     return Column(
       children: [
         Padding(
@@ -304,7 +306,7 @@ class _PlayingQueue extends StatelessWidget {
                     const _SectionEyebrow(label: 'TIẾP THEO'),
                     const SizedBox(height: 3),
                     Text(
-                      'Từ ${controller.playbackOrigin.label} · ${queue.length} bài',
+                      'Từ ${controller.playbackOrigin.label} · ${controller.queue.length} bài',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -349,22 +351,28 @@ class _PlayingQueue extends StatelessWidget {
             key: const ValueKey('desktop-playing-queue-list'),
             padding: const EdgeInsets.fromLTRB(10, 0, 10, 24),
             buildDefaultDragHandles: true,
-            itemCount: queue.length,
-            onReorderItem: controller.reorderQueueItem,
+            header: _QueueSongTile(
+              key: ValueKey('desktop-current-${current.id}'),
+              song: current,
+              index: 0,
+              current: true,
+              radio: controller.isRadioSong(current),
+              smart: controller.isSmartShuffleSong(current),
+            ),
+            itemCount: upNextSongs.length,
+            onReorderItem: controller.reorderUpNext,
             itemBuilder: (context, index) {
-              final song = queue[index];
-              final isCurrent = song.id == current.id;
+              final song = upNextSongs[index];
               return _QueueSongTile(
-                key: ValueKey('desktop-queue-${song.id}'),
+                key: playbackQueueItemKey('desktop-queue', upNextSongs, index),
                 song: song,
                 index: index,
-                current: isCurrent,
+                current: false,
                 radio: controller.isRadioSong(song),
                 smart: controller.isSmartShuffleSong(song),
-                onTap: isCurrent
-                    ? null
-                    : () => unawaited(controller.playSong(song)),
-                onRemove: isCurrent
+                onTap: () =>
+                    unawaited(controller.playUpNext(index, upNextRevision)),
+                onRemove: song.id == current.id
                     ? null
                     : () => controller.removeFromQueue(song),
               );

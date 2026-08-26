@@ -59,6 +59,8 @@ void main() {
         smartShuffleSongIds: ['one'],
         playbackOrderIds: ['two', 'one'],
         playbackHistoryIds: ['two', 'one', 'two'],
+        playbackUpcomingIds: ['one'],
+        playbackUpcomingRepeatAllFlags: [true],
         playbackCursor: 1,
         playbackHistoryCursor: 2,
         repeatModeIndex: 2,
@@ -86,6 +88,8 @@ void main() {
       expect(restored.smartShuffleSongIds, ['one']);
       expect(restored.playbackOrderIds, ['two', 'one']);
       expect(restored.playbackHistoryIds, ['two', 'one', 'two']);
+      expect(restored.playbackUpcomingIds, ['one']);
+      expect(restored.playbackUpcomingRepeatAllFlags, [true]);
       expect(restored.playbackCursor, 1);
       expect(restored.playbackHistoryCursor, 2);
       expect(restored.repeatModeIndex, 2);
@@ -116,6 +120,8 @@ void main() {
       smartShuffleSongIds: const ['one'],
       playbackOrderIds: const ['two', 'one'],
       playbackHistoryIds: const ['two', 'one', 'two'],
+      playbackUpcomingIds: const ['one'],
+      playbackUpcomingRepeatAllFlags: const [true],
       playbackCursor: 1,
       playbackHistoryCursor: 2,
       streamingQualityPreferenceIndex: StreamingQualityPreference.high.index,
@@ -163,6 +169,8 @@ void main() {
     expect(restored.smartShuffleSongIds, ['one']);
     expect(restored.playbackOrderIds, ['two', 'one']);
     expect(restored.playbackHistoryIds, ['two', 'one', 'two']);
+    expect(restored.playbackUpcomingIds, ['one']);
+    expect(restored.playbackUpcomingRepeatAllFlags, [true]);
     expect(restored.playbackCursor, 1);
     expect(restored.playbackHistoryCursor, 2);
     expect(
@@ -351,6 +359,7 @@ void main() {
 
   test('player snapshot sanitizes and caps playback navigator state', () {
     final restored = PlayerSnapshot.fromJson({
+      'queue': [song.toJson()],
       'playbackOrderIds': [
         ' one ',
         'two',
@@ -368,6 +377,13 @@ void main() {
       ],
       'playbackCursor': 1,
       'playbackHistoryCursor': 1,
+      'playbackUpcomingIds': [
+        ' one ',
+        'missing',
+        'not safe',
+        null,
+        ...List.generate(550, (_) => 'one'),
+      ],
     });
 
     expect(restored.playbackOrderIds, hasLength(512));
@@ -377,6 +393,20 @@ void main() {
     expect(restored.playbackHistoryIds.take(3), ['one', 'one', 'history_0']);
     expect(restored.playbackCursor, 1);
     expect(restored.playbackHistoryCursor, 1);
+    expect(restored.playbackUpcomingIds, hasLength(501));
+    expect(restored.playbackUpcomingIds.toSet(), {'one'});
+    expect(
+      restored.playbackUpcomingRepeatAllFlags,
+      List<bool>.filled(501, false),
+    );
+
+    final alignedProvenance = PlayerSnapshot.fromJson({
+      'queue': [song.toJson()],
+      'playbackUpcomingIds': ['one', 'one'],
+      'playbackUpcomingRepeatAllFlags': [true, false],
+    });
+    expect(alignedProvenance.playbackUpcomingIds, ['one', 'one']);
+    expect(alignedProvenance.playbackUpcomingRepeatAllFlags, [true, false]);
 
     final longHistory = PlayerSnapshot.fromJson({
       'playbackHistoryIds': List.generate(620, (index) => 'history_$index'),
@@ -424,7 +454,7 @@ void main() {
     expect(invalidCursor.playbackHistoryCursor, -1);
   });
 
-  group('shared preferences player snapshot v9 migration', () {
+  group('shared preferences player snapshot v11 migration', () {
     late InMemorySharedPreferencesAsync store;
     late SharedPreferencesAsync preferences;
 
@@ -438,14 +468,19 @@ void main() {
       SharedPreferencesAsyncPlatform.instance = null;
     });
 
-    test('loads a v8 snapshot with navigator defaults', () async {
+    test('loads a v10 snapshot with Repeat All provenance defaults', () async {
       await preferences.setString(
-        'player_snapshot_v8',
+        'player_snapshot_v10',
         jsonEncode({
           'queue': [song.toJson()],
           'currentSong': song.toJson(),
           'currentIndex': 0,
           'shuffleEnabled': true,
+          'playbackOrderIds': ['one'],
+          'playbackHistoryIds': ['one'],
+          'playbackUpcomingIds': ['one'],
+          'playbackCursor': 0,
+          'playbackHistoryCursor': 0,
         }),
       );
       final repository = SharedPreferencesLibraryRepository(
@@ -456,25 +491,32 @@ void main() {
 
       expect(restored.currentSong?.id, 'one');
       expect(restored.shuffleEnabled, isTrue);
-      expect(restored.playbackOrderIds, isEmpty);
-      expect(restored.playbackHistoryIds, isEmpty);
-      expect(restored.playbackCursor, -1);
-      expect(restored.playbackHistoryCursor, -1);
+      expect(restored.playbackOrderIds, ['one']);
+      expect(restored.playbackHistoryIds, ['one']);
+      expect(restored.playbackUpcomingIds, ['one']);
+      expect(restored.playbackUpcomingRepeatAllFlags, [false]);
+      expect(restored.playbackCursor, 0);
+      expect(restored.playbackHistoryCursor, 0);
     });
 
-    test('prefers v9 over v8 and saves new snapshots only to v9', () async {
+    test('prefers v11 over v10 and restores provenance idempotently', () async {
       await preferences.setString(
-        'player_snapshot_v8',
+        'player_snapshot_v10',
         jsonEncode({
           'playbackOrderIds': ['legacy'],
           'playbackCursor': 0,
         }),
       );
       await preferences.setString(
-        'player_snapshot_v9',
+        'player_snapshot_v11',
         jsonEncode({
-          'playbackOrderIds': ['current'],
+          'queue': [song.toJson()],
+          'playbackOrderIds': ['one'],
+          'playbackHistoryIds': ['one'],
+          'playbackUpcomingIds': ['one', 'one'],
+          'playbackUpcomingRepeatAllFlags': [true, false],
           'playbackCursor': 0,
+          'playbackHistoryCursor': 0,
         }),
       );
       final repository = SharedPreferencesLibraryRepository(
@@ -482,25 +524,38 @@ void main() {
       );
 
       final restored = await repository.load();
-      expect(restored.playbackOrderIds, ['current']);
+      expect(restored.playbackOrderIds, ['one']);
+      expect(restored.playbackUpcomingIds, ['one', 'one']);
+      expect(restored.playbackUpcomingRepeatAllFlags, [true, false]);
+      final restoredAgain = await repository.load();
+      expect(restoredAgain.playbackUpcomingIds, restored.playbackUpcomingIds);
+      expect(
+        restoredAgain.playbackUpcomingRepeatAllFlags,
+        restored.playbackUpcomingRepeatAllFlags,
+      );
 
       await repository.save(
-        const PlayerSnapshot(
-          playbackOrderIds: ['next'],
-          playbackHistoryIds: ['current'],
+        PlayerSnapshot(
+          queue: const [song],
+          playbackOrderIds: const ['one'],
+          playbackHistoryIds: const ['one'],
+          playbackUpcomingIds: const ['one', 'one'],
+          playbackUpcomingRepeatAllFlags: const [true, false],
           playbackCursor: 0,
           playbackHistoryCursor: 0,
         ),
       );
       final saved =
-          jsonDecode((await preferences.getString('player_snapshot_v9'))!)
+          jsonDecode((await preferences.getString('player_snapshot_v11'))!)
               as Map<String, dynamic>;
-      expect(saved['playbackOrderIds'], ['next']);
-      expect(saved['playbackHistoryIds'], ['current']);
+      expect(saved['playbackOrderIds'], ['one']);
+      expect(saved['playbackHistoryIds'], ['one']);
+      expect(saved['playbackUpcomingIds'], ['one', 'one']);
+      expect(saved['playbackUpcomingRepeatAllFlags'], [true, false]);
       expect(saved['playbackCursor'], 0);
       expect(saved['playbackHistoryCursor'], 0);
       expect(
-        jsonDecode((await preferences.getString('player_snapshot_v8'))!)
+        jsonDecode((await preferences.getString('player_snapshot_v10'))!)
             as Map<String, dynamic>,
         containsPair('playbackOrderIds', ['legacy']),
       );
