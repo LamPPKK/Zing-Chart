@@ -1,4 +1,5 @@
 import 'catalog_search.dart';
+import 'release_catalog.dart';
 import 'weekly_chart.dart';
 
 enum OfficialZingLinkKind {
@@ -33,6 +34,7 @@ class OfficialZingLink {
     this.artistSection = OfficialArtistSection.profile,
     this.searchQuery = '',
     this.searchSection = CatalogSearchSection.all,
+    this.releaseContentType,
   });
 
   final OfficialZingLinkKind kind;
@@ -44,6 +46,103 @@ class OfficialZingLink {
   final OfficialArtistSection artistSection;
   final String searchQuery;
   final CatalogSearchSection searchSection;
+  final ReleaseContentType? releaseContentType;
+
+  /// Stable semantic identity. Presentation slugs, subdomains, tracking query
+  /// parameters, and fragments never create a second app-history entry.
+  String get canonicalIdentity => switch (kind) {
+    OfficialZingLinkKind.search =>
+      'search:${searchSection.name}:${searchQuery.toLowerCase()}',
+    OfficialZingLinkKind.song => 'song:$id',
+    OfficialZingLinkKind.video => 'video:$id',
+    OfficialZingLinkKind.artist =>
+      'artist:${alias.toLowerCase()}:${artistSection.name}',
+    OfficialZingLinkKind.collection => 'collection:${collectionKind!.name}:$id',
+    OfficialZingLinkKind.chart => 'catalog:chart',
+    OfficialZingLinkKind.newReleaseChart => 'catalog:new-release-chart',
+    OfficialZingLinkKind.weeklyChart => 'catalog:weekly:${weeklyRegion!.name}',
+    OfficialZingLinkKind.top100 => 'catalog:top100',
+    OfficialZingLinkKind.releases =>
+      'catalog:releases:${releaseContentType!.name}',
+    OfficialZingLinkKind.hub => 'hub:$id',
+    OfficialZingLinkKind.liveRadio => 'catalog:radio',
+  };
+
+  /// Canonical public Zing URL used for sharing and the Web `open` envelope.
+  /// It always uses the primary host and strips fragments/tracking parameters.
+  Uri get canonicalUri => switch (kind) {
+    OfficialZingLinkKind.search => Uri.https(
+      'zingmp3.vn',
+      switch (searchSection) {
+        CatalogSearchSection.all => '/tim-kiem/tat-ca',
+        CatalogSearchSection.songs => '/tim-kiem/bai-hat',
+        CatalogSearchSection.collections => '/tim-kiem/playlist',
+        CatalogSearchSection.artists => '/tim-kiem/artist',
+        CatalogSearchSection.videos => '/tim-kiem/video',
+      },
+      {'q': searchQuery},
+    ),
+    OfficialZingLinkKind.song => _canonicalPrettyOrLink(
+      uri,
+      prettyRoot: 'bai-hat',
+      fallbackPath: '/link/song/$id',
+    ),
+    OfficialZingLinkKind.video => _canonicalPrettyOrLink(
+      uri,
+      prettyRoot: 'video-clip',
+      fallbackPath: '/video-clip/video/$id.html',
+    ),
+    OfficialZingLinkKind.artist => Uri.https(
+      'zingmp3.vn',
+      switch (artistSection) {
+        OfficialArtistSection.profile => '/nghe-si/$alias',
+        OfficialArtistSection.songs => '/$alias/bai-hat',
+        OfficialArtistSection.singles => '/$alias/single',
+        OfficialArtistSection.videos => '/$alias/video',
+      },
+    ),
+    OfficialZingLinkKind.collection =>
+      collectionKind == CatalogCollectionKind.album
+          ? _canonicalPrettyOrLink(
+              uri,
+              prettyRoot: 'album',
+              fallbackPath: '/link/album/$id',
+            )
+          : _canonicalPrettyOrLink(
+              uri,
+              prettyRoot: 'playlist',
+              fallbackPath: '/playlist/playlist/$id.html',
+            ),
+    OfficialZingLinkKind.chart => Uri.https('zingmp3.vn', '/zing-chart'),
+    OfficialZingLinkKind.newReleaseChart => Uri.https(
+      'zingmp3.vn',
+      '/moi-phat-hanh',
+    ),
+    OfficialZingLinkKind.weeklyChart => Uri.https(
+      'zingmp3.vn',
+      switch (weeklyRegion!) {
+        WeeklyChartRegion.vietnam =>
+          '/zing-chart-tuan/Bai-hat-Viet-Nam/IWZ9Z08I.html',
+        WeeklyChartRegion.usuk =>
+          '/zing-chart-tuan/Bai-hat-US-UK/IWZ9Z0BW.html',
+        WeeklyChartRegion.korea =>
+          '/zing-chart-tuan/Bai-hat-KPop/IWZ9Z0BO.html',
+      },
+    ),
+    OfficialZingLinkKind.top100 => Uri.https('zingmp3.vn', '/top100'),
+    OfficialZingLinkKind.releases => Uri.https(
+      'zingmp3.vn',
+      releaseContentType == ReleaseContentType.albums
+          ? '/new-release/album'
+          : '/new-release/song',
+    ),
+    OfficialZingLinkKind.hub => _canonicalPrettyOrLink(
+      uri,
+      prettyRoot: 'hub',
+      fallbackPath: '/hub/hub/$id.html',
+    ),
+    OfficialZingLinkKind.liveRadio => Uri.https('zingmp3.vn', '/radio'),
+  };
 
   static OfficialZingLink? tryParse(String input) {
     final uri = Uri.tryParse(input.trim());
@@ -139,8 +238,17 @@ class OfficialZingLink {
     }
 
     if (segments.length == 2 && segments.first == 'new-release') {
-      if (segments.last != 'song' && segments.last != 'album') return null;
-      return OfficialZingLink._(kind: OfficialZingLinkKind.releases, uri: uri);
+      final releaseContentType = switch (segments.last) {
+        'song' => ReleaseContentType.songs,
+        'album' => ReleaseContentType.albums,
+        _ => null,
+      };
+      if (releaseContentType == null) return null;
+      return OfficialZingLink._(
+        kind: OfficialZingLinkKind.releases,
+        uri: uri,
+        releaseContentType: releaseContentType,
+      );
     }
 
     if (segments.length == 3 && segments[0] == 'link') {
@@ -276,6 +384,7 @@ bool _isReservedRoot(String value) =>
     _reservedRoots.contains(value.toLowerCase());
 
 String? _searchQuery(Uri uri) {
+  if (uri.queryParametersAll.length != 1) return null;
   final values = uri.queryParametersAll['q'];
   if (values == null || values.length != 1) return null;
   final rawQuery = values.single;
@@ -289,4 +398,16 @@ String? _htmlId(String value) {
   if (!value.endsWith('.html')) return null;
   final id = value.substring(0, value.length - 5);
   return _isId(id) ? id : null;
+}
+
+Uri _canonicalPrettyOrLink(
+  Uri original, {
+  required String prettyRoot,
+  required String fallbackPath,
+}) {
+  final segments = original.pathSegments;
+  final path = segments.length == 3 && segments.first == prettyRoot
+      ? '/${segments.join('/')}'
+      : fallbackPath;
+  return Uri.https('zingmp3.vn', path);
 }

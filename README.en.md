@@ -104,8 +104,12 @@ clients never call Zing upstream directly.
 - Large desktops use a Zing MP3-inspired grouped sidebar for Library,
   Discovery, #zingchart, LIVE Radio, New Release Chart, Topics & Genres, Top
   100, and For You. Hub/Top 100 open directly, with Create playlist and Playback
-  queue actions in the footer. Back/Forward keeps up to 50 in-shell
-  tab, search, artist, and album/playlist states, with `Alt+←/→` on desktop.
+  queue actions in the footer. Back/Forward keeps up to 50 in-shell tab,
+  search, artist, album/playlist, and Library-section states, with `Alt+←/→`
+  on desktop. On Web, semantic destinations are synchronized with the address
+  bar and Browser History; Back/Forward restores cached snapshots without
+  recreating the player, queue, or current track. Native and TV retain the
+  in-shell stack, and webOS/Tizen do not depend on the History API.
   On tablet and desktop, Back/Forward, search, and Settings stay pinned while
   content scrolls; Discovery also pins its category rail directly underneath.
   Wide desktop adds a Personal avatar and a Local Profile card
@@ -294,6 +298,19 @@ clients never call Zing upstream directly.
   `zingchart://open?url=https%3A%2F%2Fzingmp3.vn%2Ftop100`.
 - Web/PWA:
   `https://<client-host>/?open=https%3A%2F%2Fzingmp3.vn%2Ftop100`.
+- Regular Web builds use `PathUrlStrategy` with the configured `<base href>`.
+  Cold-starting directly at a path such as `/new-release/album` requires the
+  host to rewrite that path to `index.html`.
+- The official Zing target inside `open` is normalized to the primary
+  `https://zingmp3.vn` host, strips fragments and tracking data, and preserves
+  route subtypes such as `/new-release/song` versus `/new-release/album`; the
+  address bar still uses the client host. Discovery, local Hubs, Library, and
+  For You use `?view=discovery`, `?view=hubs`, `?view=library`, and
+  `?view=for-you` respectively. Library may retain a section and opaque local
+  playlist ID, never a playlist name or listening data.
+- Only committed semantic navigation adds a history entry. Interim results while
+  typing are coalesced with replace into the same entry; pagination, scrolling,
+  seeking, and queue changes do not spam Browser History.
 - Android HTTPS handoff is best-effort: some devices or older releases may show
   a chooser, while Android 12+ normally opens an unverified domain in the default
   browser. The reliable paths are the custom scheme and paste action. Because
@@ -738,8 +755,17 @@ fvm flutter build web --release \
 python3 -m http.server 8081 --directory build/web
 ```
 
+For a deployment below `/app/`, build with the matching base href:
+
+```sh
+fvm flutter build web --release \
+  --base-href /app/ \
+  --dart-define=API_BASE_URL="$API_BASE_URL"
+```
+
 Deploy `build/web/` on HTTPS with SPA fallback to `index.html`. The browser's
-autoplay and background rules still apply; closing the tab ends playback.
+autoplay and background rules still apply; closing the tab ends playback. For
+the `/app/` example, rewrite `/app/*` to `/app/index.html`.
 
 ### Windows
 

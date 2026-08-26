@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/app_navigation_route.dart';
 import '../models/catalog_search.dart';
 import '../models/local_library.dart';
 import '../models/playback_origin.dart';
@@ -9,7 +10,7 @@ import '../music_player_controller.dart';
 import '../theme/app_theme.dart';
 import 'album_art.dart';
 
-enum LibrarySection { overview, songs, playlists, albums, artists }
+export '../models/app_navigation_route.dart' show LibrarySection;
 
 class LibraryHub extends StatefulWidget {
   const LibraryHub({

@@ -74,7 +74,9 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 - 大屏桌面端采用接近 Zing MP3 信息层级的分组侧栏，包含音乐库、发现、#zingchart、
   LIVE 电台、新歌榜、主题与流派、Top 100 和“为你推荐”；Hub 与 Top 100 可直接打开，
   底部提供“新建歌单”和“播放队列”。返回/前进可保留最多 50 个应用内标签、搜索、
-  歌手及专辑/歌单状态，桌面端支持 `Alt+←/→`。平板与桌面端在内容滚动时会固定返回/前进、
+  歌手、专辑/歌单及音乐库分区状态，桌面端支持 `Alt+←/→`。Web 会把语义化目的地同步到
+  地址栏与浏览器历史；返回/前进直接恢复内存快照，不会重建播放器、队列或当前歌曲。
+  Native 与 TV 继续使用应用内栈，webOS/Tizen 不依赖 History API。平板与桌面端在内容滚动时会固定返回/前进、
   搜索与设置工具栏；“发现”页还会在其下固定分类栏；宽屏桌面提供“个人”头像及侧栏本机资料卡，显示真实的收藏、歌单与收听分钟数，
   并直接打开本机资料，不伪装云端账号。
   平板与 TV 保留导航栏；手机使用五项底部导航：
@@ -203,6 +205,16 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   `zingchart://open?url=https%3A%2F%2Fzingmp3.vn%2Ftop100`。
 - Web/PWA：
   `https://<client-host>/?open=https%3A%2F%2Fzingmp3.vn%2Ftop100`。
+- 常规 Web 构建使用 `PathUrlStrategy` 与已配置的 `<base href>`。若要从
+  `/new-release/album` 等直接路径冷启动，托管端必须将该路径 rewrite 到
+  `index.html`。
+- `open` 参数中的 Zing 官方目标会统一为主域 `https://zingmp3.vn`，移除
+  fragment/tracking，并保留 `/new-release/song` 与 `/new-release/album` 等 subtype；
+  地址栏仍使用客户端 host。发现、Hub、音乐库和“为你推荐”分别使用
+  `?view=discovery`、`?view=hubs`、`?view=library` 与 `?view=for-you`；音乐库
+  只会保留分区与不透明的本地播放列表 ID，不写入播放列表名称或收听数据。
+- 只有已提交的语义化导航才新增历史条目。输入过程中的临时搜索结果会通过 replace
+  合并到同一个条目；分页、滚动、seek 与队列变化不会填满浏览器历史。
 - Android HTTPS 交接属于 best-effort：部分设备或旧版系统可能显示选择器，Android
   12+ 通常会用默认浏览器打开未验证域名。稳定入口是自定义 scheme 或粘贴操作。
   由于域名归 Zing MP3 所有，本项目不声称拥有已验证的 Android App Link 或 Apple
@@ -606,8 +618,17 @@ fvm flutter build web --release \
 python3 -m http.server 8081 --directory build/web
 ```
 
+部署到 `/app/` 子路径时，必须使用匹配的 base href：
+
+```sh
+fvm flutter build web --release \
+  --base-href /app/ \
+  --dart-define=API_BASE_URL="$API_BASE_URL"
+```
+
 以 HTTPS 部署 `build/web/`，并把未知路由回退到 `index.html`。浏览器自动播放和
-后台限制仍然有效；关闭标签页会停止播放。
+后台限制仍然有效；关闭标签页会停止播放。以上 `/app/` 示例应将 `/app/*`
+rewrite 到 `/app/index.html`。
 
 ### Windows
 

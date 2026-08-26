@@ -104,7 +104,11 @@ proxy Node/TypeScript do người triển khai tự host.
   phá, #zingchart, Phòng Nhạc LIVE, BXH Nhạc Mới, Chủ Đề & Thể Loại, Top 100 và
   Dành cho bạn; Hub/Top 100 mở trực tiếp, cuối sidebar có Tạo playlist mới và
   Danh sách phát. Nút Quay lại/Tiến lưu tối đa 50 trạng thái tab, tìm
-  kiếm, nghệ sĩ và album/playlist ngay trong app; desktop hỗ trợ `Alt+←/→`.
+  kiếm, nghệ sĩ, album/playlist và phân khu Thư viện; desktop hỗ trợ
+  `Alt+←/→`. Trên Web, các đích điều hướng có ý nghĩa được đồng bộ với address
+  bar và Browser History; Back/Forward khôi phục snapshot đang cache mà không
+  tạo lại player, queue hay bài đang phát. Native và TV tiếp tục dùng stack nội
+  bộ; webOS/Tizen không phụ thuộc History API.
   Trên tablet/desktop, toolbar Quay lại/Tiến, tìm kiếm và Cài đặt được ghim khi
   cuộn; riêng Discovery ghim thêm rail danh mục ngay bên dưới. Desktop rộng có
   avatar và thẻ Cá nhân local ngay trong sidebar, hiển thị
@@ -288,6 +292,19 @@ proxy Node/TypeScript do người triển khai tự host.
   `zingchart://open?url=https%3A%2F%2Fzingmp3.vn%2Ftop100`.
 - Web/PWA:
   `https://<client-host>/?open=https%3A%2F%2Fzingmp3.vn%2Ftop100`.
+- Web thường dùng `PathUrlStrategy` với `<base href>` đã cấu hình. Muốn
+  cold-start trực tiếp bằng đường dẫn như `/new-release/album`, host phải
+  rewrite đường dẫn đó về `index.html`.
+- Đích Zing chính thức nằm trong tham số `open` được chuẩn hóa về host
+  `https://zingmp3.vn`, bỏ fragment/tracking và giữ đúng subtype như
+  `/new-release/song` hoặc `/new-release/album`; thanh địa chỉ vẫn dùng host của
+  client. Khám phá, Hub local, Thư viện và Dành cho bạn lần lượt dùng
+  `?view=discovery`, `?view=hubs`, `?view=library` và `?view=for-you`. Thư viện
+  có thể giữ `section` và ID playlist local, không ghi tên playlist hay dữ liệu
+  nghe.
+- Chỉ thao tác điều hướng ngữ nghĩa đã commit mới thêm history entry. Các kết quả
+  tạm thời khi gõ tìm kiếm được gộp bằng replace trong cùng một entry; tải thêm
+  trang, scroll, seek và thay đổi queue không làm đầy Browser History.
 - Handoff HTTPS trên Android là best-effort: một số máy/phiên bản cũ có thể hiện
   app trong chooser, còn Android 12+ thường mở domain chưa xác minh bằng browser.
   Đường ổn định là scheme hoặc nút dán link. Do domain thuộc Zing MP3, app không
@@ -976,6 +993,14 @@ fvm flutter build web --release \
   --dart-define=API_BASE_URL="$API_BASE_URL"
 ```
 
+Khi triển khai dưới subpath `/app/`, phải build đúng base href:
+
+```sh
+fvm flutter build web --release \
+  --base-href /app/ \
+  --dart-define=API_BASE_URL="$API_BASE_URL"
+```
+
 Artifact: `build/web/`.
 
 Smoke test local:
@@ -987,7 +1012,8 @@ python3 -m http.server 8081 --directory build/web
 Mở `http://localhost:8081`. Khi triển khai production, static host phải:
 
 - phục vụ HTTPS;
-- fallback route về `index.html`;
+- fallback route về `index.html`; với subpath `/app/`, rewrite `/app/*` về
+  `/app/index.html`;
 - không cache lâu file audio hoặc signed stream URL;
 - có origin nằm trong `CORS_ORIGINS` của proxy.
 

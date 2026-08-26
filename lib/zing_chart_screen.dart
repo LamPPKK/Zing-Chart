@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'analytics_dashboard_screen.dart';
 import 'data/music_repository.dart';
+import 'models/app_navigation_route.dart';
 import 'models/catalog_artist_detail.dart';
 import 'models/catalog_search.dart';
 import 'models/catalog_hub.dart';
@@ -98,6 +99,9 @@ typedef WeeklyChartLoader =
 typedef LiveRadioLoader = Future<LiveRadioSnapshot> Function();
 typedef ExternalCatalogLauncher = Future<bool> Function(Uri uri);
 typedef ClipboardTextReader = Future<String?> Function();
+typedef NavigationRouteChanged =
+    void Function(AppNavigationRoute route, {required bool replace});
+typedef PlatformHistoryRequest = bool Function();
 
 Future<bool> launchExternalCatalogPage(Uri uri) =>
     launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -131,6 +135,7 @@ class _CatalogNavigationState {
     required this.selectedDiscoveryCategoryId,
     required this.discoveryHome,
     required this.selectedPlaylistId,
+    required this.librarySection,
     required this.releaseContentType,
     required this.releaseRegion,
     required this.weeklyRegion,
@@ -159,6 +164,7 @@ class _CatalogNavigationState {
   final String selectedDiscoveryCategoryId;
   final DiscoveryHome discoveryHome;
   final String? selectedPlaylistId;
+  final LibrarySection librarySection;
   final ReleaseContentType releaseContentType;
   final ReleaseRegion releaseRegion;
   final WeeklyChartRegion weeklyRegion;
@@ -169,15 +175,13 @@ class _CatalogNavigationState {
     catalogBrowseView.name,
     searchQuery,
     searchSection.name,
-    searchPages.entries
-        .map((entry) => '${entry.key.name}:${entry.value.page}')
-        .join(','),
     selectedArtist?.id,
     artistSection.name,
     selectedCollection?.id,
     selectedHub?.id,
     selectedDiscoveryCategoryId,
     selectedPlaylistId,
+    librarySection.name,
     releaseContentType.name,
     releaseRegion.name,
     weeklyRegion.name,
@@ -234,6 +238,11 @@ class ZingChartScreen extends StatefulWidget {
     this.initialSearchSection = CatalogSearchSection.all,
     this.initialOfficialUrl,
     this.officialUrlRevision = 0,
+    this.navigationRoute,
+    this.navigationRouteRevision = 0,
+    this.onNavigationRouteChanged,
+    this.onPlatformHistoryBack,
+    this.onPlatformHistoryForward,
     this.initialDesktopQueueVisible = false,
     this.initialDesktopPanelTab = DesktopPlaybackPanelTab.queue,
     this.clipboardTextReader = readClipboardText,
@@ -273,6 +282,11 @@ class ZingChartScreen extends StatefulWidget {
   final CatalogSearchSection initialSearchSection;
   final String? initialOfficialUrl;
   final int officialUrlRevision;
+  final AppNavigationRoute? navigationRoute;
+  final int navigationRouteRevision;
+  final NavigationRouteChanged? onNavigationRouteChanged;
+  final PlatformHistoryRequest? onPlatformHistoryBack;
+  final PlatformHistoryRequest? onPlatformHistoryForward;
   final bool initialDesktopQueueVisible;
   final DesktopPlaybackPanelTab initialDesktopPanelTab;
   final ClipboardTextReader clipboardTextReader;
@@ -425,6 +439,13 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   final List<_CatalogNavigationState> _forwardHistory = [];
   bool _navigationBatchOpen = false;
   bool _restoringNavigation = false;
+  bool _routeReportingReady = false;
+  bool _routeReportScheduled = false;
+  bool _suppressRouteReporting = false;
+  bool _replaceNextRouteReport = true;
+  bool _replaceNextSearchRouteReport = false;
+  int _incomingNavigationRequestId = 0;
+  AppNavigationRoute? _lastReportedNavigationRoute;
 
   ({
     List<Song> songs,
@@ -708,11 +729,272 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         selectedDiscoveryCategoryId: _selectedDiscoveryCategoryId,
         discoveryHome: _discoveryHome,
         selectedPlaylistId: _selectedPlaylistId,
+        librarySection: _librarySection,
         releaseContentType: _releaseContentType,
         releaseRegion: _releaseRegion,
         weeklyRegion: _weeklyRegion,
         showAllChartSongs: _showAllChartSongs,
       );
+
+  AppNavigationRoute? _navigationRouteForState(
+    _CatalogNavigationState state, {
+    bool requireCommittedSearch = false,
+  }) {
+    if (state.selectedTab == _chartTab) {
+      return _officialNavigationRoute('https://zingmp3.vn/zing-chart');
+    }
+    if (state.selectedTab == _newReleaseTab) {
+      return _officialNavigationRoute('https://zingmp3.vn/moi-phat-hanh');
+    }
+    if (state.selectedTab == _liveRadioTab) {
+      return _officialNavigationRoute('https://zingmp3.vn/radio');
+    }
+    if (state.selectedTab == _forYouTab) {
+      return const AppNavigationRoute.forYou();
+    }
+    if (state.selectedTab == _libraryTab) {
+      return AppNavigationRoute.library(
+        section: state.librarySection,
+        playlistId: state.selectedPlaylistId,
+      );
+    }
+    if (state.selectedTab != _discoveryTab) return null;
+
+    final collection = state.selectedCollection;
+    if (collection != null) {
+      final official = OfficialZingLink.tryParse(collection.externalUrl);
+      if (official?.kind == OfficialZingLinkKind.collection) {
+        return AppNavigationRoute.official(official!);
+      }
+      if (collection.kind == CatalogCollectionKind.album) {
+        return _officialNavigationRoute(
+          'https://zingmp3.vn/link/album/${collection.id}',
+        );
+      }
+    }
+
+    final artist = state.selectedArtist;
+    if (artist != null) {
+      final suffix = switch (state.artistSection) {
+        OfficialArtistSection.profile => '',
+        OfficialArtistSection.songs => '/bai-hat',
+        OfficialArtistSection.singles => '/single',
+        OfficialArtistSection.videos => '/video',
+      };
+      return _officialNavigationRoute(
+        suffix.isEmpty
+            ? 'https://zingmp3.vn/nghe-si/${artist.aliasName}'
+            : 'https://zingmp3.vn/${artist.aliasName}$suffix',
+      );
+    }
+
+    final hub = state.selectedHub;
+    if (hub != null) {
+      final official = OfficialZingLink.tryParse(hub.externalUrl);
+      if (official?.kind == OfficialZingLinkKind.hub) {
+        return AppNavigationRoute.official(official!);
+      }
+    }
+
+    final query = state.searchQuery.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (query.isNotEmpty) {
+      if (requireCommittedSearch &&
+          state.aggregateSearchResult == null &&
+          state.searchResult == null) {
+        return null;
+      }
+      final path = switch (state.searchSection) {
+        CatalogSearchSection.all => '/tim-kiem/tat-ca',
+        CatalogSearchSection.songs => '/tim-kiem/bai-hat',
+        CatalogSearchSection.collections => '/tim-kiem/playlist',
+        CatalogSearchSection.artists => '/tim-kiem/artist',
+        CatalogSearchSection.videos => '/tim-kiem/video',
+      };
+      return _officialNavigationRoute(
+        Uri.https('zingmp3.vn', path, {'q': query}).toString(),
+      );
+    }
+
+    return switch (state.catalogBrowseView) {
+      _CatalogBrowseView.discovery => const AppNavigationRoute.discovery(),
+      _CatalogBrowseView.hubs => const AppNavigationRoute.hubs(),
+      _CatalogBrowseView.top100 => _officialNavigationRoute(
+        'https://zingmp3.vn/top100',
+      ),
+      _CatalogBrowseView.releases => _officialNavigationRoute(
+        state.releaseContentType == ReleaseContentType.albums
+            ? 'https://zingmp3.vn/new-release/album'
+            : 'https://zingmp3.vn/new-release/song',
+      ),
+      _CatalogBrowseView.weekly => _officialNavigationRoute(
+        switch (state.weeklyRegion) {
+          WeeklyChartRegion.vietnam =>
+            'https://zingmp3.vn/zing-chart-tuan/'
+                'Bai-hat-Viet-Nam/IWZ9Z08I.html',
+          WeeklyChartRegion.usuk =>
+            'https://zingmp3.vn/zing-chart-tuan/'
+                'Bai-hat-US-UK/IWZ9Z0BW.html',
+          WeeklyChartRegion.korea =>
+            'https://zingmp3.vn/zing-chart-tuan/'
+                'Bai-hat-KPop/IWZ9Z0BO.html',
+        },
+      ),
+    };
+  }
+
+  AppNavigationRoute? _officialNavigationRoute(String url) {
+    final link = OfficialZingLink.tryParse(url);
+    return link == null ? null : AppNavigationRoute.official(link);
+  }
+
+  AppNavigationRoute? _currentNavigationRoute({
+    bool requireCommittedSearch = true,
+  }) => _navigationRouteForState(
+    _captureNavigationState(),
+    requireCommittedSearch: requireCommittedSearch,
+  );
+
+  void _enableRouteReporting() {
+    _routeReportingReady = true;
+    // If a warm platform route already won the startup race, its browser entry
+    // is authoritative and there is no initial route left to replace.
+    _replaceNextRouteReport = _lastReportedNavigationRoute == null;
+    if (!_replaceNextRouteReport) _replaceNextSearchRouteReport = false;
+    _scheduleNavigationRouteReport();
+  }
+
+  void _scheduleNavigationRouteReport() {
+    if (!_routeReportingReady ||
+        _suppressRouteReporting ||
+        widget.onNavigationRouteChanged == null ||
+        _routeReportScheduled) {
+      return;
+    }
+    _routeReportScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _routeReportScheduled = false;
+      if (!mounted || _suppressRouteReporting) return;
+      final route = _currentNavigationRoute();
+      if (route == null) return;
+      final previous = _lastReportedNavigationRoute;
+      final sameIdentity = previous?.identity == route.identity;
+      final samePresentation =
+          previous?.officialLink?.canonicalUri.toString() ==
+              route.officialLink?.canonicalUri.toString() &&
+          previous?.shellDestination == route.shellDestination &&
+          previous?.librarySection == route.librarySection &&
+          previous?.playlistId == route.playlistId;
+      if (sameIdentity && samePresentation) {
+        // A warm platform route can settle before the initial async catalog
+        // loader enables reporting. Consume its initial-replace intent here so
+        // the user's next real navigation is pushed instead of overwritten.
+        _replaceNextRouteReport = false;
+        _replaceNextSearchRouteReport = false;
+        return;
+      }
+      final isSearchRoute =
+          route.officialLink?.kind == OfficialZingLinkKind.search;
+      final replaceSearchRoute =
+          isSearchRoute &&
+          previous?.officialLink?.kind == OfficialZingLinkKind.search &&
+          _replaceNextSearchRouteReport;
+      final replace =
+          _replaceNextRouteReport || sameIdentity || replaceSearchRoute;
+      _replaceNextRouteReport = false;
+      _replaceNextSearchRouteReport = false;
+      _lastReportedNavigationRoute = route;
+      widget.onNavigationRouteChanged!(route, replace: replace);
+    });
+  }
+
+  Future<void> _applyIncomingNavigationRoute(AppNavigationRoute route) async {
+    final requestId = ++_incomingNavigationRequestId;
+    final current = _currentNavigationRoute(requireCommittedSearch: false);
+    if (current?.identity == route.identity) {
+      _lastReportedNavigationRoute = route;
+      _suppressRouteReporting = false;
+      _scheduleNavigationRouteReport();
+      return;
+    }
+
+    _cancelPendingNavigationLoads();
+    _suppressRouteReporting = true;
+    try {
+      final backIndex = _lastRouteIndex(_backHistory, route.identity);
+      if (backIndex >= 0) {
+        final steps = _backHistory.length - backIndex;
+        for (var index = 0; index < steps; index++) {
+          _navigateBackLocally();
+        }
+      } else {
+        final forwardIndex = _lastRouteIndex(_forwardHistory, route.identity);
+        if (forwardIndex >= 0) {
+          final steps = _forwardHistory.length - forwardIndex;
+          for (var index = 0; index < steps; index++) {
+            _navigateForwardLocally();
+          }
+        } else {
+          await _openNavigationRoute(route);
+        }
+      }
+      if (!mounted || requestId != _incomingNavigationRequestId) return;
+      _lastReportedNavigationRoute = route;
+    } finally {
+      if (requestId == _incomingNavigationRequestId) {
+        _suppressRouteReporting = false;
+        _scheduleNavigationRouteReport();
+      }
+    }
+  }
+
+  int _lastRouteIndex(List<_CatalogNavigationState> history, String identity) {
+    for (var index = history.length - 1; index >= 0; index--) {
+      if (_navigationRouteForState(history[index])?.identity == identity) {
+        return index;
+      }
+    }
+    return -1;
+  }
+
+  Future<void> _openNavigationRoute(
+    AppNavigationRoute route, {
+    bool recordCurrentOrigin = true,
+  }) async {
+    final wasRestoring = _restoringNavigation;
+    if (!recordCurrentOrigin) _restoringNavigation = true;
+    try {
+      final official = route.officialLink;
+      if (official != null) {
+        await _openOfficialZingLink(
+          official,
+          recordCurrentOrigin: recordCurrentOrigin,
+        );
+        return;
+      }
+      switch (route.shellDestination!) {
+        case AppShellDestination.discovery:
+          _selectTab(_discoveryTab);
+        case AppShellDestination.hubs:
+          if (_selectedTab != _discoveryTab) _selectTab(_discoveryTab);
+          _openHubHome();
+        case AppShellDestination.library:
+          final needsSeparateOrigin =
+              _selectedTab == _libraryTab &&
+              (_librarySection != route.librarySection ||
+                  _selectedPlaylistId != route.playlistId);
+          if (needsSeparateOrigin) _recordNavigationOrigin();
+          _selectTab(_libraryTab);
+          setState(() {
+            _librarySection = route.librarySection;
+            _selectedPlaylistId = route.playlistId;
+          });
+        case AppShellDestination.forYou:
+          _selectTab(_forYouTab);
+      }
+    } finally {
+      _restoringNavigation = wasRestoring;
+    }
+  }
 
   void _recordNavigationOrigin({_CatalogNavigationState? state}) {
     if (_restoringNavigation || _navigationBatchOpen) return;
@@ -733,6 +1015,18 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   bool get _canNavigateForward => _forwardHistory.isNotEmpty;
 
   void _navigateBack() {
+    if (_shouldUseLocalHistoryFirst(_backHistory)) {
+      _navigateBackLocally();
+      return;
+    }
+    if (!_suppressRouteReporting &&
+        _requestPlatformHistory(widget.onPlatformHistoryBack)) {
+      return;
+    }
+    _navigateBackLocally();
+  }
+
+  void _navigateBackLocally() {
     if (_backHistory.isEmpty) return;
     final current = _captureNavigationState();
     _CatalogNavigationState target;
@@ -748,6 +1042,18 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   }
 
   void _navigateForward() {
+    if (_shouldUseLocalHistoryFirst(_forwardHistory)) {
+      _navigateForwardLocally();
+      return;
+    }
+    if (!_suppressRouteReporting &&
+        _requestPlatformHistory(widget.onPlatformHistoryForward)) {
+      return;
+    }
+    _navigateForwardLocally();
+  }
+
+  void _navigateForwardLocally() {
     if (_forwardHistory.isEmpty) return;
     final current = _captureNavigationState();
     _CatalogNavigationState target;
@@ -763,6 +1069,50 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       }
     }
     _restoreNavigationState(target);
+  }
+
+  bool _shouldUseLocalHistoryFirst(List<_CatalogNavigationState> history) {
+    if (history.isEmpty) return false;
+    final currentState = _captureNavigationState();
+    _CatalogNavigationState? target;
+    for (var index = history.length - 1; index >= 0; index--) {
+      if (history[index].identity != currentState.identity) {
+        target = history[index];
+        break;
+      }
+    }
+    if (target == null) return false;
+    final currentRoute = _navigationRouteForState(
+      currentState,
+      requireCommittedSearch: false,
+    );
+    final targetRoute = _navigationRouteForState(
+      target,
+      requireCommittedSearch: false,
+    );
+    if (currentRoute == null || targetRoute == null) return true;
+    return currentRoute.identity == targetRoute.identity;
+  }
+
+  void _cancelPendingNavigationLoads() {
+    _searchDebounce?.cancel();
+    _searchSuggestionDebounce?.cancel();
+    _searchRequestId++;
+    _searchPageRequestId++;
+    _searchSuggestionRequestId++;
+    _searchSuggestionDetailRequestId++;
+    _hubRequestId++;
+    _weeklyRequestId++;
+    _discoveryRequestId++;
+  }
+
+  bool _requestPlatformHistory(PlatformHistoryRequest? request) {
+    if (request == null) return false;
+    try {
+      return request();
+    } catch (_) {
+      return false;
+    }
   }
 
   void _restoreNavigationState(_CatalogNavigationState target) {
@@ -830,6 +1180,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _selectedDiscoveryCategoryId = target.selectedDiscoveryCategoryId;
       _discoveryHome = target.discoveryHome;
       _selectedPlaylistId = target.selectedPlaylistId;
+      _librarySection = target.librarySection;
       _releaseContentType = target.releaseContentType;
       _releaseRegion = target.releaseRegion;
       _weeklyRegion = target.weeklyRegion;
@@ -991,12 +1342,19 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     }
     if (_appIsActive) unawaited(_loadSongs());
     _scheduleChartRefresh();
-    final initialOfficialLink = OfficialZingLink.tryParse(
-      widget.initialOfficialUrl ?? '',
-    );
-    if (initialOfficialLink != null) {
+    final initialNavigationRoute =
+        widget.navigationRoute ??
+        AppNavigationRoute.fromOfficialUrl(widget.initialOfficialUrl ?? '');
+    if (initialNavigationRoute != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(_openOfficialZingLink(initialOfficialLink));
+        if (!mounted) return;
+        unawaited(() async {
+          await _openNavigationRoute(
+            initialNavigationRoute,
+            recordCurrentOrigin: false,
+          );
+          if (mounted) _enableRouteReporting();
+        }());
       });
       return;
     }
@@ -1006,6 +1364,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _catalogBrowseView = _CatalogBrowseView.discovery;
       _selectedArtist = initialArtist;
       unawaited(_openArtist(initialArtist, preserveResult: true));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _enableRouteReporting();
+      });
       return;
     }
     if (_selectedTab == _newReleaseTab) unawaited(_loadNewReleases());
@@ -1019,6 +1380,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _CatalogBrowseView.weekly => _loadWeeklyChart(),
       });
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _enableRouteReporting();
+    });
   }
 
   @override
@@ -1052,12 +1416,17 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     if (oldWidget.chartRefreshInterval != widget.chartRefreshInterval) {
       _scheduleChartRefresh();
     }
-    if (oldWidget.officialUrlRevision != widget.officialUrlRevision ||
+    if (oldWidget.navigationRouteRevision != widget.navigationRouteRevision ||
+        oldWidget.navigationRoute?.identity !=
+            widget.navigationRoute?.identity ||
+        oldWidget.officialUrlRevision != widget.officialUrlRevision ||
         oldWidget.initialOfficialUrl != widget.initialOfficialUrl) {
-      final link = OfficialZingLink.tryParse(widget.initialOfficialUrl ?? '');
-      if (link != null) {
+      final route =
+          widget.navigationRoute ??
+          AppNavigationRoute.fromOfficialUrl(widget.initialOfficialUrl ?? '');
+      if (route != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) unawaited(_openOfficialZingLink(link));
+          if (mounted) unawaited(_applyIncomingNavigationRoute(route));
         });
       }
     }
@@ -1492,7 +1861,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     if (_top100Catalog.isEmpty) unawaited(_loadTop100());
   }
 
-  void _openReleaseCatalog({ReleaseRegion initialRegion = ReleaseRegion.all}) {
+  void _openReleaseCatalog({
+    ReleaseRegion initialRegion = ReleaseRegion.all,
+    ReleaseContentType initialContentType = ReleaseContentType.songs,
+  }) {
     _recordNavigationOrigin();
     _hubRequestId++;
     _weeklyRequestId++;
@@ -1502,7 +1874,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _hubDetail = null;
       _hubDetailErrorMessage = null;
       _isHubDetailLoading = false;
-      _releaseContentType = ReleaseContentType.songs;
+      _releaseContentType = initialContentType;
       _releaseRegion = initialRegion;
       _searchSection = CatalogSearchSection.all;
     });
@@ -1545,7 +1917,14 @@ class _ZingChartScreenState extends State<ZingChartScreen>
 
   void _changeWeeklyRegion(WeeklyChartRegion region) {
     if (region == _weeklyRegion && !_weeklyChart.isEmpty) return;
+    _recordNavigationOrigin();
     unawaited(_loadWeeklyChart(region: region));
+  }
+
+  void _changeReleaseContentType(ReleaseContentType type) {
+    if (type == _releaseContentType) return;
+    _recordNavigationOrigin();
+    setState(() => _releaseContentType = type);
   }
 
   void _changeWeeklyPeriod(int week, int year) {
@@ -1816,6 +2195,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     } else if (previousQuery.isNotEmpty &&
         query.isNotEmpty &&
         previousQuery != query) {
+      // The first settled query creates one semantic history entry. Further
+      // debounced typing replaces that entry instead of creating one per word
+      // fragment; an explicit section/result navigation can still push.
+      _replaceNextSearchRouteReport = true;
       final committed = _lastCommittedSearchState;
       if (committed != null &&
           committed.searchQuery.trim().toLowerCase() ==
@@ -2065,7 +2448,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _openTop100();
       case OfficialZingLinkKind.releases:
         _enterDiscovery();
-        _openReleaseCatalog();
+        _openReleaseCatalog(initialContentType: link.releaseContentType!);
       case OfficialZingLinkKind.weeklyChart:
         _enterDiscovery();
         _openWeeklyChartRegion(link.weeklyRegion!);
@@ -2983,6 +3366,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
 
   @override
   Widget build(BuildContext context) {
+    _scheduleNavigationRouteReport();
     final controller = _playerController;
     final visibleSongs = _visibleSongs(controller);
     final width = MediaQuery.sizeOf(context).width;
@@ -3204,7 +3588,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       }
       return;
     }
-    if (width < 1100 && _canNavigateBack) {
+    if (_canNavigateBack) {
       _navigateBack();
       return;
     }
@@ -3650,9 +4034,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                     region: _releaseRegion,
                     onBack: _navigateToolbarBack,
                     onRetry: () => unawaited(_loadReleaseCatalog()),
-                    onContentTypeChanged: (type) => setState(() {
-                      _releaseContentType = type;
-                    }),
+                    onContentTypeChanged: _changeReleaseContentType,
                     onRegionChanged: (region) => setState(() {
                       _releaseRegion = region;
                     }),
@@ -4030,20 +4412,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                     controller: controller,
                     selectedPlaylistId: _selectedPlaylistId,
                     section: _librarySection,
-                    onSectionChanged: (section) => setState(() {
-                      _librarySection = section;
-                      if (section != LibrarySection.playlists) {
-                        _selectedPlaylistId = null;
-                      }
-                    }),
-                    onSelectPlaylist: (playlistId) => setState(() {
-                      _selectedPlaylistId = playlistId;
-                      _librarySection = playlistId == null
-                          ? LibrarySection.songs
-                          : LibrarySection.playlists;
-                      _searchController.clear();
-                      _lastObservedSearchQuery = '';
-                    }),
+                    onSectionChanged: _selectLibrarySection,
+                    onSelectPlaylist: _selectLibraryPlaylist,
                     onCreatePlaylist: () => _showCreatePlaylist(controller),
                     onRenamePlaylist: (playlist) =>
                         _showRenamePlaylist(controller, playlist),
@@ -5223,6 +5593,34 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     if (index == _liveRadioTab && _liveRadio.isEmpty && !_isLiveRadioLoading) {
       unawaited(_loadLiveRadio());
     }
+  }
+
+  void _selectLibrarySection(LibrarySection section) {
+    if (_librarySection == section &&
+        (section == LibrarySection.playlists || _selectedPlaylistId == null)) {
+      return;
+    }
+    _recordNavigationOrigin();
+    setState(() {
+      _librarySection = section;
+      if (section != LibrarySection.playlists) {
+        _selectedPlaylistId = null;
+      }
+    });
+  }
+
+  void _selectLibraryPlaylist(String? playlistId) {
+    final section = playlistId == null
+        ? LibrarySection.songs
+        : LibrarySection.playlists;
+    if (_selectedPlaylistId == playlistId && _librarySection == section) return;
+    _recordNavigationOrigin();
+    setState(() {
+      _selectedPlaylistId = playlistId;
+      _librarySection = section;
+      _searchController.clear();
+      _lastObservedSearchQuery = '';
+    });
   }
 
   void _focusSearch() {

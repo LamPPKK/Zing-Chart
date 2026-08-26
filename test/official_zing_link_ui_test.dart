@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zmp3chart/data/library_repository.dart';
 import 'package:zmp3chart/main.dart';
+import 'package:zmp3chart/models/app_navigation_route.dart';
 import 'package:zmp3chart/models/catalog_artist_detail.dart';
 import 'package:zmp3chart/models/catalog_hub.dart';
 import 'package:zmp3chart/models/catalog_search.dart';
@@ -16,6 +17,7 @@ import 'package:zmp3chart/models/song_detail.dart';
 import 'package:zmp3chart/models/weekly_chart.dart';
 import 'package:zmp3chart/music_player_controller.dart';
 import 'package:zmp3chart/music_player_scope.dart';
+import 'package:zmp3chart/platform/app_route_history.dart';
 import 'package:zmp3chart/services/system_media_bridge.dart';
 import 'package:zmp3chart/zing_chart_screen.dart';
 
@@ -749,6 +751,32 @@ void main() {
 
     expect(releaseCalls, 1);
     expect(find.byKey(const ValueKey('release-catalog')), findsOneWidget);
+    expect(find.byKey(const ValueKey('release-song-count')), findsOneWidget);
+
+    await tester.pumpWidget(
+      _app(
+        controller,
+        ZingChartScreen(
+          key: const ValueKey('release-albums-link-screen'),
+          initialOfficialUrl: 'https://zingmp3.vn/new-release/album',
+          loadSongs: () async => const [_song],
+          loadReleaseCatalog: () async {
+            releaseCalls++;
+            return _releaseCatalog;
+          },
+          loadWeeklyChart: _loadWeeklyChart,
+          loadDiscoveryHome: _emptyDiscovery,
+          loadDiscoveryCategoryHome: (_) => _emptyDiscovery(),
+          loadDiscoveryCategories: _emptyCategories,
+          loadDiscoveryRecommendations: _emptyRecommendations,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(releaseCalls, 2);
+    expect(find.byKey(const ValueKey('release-albums-empty')), findsOneWidget);
+    expect(find.byKey(const ValueKey('release-song-count')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -837,9 +865,12 @@ void main() {
     tester,
   ) async {
     final controller = await _controller();
+    final history = _RecordingRouteHistory();
     await tester.pumpWidget(
       MyApp(
         playerController: controller,
+        routeHistory: history,
+        routeBaseUri: Uri.parse('https://client.example/'),
         homeBuilder: (officialUrl) =>
             Scaffold(body: Text(officialUrl ?? 'no-link')),
       ),
@@ -847,7 +878,7 @@ void main() {
     expect(find.text('no-link'), findsOneWidget);
 
     const route = <String, dynamic>{
-      'location': '/?open=https%3A%2F%2Fzingmp3.vn%2Ftop100',
+      'location': '/new-release/album',
       'state': null,
     };
     final message = const JSONMethodCodec().encodeMethodCall(
@@ -858,11 +889,63 @@ void main() {
       message,
       (_) {},
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.text('https://zingmp3.vn/top100'), findsOneWidget);
+    expect(find.text('https://zingmp3.vn/new-release/album'), findsOneWidget);
+    expect(history.initializations, 1);
+    expect(history.updates, [
+      (
+        location: Uri.parse(
+          '/?open=https%3A%2F%2Fzingmp3.vn%2Fnew-release%2Falbum',
+        ),
+        replace: true,
+      ),
+    ]);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('MyApp consumes a Web cold-start route before Navigator mounts', (
+    tester,
+  ) async {
+    tester.platformDispatcher.defaultRouteNameTestValue = '/?view=discovery';
+    addTearDown(tester.platformDispatcher.clearDefaultRouteNameTestValue);
+    final controller = await _controller();
+    final history = _RecordingRouteHistory();
+
+    await tester.pumpWidget(
+      MyApp(
+        playerController: controller,
+        routeHistory: history,
+        routeBaseUri: Uri.parse('https://client.example/'),
+        initialNavigationRoute: const AppNavigationRoute.discovery(),
+        home: const Scaffold(body: Text('cold-start-ready')),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('cold-start-ready'), findsOneWidget);
+    expect(history.initializations, 1);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+class _RecordingRouteHistory implements AppRouteHistory {
+  int initializations = 0;
+  final updates = <({Uri location, bool replace})>[];
+
+  @override
+  Future<void> initialize() async => initializations++;
+
+  @override
+  Future<void> update(Uri uri, {required bool replace}) async {
+    updates.add((location: uri, replace: replace));
+  }
+
+  @override
+  bool back() => true;
+
+  @override
+  bool forward() => true;
 }
 
 Future<void> _setViewport(WidgetTester tester, Size size) async {

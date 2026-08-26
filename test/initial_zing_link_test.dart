@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
+import 'package:zmp3chart/models/app_navigation_route.dart';
 import 'package:zmp3chart/models/catalog_search.dart';
 import 'package:zmp3chart/models/official_zing_link.dart';
 import 'package:zmp3chart/platform/initial_zing_link.dart';
@@ -26,6 +27,55 @@ void main() {
         ),
       ),
       'https://zingmp3.vn/top100',
+    );
+  });
+
+  test('decodes canonical app envelopes and direct official paths', () {
+    final library = appNavigationRouteFromRouteInformation(
+      RouteInformation(
+        uri: Uri.parse(
+          '/app/?view=library&section=playlists&playlist=playlist-1',
+        ),
+      ),
+      basePath: '/app/',
+    );
+    expect(library?.shellDestination, AppShellDestination.library);
+    expect(library?.librarySection, LibrarySection.playlists);
+    expect(library?.playlistId, 'playlist-1');
+
+    final direct = appNavigationRouteFromRouteInformation(
+      RouteInformation(uri: Uri.parse('/new-release/album')),
+    );
+    expect(direct?.officialLink?.kind, OfficialZingLinkKind.releases);
+    expect(direct?.officialLink?.canonicalUri.path, '/new-release/album');
+  });
+
+  test('decodes a direct canonical path from the logical Web route', () {
+    final route = extractInitialAppNavigationRoute(
+      baseUri: Uri.parse('https://client.example/new-release/album'),
+      defaultRouteName: '/new-release/album',
+    );
+
+    expect(route?.officialLink?.kind, OfficialZingLinkKind.releases);
+    expect(route?.officialLink?.canonicalUri.path, '/new-release/album');
+  });
+
+  test('preserves an explicit Discovery route across a browser reload', () {
+    final route = extractInitialAppNavigationRoute(
+      baseUri: Uri.parse('https://client.example/?view=discovery'),
+      defaultRouteName: '/?view=discovery',
+    );
+
+    expect(route?.shellDestination, AppShellDestination.discovery);
+  });
+
+  test('does not mistake a clean custom deployment base for an artist', () {
+    expect(
+      extractInitialAppNavigationRoute(
+        baseUri: Uri.parse('https://client.example/app/'),
+        defaultRouteName: '/',
+      ),
+      isNull,
     );
   });
 
@@ -104,6 +154,27 @@ void main() {
         baseUri: Uri.parse('https://client.example/'),
         defaultRouteName:
             'zingchart://open?url=https%3A%2F%2Fzingmp3.vn%2Funknown%2Fpath',
+      ),
+      isNull,
+    );
+    expect(
+      appNavigationRouteFromRouteName(
+        'zingchart://open?url=https%3A%2F%2Fzingmp3.vn%2Ftop100&'
+        'url=https%3A%2F%2Fzingmp3.vn%2Fradio',
+      ),
+      isNull,
+    );
+    expect(
+      appNavigationRouteFromRouteName(
+        'https://evil.example/?open='
+        'https%3A%2F%2Fzingmp3.vn%2Ftop100',
+      ),
+      isNull,
+    );
+    expect(
+      appNavigationRouteFromRouteName(
+        'zingchart://open?url='
+        'https%3A%2F%2Fzingmp3.vn%2Ftop100%23player#outer',
       ),
       isNull,
     );

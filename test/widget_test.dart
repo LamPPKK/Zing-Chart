@@ -5029,6 +5029,10 @@ void main() {
       expect(find.byKey(const ValueKey('release-catalog')), findsOneWidget);
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
+      expect(find.text('Album Việt Mới'), findsNothing);
+      expect(find.text('Ngày Mới Rực Rỡ'), findsWidgets);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('discovery-home')), findsOneWidget);
     },
   );
