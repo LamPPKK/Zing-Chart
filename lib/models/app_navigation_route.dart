@@ -2,7 +2,7 @@ import 'official_zing_link.dart';
 
 enum AppShellDestination { discovery, hubs, library, forYou }
 
-enum LibrarySection { overview, songs, playlists, albums, artists }
+enum LibrarySection { overview, songs, recent, playlists, albums, artists }
 
 /// A bounded, serializable destination for the app shell.
 ///
@@ -198,6 +198,7 @@ final _playlistIdPattern = RegExp(r'^[A-Za-z0-9_-]{1,128}$');
 LibrarySection? _librarySection(String value) => switch (value) {
   'overview' => LibrarySection.overview,
   'songs' => LibrarySection.songs,
+  'recent' => LibrarySection.recent,
   'playlists' => LibrarySection.playlists,
   'albums' => LibrarySection.albums,
   'artists' => LibrarySection.artists,

@@ -3389,7 +3389,7 @@ class DiscoveryRecentlyPlayedShelf extends StatelessWidget {
                   ),
                   iconAlignment: IconAlignment.end,
                   label: Text(
-                    'MỞ THƯ VIỆN',
+                    'MỞ LỊCH SỬ',
                     style: TextStyle(
                       fontSize: tvMode ? 14 : 11,
                       fontWeight: FontWeight.w900,

@@ -9,6 +9,7 @@ import '../models/song.dart';
 import '../music_player_controller.dart';
 import '../theme/app_theme.dart';
 import 'album_art.dart';
+import 'local_history_workspace.dart';
 
 export '../models/app_navigation_route.dart' show LibrarySection;
 
@@ -98,7 +99,9 @@ class _LibraryHubState extends State<LibraryHub> {
     final topSong = controller.topSongStats.firstOrNull;
     final topArtist = controller.topArtistStats.firstOrNull;
     final minutes = controller.totalListeningTime.inMinutes;
-    final recentSongs = controller.recentlyPlayed.take(10).toList();
+    final recentSongs = buildRecentPlaybackQueue(
+      controller.history,
+    ).take(10).toList(growable: false);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 22),
       child: Column(
@@ -127,6 +130,7 @@ class _LibraryHubState extends State<LibraryHub> {
                   recentSongs: recentSongs,
                 ),
                 LibrarySection.songs => _buildSongs(context),
+                LibrarySection.recent => _buildRecentSection(context),
                 LibrarySection.playlists => _buildPlaylists(
                   context,
                   includeLikedSongs: false,
@@ -478,57 +482,86 @@ class _LibraryHubState extends State<LibraryHub> {
     ],
   );
 
-  Widget _buildRecentSongs(BuildContext context, List<Song> recentSongs) =>
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionTitle(eyebrow: 'LỊCH SỬ LOCAL', title: 'Nghe gần đây'),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 146,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: recentSongs.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                final song = recentSongs[index];
-                return SizedBox(
-                  width: 118,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(18),
-                    onTap: () => controller.playSong(
-                      song,
-                      queue: recentSongs,
-                      origin: const PlaybackOrigin(
-                        kind: PlaybackOriginKind.recentlyPlayed,
-                        label: 'Nghe gần đây',
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AlbumArt(
-                          imageUrl: song.thumbnail,
-                          semanticLabel: 'Bìa album ${song.displayTitle}',
-                          size: 96,
-                          borderRadius: 18,
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          song.displayTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+  Widget _buildRecentSection(BuildContext context) {
+    final recentSongs = buildRecentPlaybackQueue(controller.history);
+    if (recentSongs.isEmpty) {
+      return const _LibraryEmptyCard(
+        key: ValueKey('library-recent-empty'),
+        icon: Icons.history_rounded,
+        title: 'Chưa có lịch sử nghe',
+        message: 'Các bài bạn chủ động phát sẽ xuất hiện tại đây.',
       );
+    }
+    return _buildRecentSongs(context, recentSongs, showAll: false);
+  }
+
+  Widget _buildRecentSongs(
+    BuildContext context,
+    List<Song> recentSongs, {
+    bool showAll = true,
+  }) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _SectionTitle(
+        eyebrow: 'LỊCH SỬ LOCAL',
+        title: 'Nghe gần đây',
+        trailing: showAll
+            ? TextButton.icon(
+                key: const ValueKey('library-open-recent'),
+                onPressed: () => _selectSection(LibrarySection.recent),
+                icon: const Icon(Icons.arrow_forward_rounded),
+                iconAlignment: IconAlignment.end,
+                label: const Text('Xem tất cả'),
+              )
+            : null,
+      ),
+      const SizedBox(height: 12),
+      SizedBox(
+        height: 146,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: recentSongs.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          itemBuilder: (context, index) {
+            final song = recentSongs[index];
+            return SizedBox(
+              width: 118,
+              child: InkWell(
+                key: ValueKey('library-recent-song-${song.id}'),
+                borderRadius: BorderRadius.circular(18),
+                onTap: () => controller.playSong(
+                  song,
+                  queue: recentSongs,
+                  origin: const PlaybackOrigin(
+                    kind: PlaybackOriginKind.recentlyPlayed,
+                    label: 'Nghe gần đây',
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AlbumArt(
+                      imageUrl: song.thumbnail,
+                      semanticLabel: 'Bìa album ${song.displayTitle}',
+                      size: 96,
+                      borderRadius: 18,
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      song.displayTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    ],
+  );
 
   Widget _buildWrapped(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -654,6 +687,7 @@ class _LibrarySectionTabs extends StatelessWidget {
               label: switch (section) {
                 LibrarySection.overview => 'TỔNG QUAN',
                 LibrarySection.songs => 'BÀI HÁT',
+                LibrarySection.recent => 'GẦN ĐÂY',
                 LibrarySection.playlists => 'PLAYLIST',
                 LibrarySection.albums => 'ALBUM',
                 LibrarySection.artists => 'NGHỆ SĨ',

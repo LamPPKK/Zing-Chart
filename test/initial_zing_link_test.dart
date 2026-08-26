@@ -43,6 +43,14 @@ void main() {
     expect(library?.librarySection, LibrarySection.playlists);
     expect(library?.playlistId, 'playlist-1');
 
+    final recent = appNavigationRouteFromRouteInformation(
+      RouteInformation(uri: Uri.parse('/app/?view=library&section=recent')),
+      basePath: '/app/',
+    );
+    expect(recent?.shellDestination, AppShellDestination.library);
+    expect(recent?.librarySection, LibrarySection.recent);
+    expect(recent?.playlistId, isNull);
+
     final direct = appNavigationRouteFromRouteInformation(
       RouteInformation(uri: Uri.parse('/new-release/album')),
     );

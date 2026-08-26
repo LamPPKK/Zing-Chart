@@ -263,7 +263,7 @@ proxy Node/TypeScript do người triển khai tự host.
   artwork và không gửi đoạn lời, lịch sử hay analytics lên proxy.
 - Background playback cùng system media controls trên nền tảng được hỗ trợ.
 - Thư viện Local-First có thanh phân mục kiểu Zing cho Tổng quan, Bài hát,
-  Playlist, Album và Nghệ sĩ; yêu thích, nghệ sĩ/OA đã quan tâm,
+  Gần đây, Playlist, Album và Nghệ sĩ; yêu thích, nghệ sĩ/OA đã quan tâm,
   album/playlist Zing đã lưu, playlist cá nhân, lịch sử nghe, tìm kiếm gần đây,
   analytics 7/30 ngày/theo năm, Daily Mix và Mood Mix Chill/Gym/Tập trung đều
   nằm trên thiết bị và không cần tài khoản.
@@ -271,6 +271,10 @@ proxy Node/TypeScript do người triển khai tự host.
   xóa, kéo thả sắp xếp trên mobile/desktop, nút Lên/Xuống trên TV và xóa bài có
   Hoàn tác đúng vị trí. Picker luôn cho tạo playlist mới rồi thêm bài ngay mà
   không rời màn hình đang duyệt; chỉnh playlist không thay đổi queue đang phát.
+- Lịch sử nghe có workspace Local-First riêng, nhóm theo ngày địa phương, hiển
+  thị thời điểm và thời lượng đã nghe, Phát/Trộn bài, menu bài hát chuẩn và
+  focus remote TV. Xóa lịch sử/thống kê luôn xác nhận trước, không xóa
+  favorites, playlist hoặc mood tag.
 - Mini Wrapped 6 slide quanh năm; xuất PNG trên phone/web/desktop và QR tóm tắt
   local trên TV.
 - Export/import backup JSON v3 theo hai chế độ Merge hoặc Overwrite; vẫn đọc
@@ -389,10 +393,13 @@ không chứa dữ liệu người dùng thật.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-desktop-lyrics-drawer.png" alt="Desktop #zingChart với tab Lời bài hát đồng bộ trong drawer phát nhạc"><br><sub><b>Lời đồng bộ ngay trong catalog</b> · theo dõi câu đang hát, chạm để tua hoặc mở Karaoke toàn màn hình mà không rời trang đang duyệt</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-library-workspace-desktop.png" alt="Thư viện desktop với các phân mục Tổng quan Bài hát Playlist Album và Nghệ sĩ"><br><sub><b>Thư viện kiểu Zing, dữ liệu Local-First</b> · năm phân mục responsive, playlist cá nhân và nội dung chính thức đã lưu mà không cần tài khoản</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-library-workspace-desktop.png" alt="Thư viện desktop với các phân mục Tổng quan Bài hát Gần đây Playlist Album và Nghệ sĩ"><br><sub><b>Thư viện kiểu Zing, dữ liệu Local-First</b> · sáu phân mục responsive, playlist cá nhân, lịch sử nghe và nội dung chính thức đã lưu mà không cần tài khoản</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-local-playlist-workspace-desktop.png" alt="Workspace playlist cá nhân với cover mosaic, nút phát trộn bài và danh sách có thể sắp xếp"><br><sub><b>Playlist cá nhân Local-First</b> · cover mosaic, Play/Shuffle, đổi tên, xóa, reorder và Undo; chỉnh sửa không chạm vào queue đang phát</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-local-history-workspace-desktop.png" alt="Workspace lịch sử nghe Local-First nhóm theo ngày với thời điểm và thời lượng đã nghe"><br><sub><b>Lịch sử nghe Local-First</b> · nhóm theo ngày local, Play/Shuffle, thời điểm và thời lượng đã nghe, menu đầy đủ và xóa có xác nhận</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-realtime-chart-desktop.png" alt="Biểu đồ ZingChart 24 giờ với điểm dữ liệu và tooltip bài hát đang chọn"><br><sub><b>Nhịp BXH 24 giờ</b> · hover, chạm/kéo hoặc remote để xem tỷ lệ theo giờ và phát bài đang chọn</sub></td>

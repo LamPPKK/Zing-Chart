@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zmp3chart/data/library_repository.dart';
 import 'package:zmp3chart/models/catalog_search.dart';
+import 'package:zmp3chart/models/local_library.dart';
 import 'package:zmp3chart/models/song.dart';
 import 'package:zmp3chart/music_player_controller.dart';
 import 'package:zmp3chart/music_player_scope.dart';
@@ -187,6 +188,70 @@ void main() {
     );
     expect(find.text('Mây Lang Thang'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('recent shelf sorts restored history newest first', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const older = Song(
+      id: 'history-older',
+      name: 'history-older',
+      title: 'Cũ hơn',
+      thumbnail: '',
+      artistsNames: 'Nghệ sĩ',
+      code: 'history-older-code',
+    );
+    const newer = Song(
+      id: 'history-newer',
+      name: 'history-newer',
+      title: 'Mới hơn',
+      thumbnail: '',
+      artistsNames: 'Nghệ sĩ',
+      code: 'history-newer-code',
+    );
+    final controller = PlaybackService(
+      playbackAudioPlayer: FakePlaybackAudioPlayer(),
+      sourceResolver: (_) async => 'https://audio.example.com/library.mp3',
+      libraryRepository: MemoryLibraryRepository(
+        PlayerSnapshot(
+          history: [
+            ListeningRecord(
+              id: 'older-record',
+              song: older,
+              playedAt: DateTime.utc(2026, 8, 25, 10),
+            ),
+            ListeningRecord(
+              id: 'newer-record',
+              song: newer,
+              playedAt: DateTime.utc(2026, 8, 26, 10),
+            ),
+          ],
+        ),
+      ),
+      systemMediaBridge: NoopSystemMediaBridge(),
+    );
+    await controller.initialize();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(libraryHarness(controller));
+    await tester.pumpAndSettle();
+
+    final newerCard = find.byKey(
+      const ValueKey('library-recent-song-history-newer'),
+    );
+    final olderCard = find.byKey(
+      const ValueKey('library-recent-song-history-older'),
+    );
+    expect(newerCard, findsOneWidget);
+    expect(olderCard, findsOneWidget);
+    expect(
+      tester.getTopLeft(newerCard).dx,
+      lessThan(tester.getTopLeft(olderCard).dx),
+    );
   });
 
   testWidgets('TV can switch library sections with remote keys', (

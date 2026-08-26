@@ -102,6 +102,16 @@ void main() {
       library.identity,
     );
 
+    const recent = AppNavigationRoute.library(section: LibrarySection.recent);
+    expect(recent.webLocation().queryParameters, {
+      'view': 'library',
+      'section': 'recent',
+    });
+    expect(
+      AppNavigationRoute.tryParse(recent.webLocation())?.identity,
+      'shell:library:recent:',
+    );
+
     const forYou = AppNavigationRoute.forYou();
     expect(
       AppNavigationRoute.tryParse(forYou.webLocation())?.shellDestination,
@@ -148,6 +158,7 @@ void main() {
             'https%3A%2F%2Fzingmp3.vn%2Fradio',
         '/?open=https%3A%2F%2Fzingmp3.vn%2Ftop100&tracking=1',
         '/?view=library&section=unknown',
+        '/?view=library&section=recent&playlist=playlist-1',
         '/?view=library&section=songs&playlist=private',
         '/?view=for-you&section=songs',
         '/garbage?view=hubs',

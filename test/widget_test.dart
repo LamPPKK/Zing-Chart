@@ -3294,6 +3294,23 @@ void main() {
       find.byKey(const ValueKey('discovery-recent-song-two')),
       findsOneWidget,
     );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('open-recent-library')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('open-recent-library')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('local-history-workspace')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('local-history-back')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('discovery-recent-song-one')),
+      findsOneWidget,
+    );
+
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -720));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('discovery-recent-menu-one')));

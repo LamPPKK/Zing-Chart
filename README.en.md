@@ -271,14 +271,18 @@ clients never call Zing upstream directly.
   through the platform share/download/save path; TV uses an on-device QR.
   Rendering never fetches artwork or uploads lyrics, history, or analytics.
 - Background playback and native media controls where the OS supports them.
-- A Local-First Library uses Zing-style Overview, Songs, Playlists, Albums, and
-  Artists sections. Favorites, followed artists/OAs, saved Zing
+- A Local-First Library uses Zing-style Overview, Songs, Recently Played,
+  Playlists, Albums, and Artists sections. Favorites, followed artists/OAs, saved Zing
   albums/playlists, personal playlists, history, recent searches, Daily/Mood
   Mix, 7/30-day and yearly analytics all remain account-free and on-device.
 - Personal playlists have a dedicated mosaic-cover workspace with Play/Shuffle,
   rename, delete, drag reorder on touch/desktop, TV Up/Down controls, and
   position-preserving Undo. The picker can create and populate a playlist
   without leaving the current catalog, while edits never mutate the active queue.
+- Listening history has a dedicated Local-First workspace grouped by local day,
+  with play time, listened duration, Play/Shuffle, canonical song actions, and
+  TV-remote focus. Clearing history and analytics always requires confirmation
+  and preserves favorites, playlists, and mood tags.
 - Six-slide Mini Wrapped remains available year-round.
 - JSON backup v3 with idempotent Merge and full Overwrite modes; v1/v2 remain
   importable.
@@ -371,10 +375,13 @@ historical binaries and contain no real user data.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-desktop-lyrics-drawer.png" alt="#zingChart desktop with synchronized Lyrics inside the player drawer"><br><sub><b>Synced lyrics beside the catalog</b> · follow the active line, tap to seek, or expand full-screen Karaoke without leaving the current page</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-library-workspace-desktop.png" alt="Desktop Library with Overview Songs Playlists Albums and Artists sections"><br><sub><b>Zing-style, Local-First Library</b> · five responsive sections, personal playlists, and saved official content without an account</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-library-workspace-desktop.png" alt="Desktop Library with Overview Songs Recently Played Playlists Albums and Artists sections"><br><sub><b>Zing-style, Local-First Library</b> · six responsive sections, personal playlists, listening history, and saved official content without an account</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-local-playlist-workspace-desktop.png" alt="Personal playlist workspace with a mosaic cover, play and shuffle actions, and reorderable tracks"><br><sub><b>Local-First personal playlists</b> · mosaic cover, Play/Shuffle, rename, delete, reorder, and Undo without touching the active queue</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-local-history-workspace-desktop.png" alt="Local-First listening history workspace grouped by day with play time and listened duration"><br><sub><b>Local-First listening history</b> · local-day groups, Play/Shuffle, play time, listened duration, full song actions, and confirmed clearing</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-realtime-chart-desktop.png" alt="Interactive 24-hour ZingChart plot with data points and the selected-song tooltip"><br><sub><b>24-hour chart pulse</b> · hover, touch/drag, or remote navigation to inspect hourly share and play the selected song</sub></td>

@@ -46,6 +46,7 @@ import 'widgets/discovery_home_hub.dart';
 import 'widgets/for_you_hub.dart';
 import 'widgets/library_hub.dart';
 import 'widgets/live_radio_hub.dart';
+import 'widgets/local_history_workspace.dart';
 import 'widgets/local_playlist_workspace.dart';
 import 'widgets/mini_player.dart';
 import 'widgets/official_content_share_dialog.dart';
@@ -1274,6 +1275,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   bool get _canUseToolbarBack =>
       _canNavigateBack ||
       _selectedPlaylistId != null ||
+      (_selectedTab == _libraryTab &&
+          _librarySection == LibrarySection.recent) ||
       _selectedCollection != null ||
       _selectedArtist != null ||
       _selectedHub != null ||
@@ -1287,6 +1290,11 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     }
     if (_selectedPlaylistId != null) {
       _closeLocalPlaylist();
+      return;
+    }
+    if (_selectedTab == _libraryTab &&
+        _librarySection == LibrarySection.recent) {
+      _closeLocalHistory();
       return;
     }
     if (_selectedCollection != null) {
@@ -3231,6 +3239,12 @@ class _ZingChartScreenState extends State<ZingChartScreen>
           label: playlist.name,
         );
       }
+      if (_librarySection == LibrarySection.recent) {
+        return const PlaybackOrigin(
+          kind: PlaybackOriginKind.recentlyPlayed,
+          label: 'Nghe gần đây',
+        );
+      }
       return const PlaybackOrigin(
         kind: PlaybackOriginKind.library,
         label: 'Thư viện của bạn',
@@ -3395,6 +3409,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
           child: PopScope<void>(
             canPop:
                 !_canNavigateBack &&
+                !(_selectedTab == _libraryTab &&
+                    _librarySection == LibrarySection.recent) &&
                 _selectedArtist == null &&
                 _selectedCollection == null &&
                 _selectedHub == null &&
@@ -3575,6 +3591,11 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _navigateBackOr(_closeLocalPlaylist);
       return;
     }
+    if (_selectedTab == _libraryTab &&
+        _librarySection == LibrarySection.recent) {
+      _navigateBackOr(_closeLocalHistory);
+      return;
+    }
     if (_selectedCollection != null) {
       _navigateBackOr(_closeCollection);
       return;
@@ -3653,6 +3674,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     }
     if (_selectedTab == _newReleaseTab) return _loadNewReleases();
     if (_selectedTab == _liveRadioTab) return _loadLiveRadio();
+    if (_selectedTab == _libraryTab &&
+        _librarySection == LibrarySection.recent) {
+      return Future<void>.value();
+    }
     if (_selectedTab == _discoveryTab) {
       final query = _searchController.text.trim();
       return query.isEmpty ? _refreshDiscoveryHome() : _runCatalogSearch(query);
@@ -3711,6 +3736,13 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     final selectedPlaylist = _selectedPlaylist(controller);
     final localPlaylistRequested =
         _selectedTab == _libraryTab && _selectedPlaylistId != null;
+    final localHistoryRequested =
+        _selectedTab == _libraryTab &&
+        _selectedPlaylistId == null &&
+        _librarySection == LibrarySection.recent;
+    final recentHistoryQueue = localHistoryRequested
+        ? buildRecentPlaybackQueue(controller.history)
+        : const <Song>[];
     final selectedArtist = _selectedArtist;
     final effectiveArtist = _artistDetail?.artist ?? selectedArtist;
     final selectedCollection = _selectedCollection;
@@ -3839,11 +3871,45 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                     ),
                   ),
                 ),
-              if (!localPlaylistRequested)
+              if (!localPlaylistRequested && !localHistoryRequested)
                 SliverToBoxAdapter(
                   child: _buildHeader(pinCatalogToolbar: pinCatalogToolbar),
                 ),
-              if (localPlaylistRequested && selectedPlaylist != null)
+              if (localHistoryRequested)
+                LocalHistoryWorkspace(
+                  records: controller.history,
+                  tvMode: widget.tvMode,
+                  showBack: !pinCatalogToolbar,
+                  currentSongId: controller.currentSong?.id,
+                  isPlaying: controller.isPlaying,
+                  onBack: () => _navigateBackOr(_closeLocalHistory),
+                  onPlayAll: () => _playRecentHistory(
+                    controller,
+                    recentHistoryQueue,
+                    shuffle: false,
+                  ),
+                  onShuffle: () => _playRecentHistory(
+                    controller,
+                    recentHistoryQueue,
+                    shuffle: true,
+                  ),
+                  onClear: () =>
+                      unawaited(_confirmClearListeningHistory(controller)),
+                  onRecordTap: (record) => _selectSong(
+                    record.song,
+                    recentHistoryQueue,
+                    origin: const PlaybackOrigin(
+                      kind: PlaybackOriginKind.recentlyPlayed,
+                      label: 'Nghe gần đây',
+                    ),
+                  ),
+                  actionResolver: (song) => _recentHistorySongActions(
+                    controller,
+                    recentHistoryQueue,
+                    song,
+                  ),
+                )
+              else if (localPlaylistRequested && selectedPlaylist != null)
                 LocalPlaylistWorkspace(
                   playlist: selectedPlaylist,
                   tvMode: widget.tvMode,
@@ -4327,7 +4393,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                         ),
                       );
                     },
-                    onOpenLibrary: () => _selectTab(_libraryTab),
+                    onOpenLibrary: _openLocalHistory,
                     newReleaseChartEntries: _newReleaseChart.entries,
                     newReleaseChartLoading: _isNewReleaseLoading,
                     newReleaseChartErrorMessage: _newReleaseErrorMessage,
@@ -5685,6 +5751,42 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _selectedPlaylistId = null;
       }
     });
+    _scrollContentToStart();
+  }
+
+  void _openLocalHistory() {
+    final alreadyInLibrary = _selectedTab == _libraryTab;
+    if (!alreadyInLibrary) {
+      _selectTab(_libraryTab);
+    } else if (_librarySection != LibrarySection.recent ||
+        _selectedPlaylistId != null) {
+      _recordNavigationOrigin();
+    }
+    if (_librarySection == LibrarySection.recent &&
+        _selectedPlaylistId == null) {
+      _scrollContentToStart();
+      return;
+    }
+    setState(() {
+      _librarySection = LibrarySection.recent;
+      _selectedPlaylistId = null;
+      _searchController.clear();
+      _lastObservedSearchQuery = '';
+    });
+    _scrollContentToStart();
+  }
+
+  void _closeLocalHistory() {
+    if (_selectedTab != _libraryTab ||
+        _librarySection != LibrarySection.recent) {
+      return;
+    }
+    _replaceNextRouteReport = true;
+    setState(() {
+      _librarySection = LibrarySection.overview;
+      _selectedPlaylistId = null;
+    });
+    _scrollContentToStart();
   }
 
   void _selectLibraryPlaylist(String? playlistId) {
@@ -5782,6 +5884,86 @@ class _ZingChartScreenState extends State<ZingChartScreen>
 
   Future<void> _openSettings(MusicPlayerController controller) =>
       showAppSettings(context, controller: controller, tvMode: widget.tvMode);
+
+  void _playRecentHistory(
+    MusicPlayerController controller,
+    List<Song> queue, {
+    required bool shuffle,
+  }) {
+    if (queue.isEmpty) return;
+    controller.setShuffleEnabled(shuffle);
+    _selectSong(
+      queue.first,
+      queue,
+      origin: const PlaybackOrigin(
+        kind: PlaybackOriginKind.recentlyPlayed,
+        label: 'Nghe gần đây',
+      ),
+    );
+  }
+
+  SongActionMenuConfiguration _recentHistorySongActions(
+    MusicPlayerController controller,
+    List<Song> queue,
+    Song song,
+  ) => SongActionMenuConfiguration(
+    isLiked: controller.isLiked(song),
+    moods: controller.moodsFor(song),
+    handlers: SongActionHandlers(
+      onPlay: () => _selectSong(
+        song,
+        queue,
+        origin: const PlaybackOrigin(
+          kind: PlaybackOriginKind.recentlyPlayed,
+          label: 'Nghe gần đây',
+        ),
+      ),
+      onOpenDetail: () =>
+          unawaited(_openSongDetail(song, queue, canPlay: true)),
+      onAddToQueue: () => _addSongToQueueWithFeedback(controller, song),
+      onStartRadio: () =>
+          unawaited(startSongRadioWithFeedback(context, controller, song)),
+      onAddToPlaylist: () => unawaited(_showPlaylistPicker(controller, song)),
+      onShare: () => unawaited(_shareSong(song, _catalogSongFor(song))),
+      onToggleLike: () => controller.toggleLike(song),
+      onToggleMood: (mood) => controller.toggleMood(song, mood),
+    ),
+  );
+
+  Future<void> _confirmClearListeningHistory(
+    MusicPlayerController controller,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const ValueKey('local-history-clear-dialog'),
+        title: const Text('Xóa lịch sử và thống kê?'),
+        content: const Text(
+          'Toàn bộ lịch sử nghe và thống kê Local-First sẽ bị xóa. '
+          'Favorites, playlist và mood đã gắn vẫn được giữ lại. '
+          'Thao tác này không thể hoàn tác.',
+        ),
+        actions: [
+          TextButton(
+            key: const ValueKey('local-history-clear-cancel'),
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Giữ lại'),
+          ),
+          FilledButton(
+            key: const ValueKey('local-history-clear-confirm'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Xóa dữ liệu nghe'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await controller.clearListeningHistoryAndStats();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Đã xóa lịch sử và thống kê tại máy')),
+    );
+  }
 
   void _playLocalPlaylist(
     MusicPlayerController controller,
@@ -6370,6 +6552,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                 '${controller.likedSongs.length} BÀI THÍCH · ${controller.followedArtists.length} NGHỆ SĨ · ${controller.savedCollections.length} ĐÃ LƯU · ${controller.playlists.length} PLAYLIST',
               LibrarySection.songs =>
                 '${controller.likedSongs.length} BÀI HÁT ĐÃ THÍCH · LƯU TRÊN THIẾT BỊ',
+              LibrarySection.recent =>
+                '${controller.history.length} LƯỢT NGHE GẦN ĐÂY · RIÊNG TƯ TRÊN THIẾT BỊ',
               LibrarySection.playlists =>
                 '${controller.playlists.length} PLAYLIST CÁ NHÂN · KHÔNG CẦN TÀI KHOẢN',
               LibrarySection.albums =>
