@@ -2615,7 +2615,25 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('SMART'), findsNWidgets(2));
+    final smartSongs = controller.queue
+        .where(controller.isSmartShuffleSong)
+        .toList(growable: false);
+    expect(smartSongs, hasLength(2));
+    final queueScrollable = find.byType(Scrollable).last;
+    for (final song in smartSongs) {
+      final queueRow = find.byKey(ValueKey('desktop-queue-${song.id}'));
+      await tester.scrollUntilVisible(
+        queueRow,
+        160,
+        scrollable: queueScrollable,
+      );
+      expect(
+        find.descendant(of: queueRow, matching: find.text('SMART')),
+        findsOneWidget,
+      );
+    }
+    tester.state<ScrollableState>(queueScrollable).position.jumpTo(0);
+    await tester.pumpAndSettle();
     await expectLater(
       find.byType(Scaffold),
       matchesGoldenFile('goldens/smart_shuffle_desktop_1440.png'),

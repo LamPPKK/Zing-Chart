@@ -35,6 +35,7 @@ class OfficialZingLink {
     this.searchQuery = '',
     this.searchSection = CatalogSearchSection.all,
     this.releaseContentType,
+    this.releaseRegion = ReleaseRegion.all,
   });
 
   final OfficialZingLinkKind kind;
@@ -47,6 +48,7 @@ class OfficialZingLink {
   final String searchQuery;
   final CatalogSearchSection searchSection;
   final ReleaseContentType? releaseContentType;
+  final ReleaseRegion releaseRegion;
 
   /// Stable semantic identity. Presentation slugs, subdomains, tracking query
   /// parameters, and fragments never create a second app-history entry.
@@ -63,7 +65,7 @@ class OfficialZingLink {
     OfficialZingLinkKind.weeklyChart => 'catalog:weekly:${weeklyRegion!.name}',
     OfficialZingLinkKind.top100 => 'catalog:top100',
     OfficialZingLinkKind.releases =>
-      'catalog:releases:${releaseContentType!.name}',
+      'catalog:releases:${releaseContentType!.name}:${releaseRegion.name}',
     OfficialZingLinkKind.hub => 'hub:$id',
     OfficialZingLinkKind.liveRadio => 'catalog:radio',
   };
@@ -135,6 +137,7 @@ class OfficialZingLink {
       releaseContentType == ReleaseContentType.albums
           ? '/new-release/album'
           : '/new-release/song',
+      {'filter': releaseRegion.zingFilterValue},
     ),
     OfficialZingLinkKind.hub => _canonicalPrettyOrLink(
       uri,
@@ -244,10 +247,13 @@ class OfficialZingLink {
         _ => null,
       };
       if (releaseContentType == null) return null;
+      final releaseRegion = _releaseRegion(uri);
+      if (releaseRegion == null) return null;
       return OfficialZingLink._(
         kind: OfficialZingLinkKind.releases,
         uri: uri,
         releaseContentType: releaseContentType,
+        releaseRegion: releaseRegion,
       );
     }
 
@@ -344,6 +350,17 @@ class OfficialZingLink {
   static bool looksLikeAbsoluteUrl(String input) {
     final uri = Uri.tryParse(input.trim());
     return uri != null && uri.hasScheme;
+  }
+}
+
+ReleaseRegion? _releaseRegion(Uri uri) {
+  final values = uri.queryParametersAll['filter'];
+  if (values == null) return ReleaseRegion.all;
+  if (values.length != 1) return null;
+  try {
+    return releaseRegionFromZingFilter(values.single);
+  } on FormatException {
+    return null;
   }
 }
 

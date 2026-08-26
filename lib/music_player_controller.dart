@@ -16,6 +16,7 @@ import 'services/listening_analytics_service.dart';
 import 'services/local_mix_engine.dart';
 import 'services/companion_surface_bridge.dart';
 import 'services/playback_audio_player.dart';
+import 'services/playback_queue_navigator.dart';
 import 'services/system_media_bridge.dart';
 import 'zing_mp3_api.dart';
 
@@ -71,6 +72,7 @@ class PlaybackService extends ChangeNotifier {
   CompanionSurfaceBridge? _companionSurfaceBridge;
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   Future<void> _playerCommandQueue = Future<void>.value();
+  Future<void>? _queueNavigationFuture;
 
   Song? _currentSong;
   LiveRadioRoom? _currentLiveRadio;
@@ -86,6 +88,10 @@ class PlaybackService extends ChangeNotifier {
   String? _activePlaybackSongId;
   List<Song> _queue = const [];
   int _currentIndex = -1;
+  PlaybackQueueNavigator _queueNavigator = PlaybackQueueNavigator(
+    queueIds: const [],
+  );
+  _PendingQueueNavigation? _pendingQueueNavigation;
   bool _shuffleEnabled = false;
   bool _smartShuffleEnabled = false;
   Set<String> _smartShuffleSongIds = const {};
@@ -146,6 +152,17 @@ class PlaybackService extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get hasSong => _currentSong != null;
   List<Song> get queue => List<Song>.unmodifiable(_queue);
+  List<Song> get upNextSongs {
+    final songsById = {for (final song in _queue) song.id: song};
+    return List<Song>.unmodifiable(
+      _queueNavigator
+          .upcomingIdsFor(repeatAll: _repeatMode == PlayerRepeatMode.all)
+          .map((id) => songsById[id])
+          .whereType<Song>(),
+    );
+  }
+
+  Song? get nextSong => upNextSongs.firstOrNull;
   List<Song> get likedSongs => List<Song>.unmodifiable(_likedSongs.values);
   List<CatalogArtist> get followedArtists => List<CatalogArtist>.unmodifiable(
     _followedArtists.values.toList()
@@ -186,11 +203,16 @@ class PlaybackService extends ChangeNotifier {
   bool get canGoNext =>
       !isLiveRadio &&
       _currentSong != null &&
-      (_shuffleEnabled && _queue.length > 1 ||
-          _currentIndex + 1 < _queue.length ||
-          _repeatMode == PlayerRepeatMode.all ||
+      (_queueNavigator.canGoNext(
+            repeatAll: _repeatMode == PlayerRepeatMode.all,
+          ) ||
           autoplayRecommendationsEnabled);
-  bool get canGoPrevious => !isLiveRadio && _queue.length > 1;
+  bool get canGoPrevious =>
+      !isLiveRadio &&
+      _currentSong != null &&
+      (_position > const Duration(seconds: 4) ||
+          _queueNavigator.canGoPrevious ||
+          (_repeatMode == PlayerRepeatMode.all && _queue.length > 1));
   bool get canClearPlaybackQueue =>
       !isLiveRadio &&
       _currentSong != null &&
@@ -441,6 +463,7 @@ class PlaybackService extends ChangeNotifier {
     List<Song>? queue,
     PlaybackOrigin? origin,
   }) async {
+    _cancelPendingQueueNavigationFor(song.id);
     _analytics.finishSession(earlySkip: true);
     final wasLiveRadio = isLiveRadio;
     _currentLiveRadio = null;
@@ -456,11 +479,17 @@ class PlaybackService extends ChangeNotifier {
     if (queue != null && queue.isNotEmpty) {
       _radioSongIds = const {};
       _clearSmartShuffleState();
-      _queue = List<Song>.unmodifiable(queue);
+      _queue = List<Song>.unmodifiable(_uniqueSongs(queue));
       _currentIndex = _queue.indexWhere((item) => item.id == song.id);
-    } else if (_queue.isEmpty) {
+      if (_currentIndex < 0) {
+        _queue = List<Song>.unmodifiable([..._queue, song]);
+        _currentIndex = _queue.length - 1;
+      }
+      _resetQueueNavigator(currentId: song.id);
+    } else if (_queue.isEmpty || wasLiveRadio) {
       _queue = [song];
       _currentIndex = 0;
+      _resetQueueNavigator(currentId: song.id);
     } else {
       final index = _queue.indexWhere((item) => item.id == song.id);
       if (index >= 0) {
@@ -469,6 +498,8 @@ class PlaybackService extends ChangeNotifier {
         _queue = [..._queue, song];
         _currentIndex = _queue.length - 1;
       }
+      _syncQueueNavigator(currentId: song.id);
+      _queueNavigator.selectCurrent(song.id);
     }
 
     final requestId = ++_requestId;
@@ -561,6 +592,7 @@ class PlaybackService extends ChangeNotifier {
     _currentSong = liveSong;
     _queue = [liveSong];
     _currentIndex = 0;
+    _queueNavigator = PlaybackQueueNavigator(queueIds: const []);
     _radioSongIds = const {};
     _clearSmartShuffleState();
     _state = PlayerState.stopped;
@@ -663,56 +695,79 @@ class PlaybackService extends ChangeNotifier {
     unawaited(_saveSnapshot());
   }
 
-  Future<void> next() async {
+  Future<void> next() => _runQueueNavigation(_next);
+
+  Future<void> _next() async {
     if (isLiveRadio) return;
     if (_queue.isEmpty || _currentSong == null) return;
-    final nextIndex = _shuffleEnabled && _queue.length > 1
-        ? _randomIndexExcluding(_currentIndex)
-        : _currentIndex + 1;
-    if (nextIndex >= _queue.length) {
-      if (_repeatMode == PlayerRepeatMode.all) {
-        await _playQueueIndex(0);
-      } else if (autoplayRecommendationsEnabled) {
-        final advanceRequestId = ++_radioAdvanceRequestId;
-        final seedSongId = _currentSong!.id;
-        final endingIndex = _currentIndex;
-        final appended = await _appendRadioRecommendations(_currentSong!);
-        if (appended > 0 &&
-            advanceRequestId == _radioAdvanceRequestId &&
-            seedSongId == _currentSong?.id &&
-            endingIndex + 1 < _queue.length) {
+    final previousNavigatorState = _queueNavigator.state;
+    final nextId = _queueNavigator.moveNext(
+      repeatAll: _repeatMode == PlayerRepeatMode.all,
+    );
+    if (nextId != null) {
+      await _playQueueSong(nextId, rollbackState: previousNavigatorState);
+      return;
+    }
+
+    if (autoplayRecommendationsEnabled) {
+      final advanceRequestId = ++_radioAdvanceRequestId;
+      final seedSongId = _currentSong!.id;
+      final appended = await _appendRadioRecommendations(_currentSong!);
+      if (appended > 0 &&
+          advanceRequestId == _radioAdvanceRequestId &&
+          seedSongId == _currentSong?.id) {
+        final radioNavigatorState = _queueNavigator.state;
+        final radioNextId = _queueNavigator.moveNext();
+        if (radioNextId != null) {
           _playbackOrigin = PlaybackOrigin(
             kind: PlaybackOriginKind.songRadio,
             label: PlaybackOrigin.sanitizeLabel(
               'Song Radio · ${_currentSong!.displayTitle}',
             ),
           );
-          await _playQueueIndex(endingIndex + 1);
-        } else if (advanceRequestId == _radioAdvanceRequestId &&
-            seedSongId == _currentSong?.id) {
-          _analytics.finishSession(earlySkip: true);
-          await stop();
+          await _playQueueSong(radioNextId, rollbackState: radioNavigatorState);
+          return;
         }
-      } else {
-        _analytics.finishSession(earlySkip: true);
-        await stop();
       }
-      return;
+      if (advanceRequestId != _radioAdvanceRequestId ||
+          seedSongId != _currentSong?.id) {
+        return;
+      }
     }
-    await _playQueueIndex(nextIndex);
+
+    _analytics.finishSession(earlySkip: true);
+    await stop();
   }
 
-  Future<void> previous() async {
+  Future<void> previous() => _runQueueNavigation(_previous);
+
+  Future<void> _previous() async {
     if (isLiveRadio) return;
     if (_queue.isEmpty || _currentSong == null) return;
     if (_position > const Duration(seconds: 4)) {
       await seek(Duration.zero);
       return;
     }
-    final previousIndex = _currentIndex <= 0
-        ? (_repeatMode == PlayerRepeatMode.all ? _queue.length - 1 : 0)
-        : _currentIndex - 1;
-    await _playQueueIndex(previousIndex);
+    final previousNavigatorState = _queueNavigator.state;
+    final previousId = _queueNavigator.movePrevious(
+      repeatAll: _repeatMode == PlayerRepeatMode.all,
+    );
+    if (previousId != null) {
+      await _playQueueSong(previousId, rollbackState: previousNavigatorState);
+    }
+  }
+
+  Future<void> _runQueueNavigation(Future<void> Function() action) {
+    final inFlight = _queueNavigationFuture;
+    if (inFlight != null) return inFlight;
+    late final Future<void> tracked;
+    tracked = action().whenComplete(() {
+      if (identical(_queueNavigationFuture, tracked)) {
+        _queueNavigationFuture = null;
+      }
+    });
+    _queueNavigationFuture = tracked;
+    return tracked;
   }
 
   void setShuffleEnabled(bool enabled) {
@@ -723,6 +778,7 @@ class PlaybackService extends ChangeNotifier {
     }
     if (_shuffleEnabled == enabled && !_smartShuffleEnabled) return;
     _shuffleEnabled = enabled;
+    _queueNavigator.setShuffleEnabled(enabled);
     _notifyPlaybackChanged();
     unawaited(_saveSnapshot());
   }
@@ -771,6 +827,9 @@ class PlaybackService extends ChangeNotifier {
     _currentIndex = _queue.indexWhere((song) => song.id == _currentSong?.id);
     _smartShuffleEnabled = true;
     _shuffleEnabled = true;
+    _syncQueueNavigator();
+    _queueNavigator.setShuffleEnabled(true);
+    _queueNavigator.distributeUpcoming(suggestions.map((song) => song.id));
     _smartShuffleMessage =
         'Đã thêm ${suggestions.length} bài từ catalog hiện tại.';
     _notifyPlaybackChanged();
@@ -842,6 +901,7 @@ class PlaybackService extends ChangeNotifier {
       _removeSmartShuffleSongs();
       _clearSmartShuffleState();
       _currentIndex = _queue.indexWhere((song) => song.id == _currentSong?.id);
+      _syncQueueNavigator();
     }
     setAutoplayRecommendations(true);
     final appended = await _appendRadioRecommendations(seedSong);
@@ -916,7 +976,9 @@ class PlaybackService extends ChangeNotifier {
       if (existingIndex >= 0) return false;
       updatedQueue.add(song);
     } else {
-      if (existingIndex == _currentIndex + 1) return false;
+      if (existingIndex == _currentIndex + 1 && nextSong?.id == song.id) {
+        return false;
+      }
       if (existingIndex >= 0) updatedQueue.removeAt(existingIndex);
       final playingIndex = updatedQueue.indexWhere(
         (item) => item.id == _currentSong?.id,
@@ -928,6 +990,8 @@ class PlaybackService extends ChangeNotifier {
     }
     _queue = List<Song>.unmodifiable(updatedQueue);
     _currentIndex = _queue.indexWhere((item) => item.id == _currentSong?.id);
+    _syncQueueNavigator();
+    _queueNavigator.addNext(song.id);
     _notifyPlaybackChanged();
     unawaited(_saveSnapshot());
     return true;
@@ -945,6 +1009,7 @@ class PlaybackService extends ChangeNotifier {
     );
     if (_smartShuffleSongIds.isEmpty) _smartShuffleEnabled = false;
     if (index < _currentIndex) _currentIndex--;
+    _syncQueueNavigator();
     _notifyPlaybackChanged();
     unawaited(_saveSnapshot());
   }
@@ -962,6 +1027,7 @@ class PlaybackService extends ChangeNotifier {
     _currentIndex = 0;
     _radioSongIds = const {};
     _clearSmartShuffleState();
+    _resetQueueNavigator();
     _notifyPlaybackChanged();
     unawaited(_saveSnapshot());
     return true;
@@ -987,6 +1053,7 @@ class PlaybackService extends ChangeNotifier {
     updated.insert(newIndex, song);
     _queue = List<Song>.unmodifiable(updated);
     _currentIndex = _queue.indexWhere((item) => item.id == _currentSong?.id);
+    _syncQueueNavigator();
     _notifyPlaybackChanged();
     unawaited(_saveSnapshot());
   }
@@ -1442,10 +1509,7 @@ class PlaybackService extends ChangeNotifier {
       if (requestId != _radioRequestId || _currentSong?.id != seed.id) {
         return 0;
       }
-      final seedIndex = _queue.indexWhere((song) => song.id == seed.id);
-      final prefix = seedIndex < 0
-          ? <Song>[seed]
-          : _queue.take(seedIndex + 1).toList(growable: false);
+      final prefix = _visitedQueuePrefix(seed);
       final seen = prefix.map((song) => song.id).toSet();
       final appended = radio.songs
           .where((song) => song.code.isNotEmpty && seen.add(song.id))
@@ -1457,6 +1521,7 @@ class PlaybackService extends ChangeNotifier {
       }
       _queue = List<Song>.unmodifiable([...prefix, ...appended]);
       _currentIndex = _queue.indexWhere((song) => song.id == _currentSong?.id);
+      _syncQueueNavigator();
       final retainedIds = prefix.map((song) => song.id).toSet();
       _radioSongIds = Set<String>.unmodifiable({
         ..._radioSongIds.where(retainedIds.contains),
@@ -1476,6 +1541,23 @@ class PlaybackService extends ChangeNotifier {
         _notifyPlaybackChanged();
       }
     }
+  }
+
+  List<Song> _visitedQueuePrefix(Song seed) {
+    final songsById = {for (final song in _queue) song.id: song};
+    final result = <Song>[];
+    final seen = <String>{};
+    final historyEnd = (_queueNavigator.historyCursor + 1).clamp(
+      0,
+      _queueNavigator.historyIds.length,
+    );
+    for (final id in _queueNavigator.historyIds.take(historyEnd)) {
+      final song = songsById[id];
+      if (song != null && seen.add(id)) result.add(song);
+    }
+    result.removeWhere((song) => song.id == seed.id);
+    result.add(seed);
+    return List<Song>.unmodifiable(result);
   }
 
   void _cancelRadioLoad({bool clearError = false}) {
@@ -1527,17 +1609,70 @@ class PlaybackService extends ChangeNotifier {
     await next();
   }
 
-  Future<void> _playQueueIndex(int index) async {
-    if (index < 0 || index >= _queue.length) return;
+  Future<void> _playQueueSong(
+    String songId, {
+    required PlaybackQueueNavigatorState rollbackState,
+  }) async {
+    final index = _queue.indexWhere((song) => song.id == songId);
+    if (index < 0) {
+      _syncQueueNavigator();
+      return;
+    }
+    final transaction = _PendingQueueNavigation(
+      targetId: songId,
+      rollbackState: rollbackState,
+    );
+    _pendingQueueNavigation = transaction;
     _currentIndex = index;
-    await playSong(_queue[index]);
+    try {
+      await playSong(_queue[index]);
+    } finally {
+      if (identical(_pendingQueueNavigation, transaction)) {
+        _pendingQueueNavigation = null;
+      }
+    }
   }
 
-  int _randomIndexExcluding(int excluded) {
-    final seed = DateTime.now().microsecondsSinceEpoch;
-    var index = seed % _queue.length;
-    if (index == excluded) index = (index + 1) % _queue.length;
-    return index;
+  void _cancelPendingQueueNavigationFor(String selectedSongId) {
+    final pending = _pendingQueueNavigation;
+    if (pending == null || pending.targetId == selectedSongId) return;
+    _pendingQueueNavigation = null;
+    // The stale audio request may remain unresolved indefinitely. Detach its
+    // coalescing guard now; the identity check in _runQueueNavigation prevents
+    // its eventual completion from clearing a newer navigation operation.
+    _queueNavigationFuture = null;
+    _queueNavigator = PlaybackQueueNavigator.restore(
+      pending.rollbackState,
+      queueIds: _queue.map((song) => song.id),
+    );
+  }
+
+  void _resetQueueNavigator({String? currentId}) {
+    _queueNavigator = PlaybackQueueNavigator(
+      queueIds: _queue.map((song) => song.id),
+      currentId:
+          currentId ??
+          _currentSong?.id ??
+          (_currentIndex >= 0 && _currentIndex < _queue.length
+              ? _queue[_currentIndex].id
+              : null),
+      shuffleEnabled: _shuffleEnabled,
+    );
+  }
+
+  void _syncQueueNavigator({String? currentId}) {
+    _queueNavigator.syncQueue(
+      _queue.map((song) => song.id),
+      currentId: currentId ?? _currentSong?.id,
+    );
+    _queueNavigator.setShuffleEnabled(_shuffleEnabled);
+  }
+
+  List<Song> _uniqueSongs(Iterable<Song> songs) {
+    final seen = <String>{};
+    return songs
+        .where((song) => song.id.isNotEmpty && seen.add(song.id))
+        .toList(growable: false);
   }
 
   List<Song> _interleaveSmartShuffleSuggestions(
@@ -1569,6 +1704,7 @@ class PlaybackService extends ChangeNotifier {
       ),
     );
     _currentIndex = _queue.indexWhere((song) => song.id == currentId);
+    _syncQueueNavigator();
   }
 
   void _clearSmartShuffleState() {
@@ -1620,6 +1756,23 @@ class PlaybackService extends ChangeNotifier {
     _smartShuffleEnabled =
         snapshot.smartShuffleEnabled && _smartShuffleSongIds.isNotEmpty;
     _shuffleEnabled = snapshot.shuffleEnabled || _smartShuffleEnabled;
+    if (snapshot.playbackOrderIds.isEmpty) {
+      _resetQueueNavigator();
+    } else {
+      _queueNavigator = PlaybackQueueNavigator.restore(
+        PlaybackQueueNavigatorState(
+          queueIds: _queue.map((song) => song.id),
+          shuffleEnabled: _shuffleEnabled,
+          traversalOrderIds: snapshot.playbackOrderIds,
+          traversalCursor: snapshot.playbackCursor,
+          historyIds: snapshot.playbackHistoryIds,
+          historyCursor: snapshot.playbackHistoryCursor,
+          currentId: _currentSong?.id,
+        ),
+        queueIds: _queue.map((song) => song.id),
+        currentId: _currentSong?.id,
+      );
+    }
     _repeatMode =
         PlayerRepeatMode.values[snapshot.repeatModeIndex.clamp(
           0,
@@ -1654,6 +1807,7 @@ class PlaybackService extends ChangeNotifier {
 
   Future<void> _saveSnapshot() {
     final persistPlayback = !isLiveRadio;
+    final navigatorState = _queueNavigator.state;
     _pendingSnapshot = PlayerSnapshot(
       likedSongs: likedSongs,
       followedArtists: followedArtists,
@@ -1670,6 +1824,16 @@ class PlaybackService extends ChangeNotifier {
       smartShuffleSongIds: persistPlayback
           ? _smartShuffleSongIds.toList(growable: false)
           : const [],
+      playbackOrderIds: persistPlayback
+          ? navigatorState.traversalOrderIds
+          : const [],
+      playbackHistoryIds: persistPlayback
+          ? navigatorState.historyIds
+          : const [],
+      playbackCursor: persistPlayback ? navigatorState.traversalCursor : -1,
+      playbackHistoryCursor: persistPlayback
+          ? navigatorState.historyCursor
+          : -1,
       repeatModeIndex: repeatMode.index,
       autoplayRecommendationsEnabled: autoplayRecommendationsEnabled,
       alwaysOpenFullscreenPlayer: alwaysOpenFullscreenPlayer,
@@ -1725,6 +1889,8 @@ class PlaybackService extends ChangeNotifier {
             },
       position: position,
       duration: duration,
+      canGoPrevious: canGoPrevious,
+      canGoNext: canGoNext,
       shuffleEnabled: shuffleEnabled,
       repeatMode: switch (repeatMode) {
         PlayerRepeatMode.off => SystemRepeatMode.none,
@@ -1850,6 +2016,16 @@ class PlaybackService extends ChangeNotifier {
     unawaited(_audioPlayer.dispose());
     super.dispose();
   }
+}
+
+class _PendingQueueNavigation {
+  const _PendingQueueNavigation({
+    required this.targetId,
+    required this.rollbackState,
+  });
+
+  final String targetId;
+  final PlaybackQueueNavigatorState rollbackState;
 }
 
 class _MutableSongStat {

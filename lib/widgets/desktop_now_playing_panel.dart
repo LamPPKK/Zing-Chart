@@ -11,6 +11,7 @@ import 'mood_selector.dart';
 import 'song_detail_panel.dart';
 import 'song_lyrics_panel.dart';
 import 'song_radio_controls.dart';
+import 'up_next_preview.dart';
 
 class DesktopNowPlayingPanel extends StatelessWidget {
   const DesktopNowPlayingPanel({
@@ -435,6 +436,14 @@ class DesktopNowPlayingPanel extends StatelessWidget {
                                 ],
                               ),
                               const SizedBox(height: 8),
+                              if (controller.nextSong != null) ...[
+                                UpNextPreview(
+                                  controller: controller,
+                                  compact: !tvMode,
+                                  tvMode: tvMode,
+                                ),
+                                const SizedBox(height: 10),
+                              ],
                               _DesktopQueue(controller: controller),
                             ],
                           ],

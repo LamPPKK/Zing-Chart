@@ -67,6 +67,12 @@ class WindowsSystemMediaBridge implements SystemMediaBridge {
   @override
   Future<void> publish(SystemMediaSnapshot snapshot) async {
     _lastSnapshot = snapshot;
+    if (_smtc.isNextEnabled != snapshot.canGoNext) {
+      await _smtc.setIsNextEnabled(snapshot.canGoNext);
+    }
+    if (_smtc.isPrevEnabled != snapshot.canGoPrevious) {
+      await _smtc.setIsPrevEnabled(snapshot.canGoPrevious);
+    }
     final song = snapshot.song;
     if (song == null) {
       await _smtc.clearMetadata();

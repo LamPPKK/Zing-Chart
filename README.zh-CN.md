@@ -166,7 +166,8 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   TV 则只显示二维码。外部启动不会自动播放。Android 仅注册 best-effort HTTPS 交接；
   iOS、macOS、Windows、Linux 与 HarmonyOS 使用 `zingchart://open?url=...`；Web
   接受编码后的 `?open=<URL>` 查询。解析器只接受已知的 Zing HTTPS 主机和路径，不会
-  把任意 URL 转发给代理。
+  把任意 URL 转发给代理。“最新发行”路由同时保留歌曲/专辑类型以及
+  `all/vpop/usuk/kpop/other` 筛选，因此冷启动链接和前进/后退都能恢复准确视图。
 - 手机/桌面“正在播放”和歌单详情会复用已加载封面作为模糊渐变氛围层；对比遮罩与
   本地渐变确保可读性，不增加 API 请求，也不发送个人数据。
 - Launcher、PWA、桌面、手表与 TV 共用原创的“# + 脉冲”图标，并沿用
@@ -175,6 +176,10 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   `node tool/generate_brand_assets.mjs` 统一生成。
 - Song Radio 可从歌曲菜单或“正在播放”加载最多 30 首获授权的相似歌曲；播放到
   队列末尾时，自动播放可以继续扩展队列。
+- 随机播放会为整个周期生成一次 Fisher–Yates 顺序，在队列耗尽前不会重复歌曲；
+  上一首/下一首遵循真实播放历史，全部循环会开启新周期并避免边界处立即重复。
+  手机、桌面与电视上的“下一首”卡片会准确显示 Smart Shuffle、Song Radio 或
+  “加入队列”之后真正要播放的歌曲；顺序与游标仅保存在本机，重启后仍可继续。
 - Smart Shuffle 从当前已加载的目录中穿插最多 10 首推荐，使用设备端点赞与统计排序，
   并为每首自动加入的歌曲标记 `SMART`；收听偏好、收藏和历史不会发送到代理。
 - LIVE 电台展示 V-Pop、Bolero、欧美、K-Pop 及当前节目；HLS 播放列表和媒体均
@@ -357,7 +362,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-song-radio-desktop.png" alt="桌面播放器面板中的 Song Radio 与自动播放"><br><sub><b>Song Radio</b> · 获授权推荐、自动扩展队列，以及手机/桌面/电视控制</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="桌面队列中的 Smart Shuffle 与清晰标记的自动推荐歌曲"><br><sub><b>Smart Shuffle</b> · 穿插本地优先推荐、保留原始歌曲，并明确标记每首自动加入的歌曲</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="桌面队列中的真实下一首顺序、Smart Shuffle 与清晰标记的推荐歌曲"><br><sub><b>公平随机与 Smart Shuffle</b> · 一个周期内不重复、准确显示下一首，并明确标记每首本地优先推荐</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-stream-quality-desktop.png" alt="Auto 128 与 320 kbps 在线音质选择器"><br><sub><b>真实在线音质</b> · Auto 优先 320 后回退 128；明确选择 128/320 时，签名中继会保持该码率</sub></td>

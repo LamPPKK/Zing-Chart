@@ -891,16 +891,82 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('https://zingmp3.vn/new-release/album'), findsOneWidget);
+    expect(
+      find.text('https://zingmp3.vn/new-release/album?filter=all'),
+      findsOneWidget,
+    );
     expect(history.initializations, 1);
     expect(history.updates, [
       (
         location: Uri.parse(
-          '/?open=https%3A%2F%2Fzingmp3.vn%2Fnew-release%2Falbum',
+          '/?open=https%3A%2F%2Fzingmp3.vn%2Fnew-release%2Falbum%3Ffilter%3Dall',
         ),
         replace: true,
       ),
     ]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('MyApp popstate envelopes preserve New Releases filters', (
+    tester,
+  ) async {
+    final controller = await _controller();
+    final history = _RecordingRouteHistory();
+    await tester.pumpWidget(
+      MyApp(
+        playerController: controller,
+        routeHistory: history,
+        routeBaseUri: Uri.parse('https://client.example/'),
+        homeBuilder: (officialUrl) =>
+            Scaffold(body: Text(officialUrl ?? 'no-link')),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    Future<void> pushBrowserLocation(String officialUrl) async {
+      final location = AppNavigationRoute.fromOfficialUrl(
+        officialUrl,
+      )!.webLocation().toString();
+      final message = const JSONMethodCodec().encodeMethodCall(
+        MethodCall('pushRouteInformation', {
+          'location': location,
+          'state': null,
+        }),
+      );
+      await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+        'flutter/navigation',
+        message,
+        (_) {},
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await pushBrowserLocation(
+      'https://zingmp3.vn/new-release/song?filter=vpop',
+    );
+    expect(
+      find.text('https://zingmp3.vn/new-release/song?filter=vpop'),
+      findsOneWidget,
+    );
+
+    await pushBrowserLocation(
+      'https://zingmp3.vn/new-release/album?filter=kpop',
+    );
+    expect(
+      find.text('https://zingmp3.vn/new-release/album?filter=kpop'),
+      findsOneWidget,
+    );
+
+    // A browser Back popstate supplies the earlier canonical envelope again.
+    await pushBrowserLocation(
+      'https://zingmp3.vn/new-release/song?filter=vpop',
+    );
+    expect(
+      find.text('https://zingmp3.vn/new-release/song?filter=vpop'),
+      findsOneWidget,
+    );
+    expect(history.initializations, 1);
+    expect(history.updates, isEmpty);
     expect(tester.takeException(), isNull);
   });
 

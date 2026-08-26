@@ -12,6 +12,7 @@ import 'clear_playback_queue_dialog.dart';
 import 'smart_shuffle_controls.dart';
 import 'song_lyrics_panel.dart';
 import 'song_radio_controls.dart';
+import 'up_next_preview.dart';
 import '../zing_mp3_api.dart';
 
 enum DesktopPlaybackPanelTab { queue, recent, lyrics }
@@ -338,6 +339,11 @@ class _PlayingQueue extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
           child: SmartShuffleControlCard(controller: controller, compact: true),
         ),
+        if (controller.nextSong != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+            child: UpNextPreview(controller: controller, compact: true),
+          ),
         Expanded(
           child: ReorderableListView.builder(
             key: const ValueKey('desktop-playing-queue-list'),

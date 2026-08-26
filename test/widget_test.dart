@@ -5050,6 +5050,37 @@ void main() {
       expect(find.text('Ngày Mới Rực Rỡ'), findsWidgets);
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('release-catalog')), findsOneWidget);
+      expect(
+        tester
+            .widget<ChoiceChip>(
+              find.byKey(const ValueKey('release-region-korea')),
+            )
+            .selected,
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<ChoiceChip>(
+              find.byKey(const ValueKey('release-region-vietnam')),
+            )
+            .selected,
+        isFalse,
+      );
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('release-catalog')), findsOneWidget);
+      expect(find.text('3 BÀI HÁT'), findsOneWidget);
+      expect(
+        tester
+            .widget<ChoiceChip>(
+              find.byKey(const ValueKey('release-region-all')),
+            )
+            .selected,
+        isTrue,
+      );
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('discovery-home')), findsOneWidget);
     },
   );

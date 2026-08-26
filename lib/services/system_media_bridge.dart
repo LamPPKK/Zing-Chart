@@ -36,6 +36,8 @@ class SystemMediaSnapshot {
     required this.status,
     required this.position,
     required this.duration,
+    required this.canGoPrevious,
+    required this.canGoNext,
     required this.shuffleEnabled,
     required this.repeatMode,
   });
@@ -46,6 +48,8 @@ class SystemMediaSnapshot {
   final SystemPlaybackStatus status;
   final Duration position;
   final Duration duration;
+  final bool canGoPrevious;
+  final bool canGoNext;
   final bool shuffleEnabled;
   final SystemRepeatMode repeatMode;
 }

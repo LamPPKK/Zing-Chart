@@ -62,11 +62,11 @@ void main() {
     expect(songs.canonicalIdentity, isNot(albums.canonicalIdentity));
     expect(
       songs.canonicalUri,
-      Uri.parse('https://zingmp3.vn/new-release/song'),
+      Uri.parse('https://zingmp3.vn/new-release/song?filter=all'),
     );
     expect(
       albums.canonicalUri,
-      Uri.parse('https://zingmp3.vn/new-release/album'),
+      Uri.parse('https://zingmp3.vn/new-release/album?filter=all'),
     );
   });
 

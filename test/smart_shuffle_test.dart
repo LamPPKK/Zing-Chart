@@ -90,7 +90,22 @@ void main() {
     await tester.tap(queueButton);
     await tester.pumpAndSettle();
     expect(find.byType(SmartShuffleControlCard), findsOneWidget);
-    expect(find.text('SMART'), findsNWidgets(2));
+    final smartSongs = controller.queue
+        .where(controller.isSmartShuffleSong)
+        .toList(growable: false);
+    expect(smartSongs, hasLength(2));
+    for (final song in smartSongs) {
+      final queueRow = find.byKey(ValueKey('queue-${song.id}'));
+      await tester.scrollUntilVisible(
+        queueRow,
+        160,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(
+        find.descendant(of: queueRow, matching: find.text('SMART')),
+        findsOneWidget,
+      );
+    }
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.byKey(const ValueKey('smart-shuffle-toggle')));
@@ -174,7 +189,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(SmartShuffleControlCard), findsOneWidget);
-    expect(find.text('SMART'), findsNWidgets(2));
+    final smartSongs = controller.queue
+        .where(controller.isSmartShuffleSong)
+        .toList(growable: false);
+    expect(smartSongs, hasLength(2));
+    for (final song in smartSongs) {
+      final queueRow = find.byKey(ValueKey('desktop-queue-${song.id}'));
+      await tester.scrollUntilVisible(
+        queueRow,
+        160,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(
+        find.descendant(of: queueRow, matching: find.text('SMART')),
+        findsOneWidget,
+      );
+    }
     expect(tester.takeException(), isNull);
   });
 

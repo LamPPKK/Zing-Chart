@@ -273,6 +273,21 @@ void main() {
       controller.dispose();
     });
 
+    test(
+      'Repeat All Previous uses the predecessor of a middle start',
+      () async {
+        final controller = _controller(FakePlaybackAudioPlayer());
+        await controller.initialize();
+        await controller.playSong(songs[1], queue: songs);
+        controller.setRepeatMode(PlayerRepeatMode.all);
+
+        await controller.previous();
+
+        expect(controller.currentSong, songs.first);
+        controller.dispose();
+      },
+    );
+
     test('extends the queue with Song Radio at its boundary', () async {
       final audio = FakePlaybackAudioPlayer();
       var radioCalls = 0;
@@ -302,6 +317,51 @@ void main() {
       expect(controller.playbackOrigin.kind, PlaybackOriginKind.songRadio);
       expect(controller.playbackOrigin.label, 'Song Radio · Một Bài Hát');
       expect(controller.radioErrorMessage, isNull);
+      controller.dispose();
+    });
+
+    test('explicit Song Radio replaces unplayed shuffle future', () async {
+      const recommendations = [
+        Song(
+          id: 'radio-one',
+          name: 'radio-one',
+          title: 'Radio Một',
+          thumbnail: '',
+          artistsNames: 'Radio Artist 1',
+          code: 'radio-code-one',
+        ),
+        Song(
+          id: 'radio-two',
+          name: 'radio-two',
+          title: 'Radio Hai',
+          thumbnail: '',
+          artistsNames: 'Radio Artist 2',
+          code: 'radio-code-two',
+        ),
+      ];
+      final controller = PlaybackService(
+        playbackAudioPlayer: FakePlaybackAudioPlayer(),
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        songRadioLoader: (code) async => SongRadio(
+          seedId: code,
+          recommendations: recommendations.map(_radioSong).toList(),
+        ),
+        libraryRepository: MemoryLibraryRepository(),
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await controller.initialize();
+      await controller.playSong(songs[1], queue: songs);
+      controller.setShuffleEnabled(true);
+
+      await controller.startSongRadio();
+
+      expect(controller.queue.map((song) => song.id), [
+        'two',
+        'radio-one',
+        'radio-two',
+      ]);
+      expect(controller.nextSong, isNotNull);
+      expect(controller.isRadioSong(controller.nextSong!), isTrue);
       controller.dispose();
     });
 
@@ -670,6 +730,201 @@ void main() {
   });
 
   group('Queue, persistence and system controls', () {
+    test('shuffle visits every queued song once before exhaustion', () async {
+      final controller = _controller(FakePlaybackAudioPlayer());
+      await controller.initialize();
+      await controller.playSong(songs.first, queue: songs);
+      controller.setShuffleEnabled(true);
+      final visited = <String>[controller.currentSong!.id];
+
+      while (controller.canGoNext) {
+        await controller.next();
+        visited.add(controller.currentSong!.id);
+      }
+
+      expect(visited, hasLength(songs.length));
+      expect(visited.toSet(), songs.map((song) => song.id).toSet());
+      expect(controller.canGoNext, isFalse);
+      controller.dispose();
+    });
+
+    test(
+      'shuffle Previous and forward follow the actual visit history',
+      () async {
+        final controller = _controller(FakePlaybackAudioPlayer());
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: songs);
+        controller.setShuffleEnabled(true);
+
+        await controller.next();
+        final firstAdvance = controller.currentSong;
+        await controller.next();
+        final secondAdvance = controller.currentSong;
+        await controller.previous();
+        expect(controller.currentSong, firstAdvance);
+
+        await controller.next();
+        expect(controller.currentSong, secondAdvance);
+        controller.dispose();
+      },
+    );
+
+    test(
+      'coalesces rapid queue navigation while the next song loads',
+      () async {
+        final audio = FakePlaybackAudioPlayer();
+        final nextSource = Completer<String>();
+        final controller = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (code) {
+            if (code == songs[1].code) return nextSource.future;
+            return Future.value('https://audio.example.com/$code.mp3');
+          },
+          libraryRepository: MemoryLibraryRepository(),
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: songs);
+
+        final firstNext = controller.next();
+        await _flushAsync();
+        expect(controller.currentSong, songs[1]);
+        expect(controller.isLoading, isTrue);
+
+        final secondNext = controller.next();
+        expect(identical(secondNext, firstNext), isTrue);
+        nextSource.complete('https://audio.example.com/two.mp3');
+        await Future.wait([firstNext, secondNext]);
+
+        expect(controller.currentSong, songs[1]);
+        expect(audio.playedSources, hasLength(2));
+        await controller.previous();
+        expect(controller.currentSong, songs.first);
+        controller.dispose();
+      },
+    );
+
+    test('direct selection rolls back a stale pending queue visit', () async {
+      final audio = FakePlaybackAudioPlayer();
+      final pendingSource = Completer<String>();
+      final controller = PlaybackService(
+        playbackAudioPlayer: audio,
+        sourceResolver: (code) => code == songs[1].code
+            ? pendingSource.future
+            : Future.value('https://audio.example.com/$code.mp3'),
+        libraryRepository: MemoryLibraryRepository(),
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await controller.initialize();
+      await controller.playSong(songs.first, queue: songs);
+
+      final pendingNext = controller.next();
+      await _flushAsync();
+      expect(controller.currentSong, songs[1]);
+      expect(controller.isLoading, isTrue);
+
+      await controller.playSong(songs[2]);
+      pendingSource.complete('https://audio.example.com/stale-two.mp3');
+      await pendingNext;
+      expect(controller.currentSong, songs[2]);
+      expect(
+        audio.playedSources.whereType<UrlSource>().map((source) => source.url),
+        isNot(contains('https://audio.example.com/stale-two.mp3')),
+      );
+
+      await controller.previous();
+      expect(controller.currentSong, songs.first);
+      controller.dispose();
+    });
+
+    test('direct selection releases a stale navigation lock', () async {
+      const fourth = Song(
+        id: 'four',
+        name: 'bon',
+        title: 'Bài Bốn',
+        thumbnail: '',
+        artistsNames: 'Ca Sĩ D',
+        code: 'code-four',
+      );
+      final audio = FakePlaybackAudioPlayer();
+      final pendingSource = Completer<String>();
+      final controller = PlaybackService(
+        playbackAudioPlayer: audio,
+        sourceResolver: (code) => code == songs[1].code
+            ? pendingSource.future
+            : Future.value('https://audio.example.com/$code.mp3'),
+        libraryRepository: MemoryLibraryRepository(),
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await controller.initialize();
+      await controller.playSong(songs.first, queue: [...songs, fourth]);
+
+      final staleNext = controller.next();
+      await _flushAsync();
+      await controller.playSong(songs[2]);
+
+      await controller.next().timeout(const Duration(seconds: 1));
+      expect(controller.currentSong, fourth);
+
+      pendingSource.complete('https://audio.example.com/stale-two.mp3');
+      await staleNext;
+      expect(controller.currentSong, fourth);
+      controller.dispose();
+    });
+
+    test('Repeat All keeps an exact Up Next preview at cycle end', () async {
+      for (final shuffled in [false, true]) {
+        final controller = _controller(FakePlaybackAudioPlayer());
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: songs);
+        controller.setShuffleEnabled(shuffled);
+        while (controller.canGoNext) {
+          await controller.next();
+        }
+        controller.setRepeatMode(PlayerRepeatMode.all);
+
+        final preview = controller.nextSong;
+        expect(preview, isNotNull);
+        await controller.next();
+        expect(controller.currentSong, preview);
+        controller.dispose();
+      }
+    });
+
+    test(
+      'Add to Queue overrides shuffle and navigator state survives restart',
+      () async {
+        final repository = MemoryLibraryRepository();
+        final source = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await source.initialize();
+        await source.playSong(songs.first, queue: songs);
+        source.setShuffleEnabled(true);
+        expect(source.addToQueue(songs.last), isTrue);
+        expect(source.nextSong, songs.last);
+        await _flushAsync();
+
+        final restored = PlaybackService(
+          playbackAudioPlayer: FakePlaybackAudioPlayer(),
+          sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+          libraryRepository: repository,
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await restored.initialize();
+
+        expect(restored.shuffleEnabled, isTrue);
+        expect(restored.nextSong, songs.last);
+        await restored.next();
+        expect(restored.currentSong, songs.last);
+        source.dispose();
+        restored.dispose();
+      },
+    );
+
     test(
       'inserts next, de-duplicates, removes and protects current song',
       () async {
@@ -710,6 +965,8 @@ void main() {
 
       expect(bridge.snapshots.last.song, songs.first);
       expect(bridge.snapshots.last.status, SystemPlaybackStatus.playing);
+      expect(bridge.snapshots.last.canGoPrevious, isFalse);
+      expect(bridge.snapshots.last.canGoNext, isTrue);
       bridge.callbacks.setShuffle(true);
       bridge.callbacks.setRepeatMode(SystemRepeatMode.one);
       await bridge.callbacks.next();
@@ -817,6 +1074,15 @@ void main() {
       expect(controller.isSmartShuffleSong(controller.queue[3]), isTrue);
       expect(controller.queue[4].id, 'four');
       expect(controller.isSmartShuffleSong(controller.queue[5]), isTrue);
+      final actualUpcomingIds = controller.upNextSongs
+          .map((song) => song.id)
+          .toList(growable: false);
+      final smartIds = controller.queue
+          .where(controller.isSmartShuffleSong)
+          .map((song) => song.id)
+          .toSet();
+      expect(actualUpcomingIds.toSet(), {'two', 'three', 'four', ...smartIds});
+      expect(smartIds, isNot(contains(actualUpcomingIds.last)));
 
       expect(controller.setSmartShuffleEnabled(false), isTrue);
       expect(controller.smartShuffleEnabled, isFalse);

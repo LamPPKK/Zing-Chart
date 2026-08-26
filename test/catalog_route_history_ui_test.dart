@@ -118,6 +118,133 @@ void main() {
     },
   );
 
+  testWidgets(
+    'new-release region deep links and browser history preserve cached playback state',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final audio = FakePlaybackAudioPlayer();
+      final controller = PlaybackService(
+        playbackAudioPlayer: audio,
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        libraryRepository: MemoryLibraryRepository(),
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await controller.initialize();
+      addTearDown(controller.dispose);
+      await controller.playSong(_song);
+
+      final harnessKey = GlobalKey<_RouteHarnessState>();
+      await tester.pumpWidget(
+        _RouteHarness(
+          key: harnessKey,
+          controller: controller,
+          initialRoute: AppNavigationRoute.fromOfficialUrl(
+            'https://zingmp3.vn/new-release/song?filter=vpop',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final state = harnessKey.currentState!;
+      expect(state.releaseLoads, 1);
+      expect(
+        tester
+            .widget<ChoiceChip>(
+              find.byKey(const ValueKey('release-region-vietnam')),
+            )
+            .selected,
+        isTrue,
+      );
+      expect(find.text('Bản Phát Hành Việt Nam'), findsOneWidget);
+      expect(controller.currentSong?.id, _song.id);
+      expect(audio.playedSources, hasLength(1));
+
+      await tester.tap(find.byKey(const ValueKey('release-tab-albums')));
+      await tester.pumpAndSettle();
+      expect(find.text('Album Phát Hành Việt Nam'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('release-region-korea')));
+      await tester.pumpAndSettle();
+      expect(find.text('Album Phát Hành Hàn Quốc'), findsOneWidget);
+      expect(
+        state.updates.last.route.officialLink?.canonicalUri,
+        Uri.parse('https://zingmp3.vn/new-release/album?filter=kpop'),
+      );
+      expect(state.updates.last.replace, isFalse);
+
+      await tester.tap(find.byKey(const ValueKey('catalog-history-back')));
+      await tester.pumpAndSettle();
+      expect(state.backRequests, 1);
+      expect(find.text('Album Phát Hành Hàn Quốc'), findsOneWidget);
+
+      state.applyIncoming(
+        AppNavigationRoute.fromOfficialUrl(
+          'https://zingmp3.vn/new-release/album?filter=vpop',
+        )!,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Album Phát Hành Việt Nam'), findsOneWidget);
+      expect(
+        tester
+            .widget<ChoiceChip>(
+              find.byKey(const ValueKey('release-region-vietnam')),
+            )
+            .selected,
+        isTrue,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('catalog-history-forward')));
+      await tester.pumpAndSettle();
+      expect(state.forwardRequests, 1);
+
+      state.applyIncoming(
+        AppNavigationRoute.fromOfficialUrl(
+          'https://zingmp3.vn/new-release/album?filter=kpop',
+        )!,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Album Phát Hành Hàn Quốc'), findsOneWidget);
+      expect(
+        tester
+            .widget<ChoiceChip>(
+              find.byKey(const ValueKey('release-region-korea')),
+            )
+            .selected,
+        isTrue,
+      );
+
+      await tester.pumpWidget(
+        _RouteHarness(
+          key: harnessKey,
+          controller: controller,
+          interceptPlatformHistory: false,
+          initialRoute: AppNavigationRoute.fromOfficialUrl(
+            'https://zingmp3.vn/new-release/song?filter=vpop',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('catalog-history-back')));
+      await tester.pumpAndSettle();
+      expect(state.backRequests, 1);
+      expect(find.text('Album Phát Hành Việt Nam'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('catalog-history-forward')));
+      await tester.pumpAndSettle();
+      expect(state.forwardRequests, 1);
+      expect(find.text('Album Phát Hành Hàn Quốc'), findsOneWidget);
+      expect(state.releaseLoads, 1);
+      expect(controller.currentSong?.id, _song.id);
+      expect(audio.playedSources, hasLength(1));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('system Back uses catalog history on wide desktop', (
     tester,
   ) async {
@@ -461,6 +588,7 @@ class _RouteHarnessState extends State<_RouteHarness> {
   int backRequests = 0;
   int forwardRequests = 0;
   int collectionLoads = 0;
+  int releaseLoads = 0;
 
   @override
   void initState() {
@@ -523,7 +651,10 @@ class _RouteHarnessState extends State<_RouteHarness> {
         searchCatalog: (query) async => CatalogSearchResult.empty(query),
         searchSuggestions: (query) async =>
             SearchSuggestionSnapshot.empty(query),
-        loadReleaseCatalog: () async => const ReleaseCatalog.empty(),
+        loadReleaseCatalog: () async {
+          releaseLoads++;
+          return _releaseCatalog;
+        },
         loadNewReleases: () async => const NewReleaseChart.empty(),
         loadCollection: (id) async {
           collectionLoads++;
@@ -560,6 +691,63 @@ const _collectionDetail = CatalogCollectionDetail(
   genres: [],
   songs: [],
   catalogPlaybackEnabled: false,
+);
+
+const _releaseVietnamAlbum = CatalogCollection(
+  id: 'RELEASE-ALBUM-VIETNAM',
+  title: 'Album Phát Hành Việt Nam',
+  artist: 'Nghệ sĩ Việt Nam',
+  thumbnail: '',
+  kind: CatalogCollectionKind.album,
+  externalUrl:
+      'https://zingmp3.vn/album/Album-Phat-Hanh-Viet-Nam/RELEASE-ALBUM-VIETNAM.html',
+);
+
+const _releaseKoreaAlbum = CatalogCollection(
+  id: 'RELEASE-ALBUM-KOREA',
+  title: 'Album Phát Hành Hàn Quốc',
+  artist: 'Nghệ sĩ Hàn Quốc',
+  thumbnail: '',
+  kind: CatalogCollectionKind.album,
+  externalUrl:
+      'https://zingmp3.vn/album/Album-Phat-Hanh-Han-Quoc/RELEASE-ALBUM-KOREA.html',
+);
+
+const _releaseCatalog = ReleaseCatalog(
+  updatedAt: null,
+  songs: [
+    ReleaseSong(
+      catalogSong: CatalogSong(
+        song: Song(
+          id: 'RELEASE-SONG-VIETNAM',
+          name: 'ban-phat-hanh-viet-nam',
+          title: 'Bản Phát Hành Việt Nam',
+          thumbnail: '',
+          artistsNames: 'Nghệ sĩ Việt Nam',
+          code: 'release-vietnam-code',
+        ),
+        duration: Duration(minutes: 3),
+        externalUrl:
+            'https://zingmp3.vn/bai-hat/Ban-Phat-Hanh-Viet-Nam/RELEASE-SONG-VIETNAM.html',
+        playable: true,
+      ),
+      releasedAt: null,
+      region: ReleaseRegion.vietnam,
+    ),
+  ],
+  albums: [
+    ReleaseAlbum(
+      collection: _releaseVietnamAlbum,
+      releasedAt: null,
+      region: ReleaseRegion.vietnam,
+    ),
+    ReleaseAlbum(
+      collection: _releaseKoreaAlbum,
+      releasedAt: null,
+      region: ReleaseRegion.korea,
+    ),
+  ],
+  catalogPlaybackEnabled: true,
 );
 
 const _home = DiscoveryHome(

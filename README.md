@@ -197,7 +197,9 @@ proxy Node/TypeScript do người triển khai tự host.
   best-effort; iOS, macOS,
   Windows, Linux và HarmonyOS dùng scheme `zingchart://open?url=...`; Web nhận
   query `?open=<URL đã encode>`. Parser chỉ chấp nhận HTTPS Zing và ID/path đã
-  biết, không chuyển tiếp URL tùy ý tới proxy.
+  biết, không chuyển tiếp URL tùy ý tới proxy. Route Mới Phát Hành giữ đủ tab
+  Bài hát/Album và bộ lọc `all/vpop/usuk/kpop/other`, nên mở lạnh cũng như
+  Back/Forward đều khôi phục đúng catalog đang xem.
 - Play, pause, stop, seek, previous/next, shuffle, repeat, âm lượng và mute.
   Header “Đang phát từ” giữ đúng nguồn queue như #zingChart, tìm kiếm, album,
   nghệ sĩ, BXH tuần, Mới Phát Hành, Thư viện, Song Radio hoặc Phòng Nhạc;
@@ -248,6 +250,12 @@ proxy Node/TypeScript do người triển khai tự host.
   là PNG RGB không alpha và mọi kích thước được sinh lại bằng
   `node tool/generate_brand_assets.mjs`.
 - Queue kéo thả, vuốt sang phải để thêm bài và sleep timer.
+- Shuffle dùng một thứ tự Fisher–Yates cho cả chu kỳ nên không lặp bài trước
+  khi nghe hết queue; Previous/Next đi theo đúng lịch sử đã phát, Repeat All tạo
+  chu kỳ mới không lặp ngay bài ở ranh giới. Thẻ **TIẾP THEO** trên mobile,
+  desktop và TV luôn hiện bài thật sự sẽ phát sau Smart Shuffle, Song Radio hoặc
+  thao tác Thêm vào hàng đợi. Thứ tự và con trỏ được lưu local để mở lại app vẫn
+  tiếp tục đúng phiên.
 - Smart Shuffle xen tối đa 10 gợi ý vào hàng đợi từ catalog hiện tại, xếp
   hạng bằng likes/analytics local và đánh dấu `SMART` cho từng bài tự thêm.
   Tính năng không gửi gu nghe nhạc, favorites hoặc lịch sử lên proxy.
@@ -477,7 +485,7 @@ không chứa dữ liệu người dùng thật.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-song-radio-desktop.png" alt="Song Radio và tự động phát trong panel desktop"><br><sub><b>Song Radio</b> · gợi ý được phép, tự nối hàng đợi và điều khiển autoplay trên mobile/desktop/TV</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="Hàng đợi desktop với Smart Shuffle và các bài tự thêm được đánh dấu"><br><sub><b>Smart Shuffle</b> · xen gợi ý local-first, giữ thứ tự bài gốc và gắn nhãn rõ cho từng bài tự thêm</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="Hàng đợi desktop với thứ tự Tiếp theo thật, Smart Shuffle và các bài tự thêm được đánh dấu"><br><sub><b>Fair Shuffle & Smart Shuffle</b> · không lặp trong một chu kỳ, hiện đúng bài Tiếp theo và gắn nhãn rõ cho từng gợi ý local-first</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-stream-quality-desktop.png" alt="Bộ chọn chất lượng phát Auto 128 và 320 kbps"><br><sub><b>Chất lượng phát thật</b> · Auto ưu tiên 320 rồi về 128; chế độ 128/320 giữ đúng bitrate đã chọn qua relay ký số</sub></td>

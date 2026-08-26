@@ -95,9 +95,15 @@ void main() {
       await controller.initialize();
       await controller.playSong(song);
       await _flushAsync();
+
+      // Previous becomes available after four seconds so it can restart the
+      // current song. Let that intentional capability update publish before
+      // measuring position-only coalescing within the same time bucket.
+      audio.emitPosition(const Duration(seconds: 5));
+      await _flushAsync();
+      expect(companion.snapshots.last.canGoPrevious, isTrue);
       final before = companion.snapshots.length;
 
-      audio.emitPosition(const Duration(seconds: 1));
       audio.emitPosition(const Duration(seconds: 7));
       audio.emitPosition(const Duration(seconds: 14));
       await _flushAsync();

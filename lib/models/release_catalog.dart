@@ -28,6 +28,15 @@ extension ReleaseRegionLabel on ReleaseRegion {
     ReleaseRegion.korea => 'korea',
     ReleaseRegion.other => 'other',
   };
+
+  /// Public filter value used by Zing MP3's `/new-release/*` pages.
+  String get zingFilterValue => switch (this) {
+    ReleaseRegion.all => 'all',
+    ReleaseRegion.vietnam => 'vpop',
+    ReleaseRegion.usuk => 'usuk',
+    ReleaseRegion.korea => 'kpop',
+    ReleaseRegion.other => 'other',
+  };
 }
 
 ReleaseRegion releaseRegionFromWire(String value) => switch (value) {
@@ -36,6 +45,15 @@ ReleaseRegion releaseRegionFromWire(String value) => switch (value) {
   'korea' => ReleaseRegion.korea,
   'other' => ReleaseRegion.other,
   _ => throw const FormatException('Invalid release region'),
+};
+
+ReleaseRegion releaseRegionFromZingFilter(String value) => switch (value) {
+  'all' => ReleaseRegion.all,
+  'vpop' => ReleaseRegion.vietnam,
+  'usuk' => ReleaseRegion.usuk,
+  'kpop' => ReleaseRegion.korea,
+  'other' => ReleaseRegion.other,
+  _ => throw const FormatException('Invalid Zing release filter'),
 };
 
 class ReleaseSong {

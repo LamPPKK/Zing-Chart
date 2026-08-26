@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zmp3chart/models/catalog_search.dart';
 import 'package:zmp3chart/models/official_zing_link.dart';
+import 'package:zmp3chart/models/release_catalog.dart';
 import 'package:zmp3chart/models/weekly_chart.dart';
 
 void main() {
@@ -134,6 +135,50 @@ void main() {
     );
     expect(weekly?.kind, OfficialZingLinkKind.weeklyChart);
     expect(weekly?.weeklyRegion, WeeklyChartRegion.usuk);
+  });
+
+  test('round-trips every official new-release content and region route', () {
+    const filters = <String, ReleaseRegion>{
+      'all': ReleaseRegion.all,
+      'vpop': ReleaseRegion.vietnam,
+      'usuk': ReleaseRegion.usuk,
+      'kpop': ReleaseRegion.korea,
+      'other': ReleaseRegion.other,
+    };
+
+    for (final type in const ['song', 'album']) {
+      for (final entry in filters.entries) {
+        final link = OfficialZingLink.tryParse(
+          'https://zingmp3.vn/new-release/$type?filter=${entry.key}',
+        );
+        expect(link, isNotNull, reason: '$type/${entry.key}');
+        expect(link!.releaseRegion, entry.value);
+        expect(link.canonicalUri.queryParameters['filter'], entry.key);
+        expect(
+          OfficialZingLink.tryParse(
+            link.canonicalUri.toString(),
+          )!.canonicalIdentity,
+          link.canonicalIdentity,
+        );
+      }
+    }
+
+    expect(
+      OfficialZingLink.tryParse(
+        'https://zingmp3.vn/new-release/song',
+      )!.releaseRegion,
+      ReleaseRegion.all,
+    );
+  });
+
+  test('rejects unknown and duplicate new-release filters', () {
+    for (final value in const [
+      'https://zingmp3.vn/new-release/song?filter=indie',
+      'https://zingmp3.vn/new-release/album?filter=',
+      'https://zingmp3.vn/new-release/song?filter=all&filter=vpop',
+    ]) {
+      expect(OfficialZingLink.tryParse(value), isNull, reason: value);
+    }
   });
 
   test('rejects untrusted hosts, credentials and malformed identifiers', () {

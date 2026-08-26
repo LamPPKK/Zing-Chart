@@ -65,12 +65,12 @@ class AudioServiceMediaBridge extends BaseAudioHandler
     }
 
     final controls = [
-      if (snapshot.queue.length > 1) MediaControl.skipToPrevious,
+      if (snapshot.canGoPrevious) MediaControl.skipToPrevious,
       if (snapshot.status == SystemPlaybackStatus.playing)
         MediaControl.pause
       else
         MediaControl.play,
-      if (snapshot.queue.length > 1) MediaControl.skipToNext,
+      if (snapshot.canGoNext) MediaControl.skipToNext,
       MediaControl.stop,
     ];
 

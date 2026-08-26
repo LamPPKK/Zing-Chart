@@ -827,9 +827,13 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         'https://zingmp3.vn/top100',
       ),
       _CatalogBrowseView.releases => _officialNavigationRoute(
-        state.releaseContentType == ReleaseContentType.albums
-            ? 'https://zingmp3.vn/new-release/album'
-            : 'https://zingmp3.vn/new-release/song',
+        Uri.https(
+          'zingmp3.vn',
+          state.releaseContentType == ReleaseContentType.albums
+              ? '/new-release/album'
+              : '/new-release/song',
+          {'filter': state.releaseRegion.zingFilterValue},
+        ).toString(),
       ),
       _CatalogBrowseView.weekly => _officialNavigationRoute(
         switch (state.weeklyRegion) {
@@ -1945,6 +1949,12 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     setState(() => _releaseContentType = type);
   }
 
+  void _changeReleaseRegion(ReleaseRegion region) {
+    if (region == _releaseRegion) return;
+    _recordNavigationOrigin();
+    setState(() => _releaseRegion = region);
+  }
+
   void _changeWeeklyPeriod(int week, int year) {
     unawaited(
       _loadWeeklyChart(
@@ -2466,7 +2476,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _openTop100();
       case OfficialZingLinkKind.releases:
         _enterDiscovery();
-        _openReleaseCatalog(initialContentType: link.releaseContentType!);
+        _openReleaseCatalog(
+          initialContentType: link.releaseContentType!,
+          initialRegion: link.releaseRegion,
+        );
       case OfficialZingLinkKind.weeklyChart:
         _enterDiscovery();
         _openWeeklyChartRegion(link.weeklyRegion!);
@@ -4179,9 +4192,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                     onBack: _navigateToolbarBack,
                     onRetry: () => unawaited(_loadReleaseCatalog()),
                     onContentTypeChanged: _changeReleaseContentType,
-                    onRegionChanged: (region) => setState(() {
-                      _releaseRegion = region;
-                    }),
+                    onRegionChanged: _changeReleaseRegion,
                     onCollectionTap: (collection) =>
                         unawaited(_openCollection(collection)),
                     onCollectionPlay: (collection) =>

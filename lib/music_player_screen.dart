@@ -16,6 +16,7 @@ import 'widgets/song_lyrics_panel.dart';
 import 'widgets/song_detail_panel.dart';
 import 'widgets/song_radio_controls.dart';
 import 'widgets/streaming_quality_controls.dart';
+import 'widgets/up_next_preview.dart';
 
 class MusicPlayerScreen extends StatefulWidget {
   const MusicPlayerScreen({
@@ -401,6 +402,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                     SmartShuffleControlCard(controller: controller),
                     const SizedBox(height: 10),
                     SongRadioControlCard(controller: controller),
+                    if (controller.nextSong != null) ...[
+                      const SizedBox(height: 10),
+                      UpNextPreview(controller: controller),
+                    ],
                   ],
                 ),
               ),

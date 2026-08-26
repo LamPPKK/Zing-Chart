@@ -249,7 +249,9 @@ clients never call Zing upstream directly.
   iOS, macOS, Windows, Linux, and HarmonyOS use
   `zingchart://open?url=...`; Web accepts an encoded `?open=<URL>` query. The
   parser only accepts known HTTPS Zing hosts and paths and never forwards an
-  arbitrary URL to the proxy.
+  arbitrary URL to the proxy. New Releases routes preserve both Songs/Albums
+  and the `all/vpop/usuk/kpop/other` filter, so cold links and Back/Forward
+  restore the exact catalog view.
 - Mobile/desktop Now Playing and collection detail reuse already-loaded artwork
   as a blurred, cross-fading atmosphere. A contrast scrim and local gradient
   fallback keep it readable without another API request or personal data.
@@ -259,6 +261,12 @@ clients never call Zing upstream directly.
   is regenerated with `node tool/generate_brand_assets.mjs`.
 - Song Radio loads up to 30 authorized similar tracks from a song menu or Now
   Playing, and autoplay can extend the queue when playback reaches its end.
+- Shuffle now uses one Fisher–Yates order for the whole cycle, so a track cannot
+  repeat before the queue is exhausted. Previous/Next follows actual playback
+  history, Repeat All starts a new cycle without repeating the boundary track,
+  and the **UP NEXT** card on phone, desktop, and TV shows the real next song
+  after Smart Shuffle, Song Radio, or Add to Queue. Order and cursors persist
+  locally across restart.
 - Smart Shuffle interleaves up to 10 suggestions from the currently loaded
   catalog, ranks them with on-device likes/analytics, and marks every inserted
   item as `SMART`. Listening taste, favorites, and history never reach the proxy.
@@ -459,7 +467,7 @@ historical binaries and contain no real user data.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-song-radio-desktop.png" alt="Song Radio and autoplay in the desktop player panel"><br><sub><b>Song Radio</b> · authorized recommendations, queue extension, and autoplay controls on phone/desktop/TV</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="Desktop queue with Smart Shuffle and clearly marked inserted songs"><br><sub><b>Smart Shuffle</b> · interleave local-first suggestions, preserve original tracks, and label every automatic addition</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="Desktop queue with the real Up Next order, Smart Shuffle, and clearly marked inserted songs"><br><sub><b>Fair Shuffle & Smart Shuffle</b> · avoid repeats for a full cycle, expose the real Up Next song, and label every local-first suggestion</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-stream-quality-desktop.png" alt="Auto 128 and 320 kbps streaming-quality picker"><br><sub><b>Real streaming quality</b> · Auto prefers 320 then 128, while explicit 128/320 keeps the selected bitrate through the signed relay</sub></td>
