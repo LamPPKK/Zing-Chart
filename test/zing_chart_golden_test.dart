@@ -1710,7 +1710,11 @@ void main() {
     final firstRow = find.byKey(
       const ValueKey('song-row-golden-song-search-0'),
     );
+    final secondRow = find.byKey(
+      const ValueKey('song-row-golden-song-search-1'),
+    );
     expect(firstRow, findsOneWidget);
+    expect(secondRow, findsOneWidget);
     expect(
       find.descendant(
         of: firstRow,
@@ -1719,9 +1723,14 @@ void main() {
       findsNothing,
     );
     expect(find.text('04:22'), findsOneWidget);
+    expect(tester.getTopLeft(secondRow).dy, tester.getTopLeft(firstRow).dy);
+    expect(
+      tester.getTopLeft(secondRow).dx,
+      greaterThan(tester.getTopLeft(firstRow).dx),
+    );
     expect(
       find.byKey(const ValueKey('song-album-link-golden-song-search-0')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(tester.takeException(), isNull);
     await expectLater(

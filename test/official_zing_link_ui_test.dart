@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -71,6 +73,99 @@ void main() {
     expect(find.text(_collection.title), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'pasted search URL preserves the prior search and never searches raw URL',
+    (tester) async {
+      await _setViewport(tester, const Size(1000, 900));
+      final controller = await _controller();
+      addTearDown(controller.dispose);
+      final searchQueries = <String>[];
+
+      CatalogSong resultSong(String query) => CatalogSong(
+        song: Song(
+          id: query == 'old mix' ? 'OLD_SEARCH' : 'NEW_SEARCH',
+          name: query.replaceAll(' ', '-'),
+          title: query == 'old mix' ? 'Kết quả cũ' : 'Kết quả mới',
+          thumbnail: '',
+          artistsNames: 'Nghệ Sĩ',
+          code: query == 'old mix' ? 'OLD_SOURCE' : 'NEW_SOURCE',
+        ),
+        duration: const Duration(minutes: 3),
+        externalUrl: 'https://zingmp3.vn/bai-hat/result/RESULT.html',
+        playable: true,
+      );
+
+      await tester.pumpWidget(
+        _app(
+          controller,
+          ZingChartScreen(
+            initialTab: 1,
+            initialSearchQuery: 'old mix',
+            initialSearchSection: CatalogSearchSection.songs,
+            chartRefreshInterval: null,
+            loadSongs: () async => const [_song],
+            clipboardTextReader: () async =>
+                'https://zingmp3.vn/tim-kiem/bai-hat?q=new%20mix',
+            searchCatalog: (query) async {
+              searchQueries.add(query);
+              return CatalogSearchResult(
+                query: query,
+                songs: [resultSong(query)],
+                artists: const [],
+                catalogPlaybackEnabled: true,
+              );
+            },
+            searchCatalogPage: (query, section, page, limit) async =>
+                CatalogSongSearchPage(
+                  query: query,
+                  page: page,
+                  limit: limit,
+                  total: 1,
+                  hasMore: false,
+                  catalogPlaybackEnabled: true,
+                  items: [resultSong(query)],
+                ),
+            loadWeeklyChart: _loadWeeklyChart,
+            loadDiscoveryHome: _emptyDiscovery,
+            loadDiscoveryCategoryHome: (_) => _emptyDiscovery(),
+            loadDiscoveryCategories: _emptyCategories,
+            loadDiscoveryRecommendations: _emptyRecommendations,
+            loadReleaseCatalog: _emptyReleases,
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 450));
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+
+      final field = find.byKey(const ValueKey('chart-search-field'));
+      expect(tester.widget<TextField>(field).controller?.text, 'old mix');
+      expect(find.byKey(const ValueKey('OLD_SEARCH')), findsOneWidget);
+
+      await tester.enterText(
+        field,
+        'https://zingmp3.vn/tim-kiem/bai-hat?q=new%20mix',
+      );
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<TextField>(field).controller?.text, 'new mix');
+      expect(find.byKey(const ValueKey('NEW_SEARCH')), findsOneWidget);
+      expect(searchQueries, everyElement(isNot(startsWith('http'))));
+
+      final back = find.byKey(const ValueKey('catalog-history-back'));
+      await tester.ensureVisible(back);
+      await tester.pumpAndSettle();
+      await tester.tap(back);
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<TextField>(field).controller?.text, 'old mix');
+      expect(find.byKey(const ValueKey('OLD_SEARCH')), findsOneWidget);
+      expect(find.byKey(const ValueKey('NEW_SEARCH')), findsNothing);
+    },
+  );
 
   testWidgets('opens a song URL by public ID and waits for explicit Play', (
     tester,
@@ -542,6 +637,59 @@ void main() {
     );
     expect(find.text('TẤT CẢ BÀI HÁT'), findsOneWidget);
     expect(find.text(_fullArtistSong.displayTitle), findsWidgets);
+  });
+
+  testWidgets('warm Top 100 discards a late collection response', (
+    tester,
+  ) async {
+    await _setViewport(tester, const Size(1440, 900));
+    final controller = await _controller();
+    addTearDown(controller.dispose);
+    final collectionDetail = Completer<CatalogCollectionDetail>();
+    final warmLink = ValueNotifier<({String url, int revision})>((
+      url: 'https://zingmp3.vn/album/album-cham/ALBUM1.html',
+      revision: 0,
+    ));
+    addTearDown(warmLink.dispose);
+
+    await tester.pumpWidget(
+      _app(
+        controller,
+        ValueListenableBuilder<({String url, int revision})>(
+          valueListenable: warmLink,
+          builder: (context, link, _) => ZingChartScreen(
+            initialOfficialUrl: link.url,
+            officialUrlRevision: link.revision,
+            loadSongs: () async => const [_song],
+            loadCollection: (_) => collectionDetail.future,
+            loadTop100: () async => _top100,
+            loadWeeklyChart: _loadWeeklyChart,
+            loadDiscoveryHome: _emptyDiscovery,
+            loadDiscoveryCategoryHome: (_) => _emptyDiscovery(),
+            loadDiscoveryCategories: _emptyCategories,
+            loadDiscoveryRecommendations: _emptyRecommendations,
+            loadReleaseCatalog: _emptyReleases,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 30));
+    expect(
+      find.byKey(const ValueKey('collection-detail-hero')),
+      findsOneWidget,
+    );
+
+    warmLink.value = (url: 'https://zingmp3.vn/top100', revision: 1);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const ValueKey('top-100-catalog')), findsOneWidget);
+    expect(find.byKey(const ValueKey('collection-detail-hero')), findsNothing);
+
+    collectionDetail.complete(_collectionDetail);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('top-100-catalog')), findsOneWidget);
+    expect(find.byKey(const ValueKey('collection-detail-hero')), findsNothing);
   });
 
   testWidgets('routes Top 100 and releases URLs to their catalog views', (

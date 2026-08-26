@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'analytics_dashboard_screen.dart';
+import 'data/music_repository.dart';
 import 'models/catalog_artist_detail.dart';
 import 'models/catalog_search.dart';
 import 'models/catalog_hub.dart';
@@ -62,6 +63,13 @@ typedef ChartLoader = Future<List<Song>> Function();
 typedef ChartSnapshotLoader = Future<ChartSnapshot> Function();
 typedef CatalogSearchLoader =
     Future<CatalogSearchResult> Function(String query);
+typedef CatalogSearchPageLoader =
+    Future<CatalogSearchPage> Function(
+      String query,
+      CatalogSearchSection section,
+      int page,
+      int limit,
+    );
 typedef SearchSuggestionLoader =
     Future<SearchSuggestionSnapshot> Function(String query);
 typedef CatalogCollectionLoader =
@@ -106,6 +114,8 @@ class _CatalogNavigationState {
     required this.searchQuery,
     required this.searchSection,
     required this.searchResult,
+    required this.aggregateSearchResult,
+    required this.searchPages,
     required this.selectedArtist,
     required this.artistResult,
     required this.artistDetail,
@@ -132,6 +142,8 @@ class _CatalogNavigationState {
   final String searchQuery;
   final CatalogSearchSection searchSection;
   final CatalogSearchResult? searchResult;
+  final CatalogSearchResult? aggregateSearchResult;
+  final Map<CatalogSearchSection, CatalogSearchPage> searchPages;
   final CatalogArtist? selectedArtist;
   final CatalogSearchResult? artistResult;
   final CatalogArtistDetail? artistDetail;
@@ -157,6 +169,9 @@ class _CatalogNavigationState {
     catalogBrowseView.name,
     searchQuery,
     searchSection.name,
+    searchPages.entries
+        .map((entry) => '${entry.key.name}:${entry.value.page}')
+        .join(','),
     selectedArtist?.id,
     artistSection.name,
     selectedCollection?.id,
@@ -191,6 +206,7 @@ class ZingChartScreen extends StatefulWidget {
     this.loadSongs,
     this.loadChart = ZingMP3API.getZingChartSnapshot,
     this.searchCatalog = ZingMP3API.searchCatalog,
+    this.searchCatalogPage,
     this.searchSuggestions = ZingMP3API.getSearchSuggestions,
     this.loadCollection = ZingMP3API.getCollection,
     this.loadArtistDetail = ZingMP3API.getArtistDetail,
@@ -217,6 +233,7 @@ class ZingChartScreen extends StatefulWidget {
     this.initialSearchQuery = '',
     this.initialSearchSection = CatalogSearchSection.all,
     this.initialOfficialUrl,
+    this.officialUrlRevision = 0,
     this.initialDesktopQueueVisible = false,
     this.initialDesktopPanelTab = DesktopPlaybackPanelTab.queue,
     this.clipboardTextReader = readClipboardText,
@@ -228,6 +245,7 @@ class ZingChartScreen extends StatefulWidget {
   final ChartLoader? loadSongs;
   final ChartSnapshotLoader loadChart;
   final CatalogSearchLoader searchCatalog;
+  final CatalogSearchPageLoader? searchCatalogPage;
   final SearchSuggestionLoader searchSuggestions;
   final CatalogCollectionLoader loadCollection;
   final CatalogArtistDetailLoader loadArtistDetail;
@@ -254,6 +272,7 @@ class ZingChartScreen extends StatefulWidget {
   final String initialSearchQuery;
   final CatalogSearchSection initialSearchSection;
   final String? initialOfficialUrl;
+  final int officialUrlRevision;
   final bool initialDesktopQueueVisible;
   final DesktopPlaybackPanelTab initialDesktopPanelTab;
   final ClipboardTextReader clipboardTextReader;
@@ -325,9 +344,15 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   Timer? _searchDebounce;
   Timer? _searchSuggestionDebounce;
   CatalogSearchResult? _searchResult;
+  CatalogSearchResult? _aggregateSearchResult;
+  Map<CatalogSearchSection, CatalogSearchPage> _searchPages = const {};
+  Set<CatalogSearchSection> _searchPaginationUnavailable = const {};
   String? _searchErrorMessage;
   bool _isSearching = false;
+  bool _isSearchPageLoading = false;
+  String? _searchPageErrorMessage;
   int _searchRequestId = 0;
+  int _searchPageRequestId = 0;
   int _searchSuggestionRequestId = 0;
   int _searchSuggestionDetailRequestId = 0;
   SearchSuggestionSnapshot? _searchSuggestionSnapshot;
@@ -664,6 +689,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         searchQuery: searchQuery ?? _searchController.text,
         searchSection: _searchSection,
         searchResult: _searchResult,
+        aggregateSearchResult: _aggregateSearchResult,
+        searchPages: Map<CatalogSearchSection, CatalogSearchPage>.unmodifiable(
+          _searchPages,
+        ),
         selectedArtist: _selectedArtist,
         artistResult: _artistResult,
         artistDetail: _artistDetail,
@@ -742,6 +771,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     _searchDebounce?.cancel();
     _searchSuggestionDebounce?.cancel();
     _searchRequestId++;
+    _searchPageRequestId++;
     _searchSuggestionRequestId++;
     _searchSuggestionDetailRequestId++;
     _hubRequestId++;
@@ -765,8 +795,15 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _catalogBrowseView = target.catalogBrowseView;
       _searchSection = target.searchSection;
       _searchResult = target.searchResult;
+      _aggregateSearchResult = target.aggregateSearchResult;
+      _searchPages = Map<CatalogSearchSection, CatalogSearchPage>.unmodifiable(
+        target.searchPages,
+      );
+      _searchPaginationUnavailable = const {};
       _searchErrorMessage = null;
       _isSearching = false;
+      _isSearchPageLoading = false;
+      _searchPageErrorMessage = null;
       _searchSuggestionSnapshot = null;
       _searchSuggestionErrorMessage = null;
       _isLoadingSearchSuggestions = false;
@@ -830,6 +867,17 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     }
     if (_selectedArtist != null && _artistDetail == null) {
       unawaited(_openArtist(_selectedArtist!, preserveResult: true));
+      return;
+    }
+    final searchQuery = _searchController.text.trim();
+    if (searchQuery.isNotEmpty) {
+      if (_aggregateSearchResult == null && _searchResult == null) {
+        unawaited(_runCatalogSearch(searchQuery));
+      } else if (_searchSection != CatalogSearchSection.all &&
+          !_searchPages.containsKey(_searchSection) &&
+          !_searchPaginationUnavailable.contains(_searchSection)) {
+        unawaited(_loadSearchPage(_searchSection));
+      }
       return;
     }
     if (_selectedHub != null && _hubDetail == null) {
@@ -907,6 +955,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _ => false,
     };
     _searchFocusNode.addListener(_handleSearchFocusChanged);
+    _contentScrollController.addListener(_handleContentScroll);
     _desktopPlayerVisible = widget.initialDesktopQueueVisible;
     _desktopPlayerTab = widget.initialDesktopPanelTab;
     _selectedTab = widget.initialCatalogLanding == CatalogLanding.discovery
@@ -1003,6 +1052,15 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     if (oldWidget.chartRefreshInterval != widget.chartRefreshInterval) {
       _scheduleChartRefresh();
     }
+    if (oldWidget.officialUrlRevision != widget.officialUrlRevision ||
+        oldWidget.initialOfficialUrl != widget.initialOfficialUrl) {
+      final link = OfficialZingLink.tryParse(widget.initialOfficialUrl ?? '');
+      if (link != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) unawaited(_openOfficialZingLink(link));
+        });
+      }
+    }
   }
 
   @override
@@ -1015,6 +1073,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     _searchDebounce?.cancel();
     _searchSuggestionDebounce?.cancel();
     _searchFocusNode.removeListener(_handleSearchFocusChanged);
+    _contentScrollController.removeListener(_handleContentScroll);
     _searchController.dispose();
     _contentScrollController.dispose();
     _searchFocusNode.dispose();
@@ -1767,6 +1826,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     _lastObservedSearchQuery = query;
     final looksLikeUrl = OfficialZingLink.looksLikeAbsoluteUrl(query);
     _searchRequestId++;
+    _searchPageRequestId++;
     _searchSuggestionDetailRequestId++;
     _hubRequestId++;
     _weeklyRequestId++;
@@ -1793,6 +1853,11 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _isCollectionLoading = false;
       _searchErrorMessage = null;
       _searchResult = null;
+      _aggregateSearchResult = null;
+      _searchPages = const {};
+      _searchPaginationUnavailable = const {};
+      _isSearchPageLoading = false;
+      _searchPageErrorMessage = null;
       _isSearching = query.isNotEmpty && !looksLikeUrl;
       _loadingSearchSuggestionSongId = null;
     });
@@ -1813,7 +1878,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     );
   }
 
-  Future<void> _submitSearch(String value) async {
+  Future<void> _submitSearch(
+    String value, {
+    _CatalogNavigationState? officialLinkOrigin,
+  }) async {
     _searchDebounce?.cancel();
     _searchSuggestionDebounce?.cancel();
     _searchSuggestionRequestId++;
@@ -1838,7 +1906,11 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         );
         return;
       }
-      await _openOfficialZingLink(link);
+      await _openOfficialZingLink(
+        link,
+        navigationOrigin: officialLinkOrigin,
+        recordCurrentOrigin: officialLinkOrigin != null,
+      );
       return;
     }
     if (mounted) {
@@ -1886,12 +1958,13 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         );
         return;
       }
+      final navigationOrigin = _captureNavigationState();
       _searchController.value = TextEditingValue(
         text: value,
         selection: TextSelection.collapsed(offset: value.length),
       );
       _lastObservedSearchQuery = value.replaceAll(RegExp(r'\s+'), ' ');
-      await _submitSearch(value);
+      await _submitSearch(value, officialLinkOrigin: navigationOrigin);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1902,14 +1975,85 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     }
   }
 
-  Future<void> _openOfficialZingLink(OfficialZingLink link) async {
+  void _prepareOfficialRouteTransition() {
+    _searchRequestId++;
+    _searchPageRequestId++;
+    _searchSuggestionRequestId++;
+    _searchSuggestionDetailRequestId++;
+    _hubRequestId++;
+    _weeklyRequestId++;
+    setState(() {
+      _catalogBrowseView = _CatalogBrowseView.discovery;
+      _selectedArtist = null;
+      _artistResult = null;
+      _artistDetail = null;
+      _artistSection = OfficialArtistSection.profile;
+      _artistErrorMessage = null;
+      _isArtistLoading = false;
+      _selectedCollection = null;
+      _collectionDetail = null;
+      _collectionErrorMessage = null;
+      _collectionOriginArtist = null;
+      _collectionOriginArtistDetail = null;
+      _collectionOriginArtistResult = null;
+      _collectionOriginArtistSection = OfficialArtistSection.profile;
+      _isCollectionLoading = false;
+      _selectedHub = null;
+      _hubDetail = null;
+      _hubDetailErrorMessage = null;
+      _isHubDetailLoading = false;
+      _isWeeklyChartLoading = false;
+      _weeklyChartErrorMessage = null;
+      _searchSection = CatalogSearchSection.all;
+      _searchResult = null;
+      _aggregateSearchResult = null;
+      _searchPages = const {};
+      _searchPaginationUnavailable = const {};
+      _searchErrorMessage = null;
+      _isSearching = false;
+      _isSearchPageLoading = false;
+      _searchPageErrorMessage = null;
+      _searchSuggestionSnapshot = null;
+      _searchSuggestionErrorMessage = null;
+      _isLoadingSearchSuggestions = false;
+      _loadingSearchSuggestionSongId = null;
+      _highlightedSearchSuggestion = -1;
+    });
+  }
+
+  Future<void> _openOfficialZingLink(
+    OfficialZingLink link, {
+    _CatalogNavigationState? navigationOrigin,
+    bool recordCurrentOrigin = true,
+  }) async {
+    // Record the current route before replacing its query. This keeps every
+    // warm official deep link reversible without recreating the player.
+    if (recordCurrentOrigin) {
+      _recordNavigationOrigin(state: navigationOrigin);
+    }
+    _scrollContentToStart();
     _searchDebounce?.cancel();
     _searchSuggestionDebounce?.cancel();
     _hideSearchSuggestionOverlay();
+    _searchFocusNode.unfocus();
     _searchController.clear();
     _lastObservedSearchQuery = '';
     _lastCommittedSearchState = null;
+    _prepareOfficialRouteTransition();
     switch (link.kind) {
+      case OfficialZingLinkKind.search:
+        _enterDiscovery();
+        final query = link.searchQuery;
+        _searchController.value = TextEditingValue(
+          text: query,
+          selection: TextSelection.collapsed(offset: query.length),
+        );
+        _lastObservedSearchQuery = query;
+        setState(() {
+          _searchSection = link.searchSection;
+        });
+        _playerController.recordSearch(query);
+        await _runCatalogSearch(query);
       case OfficialZingLinkKind.chart:
         _selectTab(_chartTab);
       case OfficialZingLinkKind.newReleaseChart:
@@ -1984,7 +2128,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
             controller: _playerController,
             detailLoader: widget.loadSongDetail,
             initialDetail: detail,
-            onPlay: song.playable
+            onPlay: song.playable && detail.catalogPlaybackEnabled
                 ? () => _selectSong(
                     song.song,
                     [song.song],
@@ -2098,6 +2242,22 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       if (!mounted || !_contentScrollController.hasClients) return;
       _contentScrollController.jumpTo(0);
     });
+  }
+
+  void _handleContentScroll() {
+    if (widget.tvMode ||
+        !_contentScrollController.hasClients ||
+        !_isOfficialSearchSurface ||
+        _searchSection == CatalogSearchSection.all ||
+        _isSearchPageLoading ||
+        _searchPageErrorMessage != null ||
+        _searchPaginationUnavailable.contains(_searchSection)) {
+      return;
+    }
+    final page = _searchPages[_searchSection];
+    if (page == null || !page.hasMore) return;
+    if (_contentScrollController.position.extentAfter > 520) return;
+    unawaited(_loadSearchPage(_searchSection, loadMore: true));
   }
 
   void _closeArtist() {
@@ -2237,6 +2397,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
 
   void _openHighlightedSong(CatalogSong item) {
     if (!item.playable ||
+        (_isOfficialSearchSurface && !_activeSearchPlaybackEnabled) ||
         (_selectedCollection != null &&
             _collectionDetail?.catalogPlaybackEnabled != true)) {
       _showUnavailable(item.song);
@@ -2256,12 +2417,27 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         .where(
           (song) =>
               song.playable &&
+              (!_isOfficialSearchSurface || _activeSearchPlaybackEnabled) &&
               (_selectedCollection == null ||
                   _collectionDetail?.catalogPlaybackEnabled == true),
         )
         .map((song) => song.song)
         .toList(growable: false);
     _selectSong(item.song, queue.isEmpty ? [item.song] : queue);
+  }
+
+  bool get _isOfficialSearchSurface =>
+      _selectedTab == _discoveryTab &&
+      _catalogBrowseView == _CatalogBrowseView.discovery &&
+      _selectedArtist == null &&
+      _selectedCollection == null &&
+      _searchController.text.trim().isNotEmpty;
+
+  bool get _activeSearchPlaybackEnabled {
+    if (!_isOfficialSearchSurface) return true;
+    return (_searchPages[_searchSection]?.catalogPlaybackEnabled ??
+            _searchResult?.catalogPlaybackEnabled) ==
+        true;
   }
 
   Future<void> _openCatalogVideo(CatalogVideo video) async {
@@ -2473,15 +2649,40 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   Future<void> _runCatalogSearch(String query) async {
     final normalized = query.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (normalized.isEmpty) return;
+    final previousResultQuery =
+        _aggregateSearchResult?.query ?? _searchResult?.query;
+    if (previousResultQuery != null && previousResultQuery != normalized) {
+      _searchPageRequestId++;
+      setState(() {
+        _searchResult = null;
+        _aggregateSearchResult = null;
+        _searchPages = const {};
+        _searchPaginationUnavailable = const {};
+        _isSearchPageLoading = false;
+        _searchPageErrorMessage = null;
+      });
+    }
     final requestId = ++_searchRequestId;
     setState(() {
       _isSearching = true;
       _searchErrorMessage = null;
     });
+    final typedSection = _searchSection;
+    if (typedSection != CatalogSearchSection.all &&
+        widget.searchCatalogPage != null &&
+        !_searchPages.containsKey(typedSection) &&
+        !_searchPaginationUnavailable.contains(typedSection)) {
+      // The signed typed endpoint remains useful even when legacy aggregate
+      // search is temporarily unavailable.
+      unawaited(_loadSearchPage(typedSection));
+    }
     try {
       final result = await widget.searchCatalog(normalized);
       if (!mounted || requestId != _searchRequestId) return;
-      setState(() => _searchResult = result);
+      setState(() {
+        _aggregateSearchResult = result;
+        _searchResult = _resultForSearchSection(result, _searchSection);
+      });
       _lastCommittedSearchState = _captureNavigationState();
     } catch (error) {
       if (!mounted || requestId != _searchRequestId) return;
@@ -2489,6 +2690,113 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     } finally {
       if (mounted && requestId == _searchRequestId) {
         setState(() => _isSearching = false);
+      }
+    }
+  }
+
+  CatalogSearchResult _resultForSearchSection(
+    CatalogSearchResult aggregate,
+    CatalogSearchSection section,
+  ) {
+    final page = _searchPages[section];
+    if (page != null) return page.asSearchResult;
+    return switch (section) {
+      CatalogSearchSection.all => aggregate,
+      CatalogSearchSection.songs => CatalogSearchResult(
+        query: aggregate.query,
+        songs: aggregate.songs,
+        artists: const [],
+        catalogPlaybackEnabled: aggregate.catalogPlaybackEnabled,
+      ),
+      CatalogSearchSection.artists => CatalogSearchResult(
+        query: aggregate.query,
+        songs: const [],
+        artists: aggregate.artists,
+        catalogPlaybackEnabled: aggregate.catalogPlaybackEnabled,
+      ),
+      CatalogSearchSection.collections => CatalogSearchResult(
+        query: aggregate.query,
+        songs: const [],
+        artists: const [],
+        collections: aggregate.collections,
+        catalogPlaybackEnabled: aggregate.catalogPlaybackEnabled,
+      ),
+      CatalogSearchSection.videos => CatalogSearchResult(
+        query: aggregate.query,
+        songs: const [],
+        artists: const [],
+        videos: aggregate.videos,
+        catalogPlaybackEnabled: aggregate.catalogPlaybackEnabled,
+      ),
+    };
+  }
+
+  Future<void> _loadSearchPage(
+    CatalogSearchSection section, {
+    bool loadMore = false,
+  }) async {
+    final loader = widget.searchCatalogPage;
+    if (loader == null ||
+        section == CatalogSearchSection.all ||
+        _searchPaginationUnavailable.contains(section) ||
+        _isSearchPageLoading) {
+      return;
+    }
+    final query = _searchController.text.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (query.isEmpty) return;
+    final current = _searchPages[section];
+    if (loadMore && (current == null || !current.hasMore)) return;
+    final targetPage = loadMore ? current!.page + 1 : 1;
+    final requestId = ++_searchPageRequestId;
+    setState(() {
+      _isSearchPageLoading = true;
+      _searchPageErrorMessage = null;
+    });
+    try {
+      final response = await loader(query, section, targetPage, 18);
+      final activeQuery = _searchController.text.trim().replaceAll(
+        RegExp(r'\s+'),
+        ' ',
+      );
+      if (!mounted ||
+          requestId != _searchPageRequestId ||
+          activeQuery != query ||
+          response.query != query ||
+          response.section != section ||
+          response.page != targetPage ||
+          response.limit != 18) {
+        return;
+      }
+      final merged = loadMore ? current!.append(response) : response;
+      setState(() {
+        _searchPages =
+            Map<CatalogSearchSection, CatalogSearchPage>.unmodifiable({
+              ..._searchPages,
+              section: merged,
+            });
+        if (_searchSection == section) {
+          _searchResult = merged.asSearchResult;
+        }
+      });
+      _lastCommittedSearchState = _captureNavigationState();
+    } on MusicRepositoryException catch (error) {
+      if (!mounted || requestId != _searchPageRequestId) return;
+      if (error.code == 'SEARCH_PAGINATION_UNAVAILABLE') {
+        setState(() {
+          _searchPaginationUnavailable = Set<CatalogSearchSection>.unmodifiable(
+            {..._searchPaginationUnavailable, section},
+          );
+          _searchPageErrorMessage = null;
+        });
+      } else {
+        setState(() => _searchPageErrorMessage = error.message);
+      }
+    } catch (error) {
+      if (!mounted || requestId != _searchPageRequestId) return;
+      setState(() => _searchPageErrorMessage = error.toString());
+    } finally {
+      if (mounted && requestId == _searchPageRequestId) {
+        setState(() => _isSearchPageLoading = false);
       }
     }
   }
@@ -3923,6 +4231,23 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                             tvMode: true,
                           ),
                         )
+                      : officialSearchSongRows && contentWidth >= 1080
+                      ? SliverGrid.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisExtent: 66,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 2,
+                              ),
+                          itemCount: visibleSongs.length,
+                          itemBuilder: (context, index) => _buildSongTile(
+                            controller,
+                            visibleSongs,
+                            index,
+                            compactMetadata: true,
+                          ),
+                        )
                       : SliverList.separated(
                           itemCount: visibleSongs.length,
                           separatorBuilder: (_, __) => Divider(
@@ -3973,6 +4298,12 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                     tvMode: widget.tvMode,
                   ),
                 ),
+              if (_selectedTab == _discoveryTab &&
+                  hasSearchQuery &&
+                  selectedCollection == null &&
+                  selectedArtist == null &&
+                  _searchSection != CatalogSearchSection.all)
+                SliverToBoxAdapter(child: _buildSearchPaginationFooter()),
               if (_selectedTab == _discoveryTab &&
                   selectedCollection != null &&
                   !desktopCollectionWorkspace &&
@@ -4329,6 +4660,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     final collectionPlaybackEnabled = _selectedCollection == null
         ? true
         : _collectionDetail?.catalogPlaybackEnabled == true;
+    final surfacePlaybackEnabled =
+        collectionPlaybackEnabled &&
+        (!officialSearchRow || _activeSearchPlaybackEnabled);
     final collectionKind =
         _collectionDetail?.collection.kind ?? _selectedCollection?.kind;
     final effectiveHideAlbumMetadata =
@@ -4337,9 +4671,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         plainTrackNumber ??
         (collectionKind == CatalogCollectionKind.album ? index + 1 : null);
     final canPlay =
-        collectionPlaybackEnabled &&
+        surfacePlaybackEnabled &&
         (_selectedCollection == null
-            ? catalogSong?.playable ?? true
+            ? catalogSong?.playable ?? !officialSearchRow
             : catalogSong?.playable == true);
     final chartIndex = _songs.indexWhere((item) => item.id == song.id);
     final chartMetadata = _selectedTab == _chartTab
@@ -4377,12 +4711,12 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     final playableQueue = _selectedTab == _chartTab
         ? _songs
         : catalogSong == null
-        ? (collectionPlaybackEnabled ? visibleSongs : const <Song>[])
+        ? (surfacePlaybackEnabled ? visibleSongs : const <Song>[])
         : visibleSongs
               .where(
                 (item) =>
-                    collectionPlaybackEnabled &&
-                    (_catalogSongFor(item)?.playable ?? true),
+                    surfacePlaybackEnabled &&
+                    (_catalogSongFor(item)?.playable ?? !officialSearchRow),
               )
               .toList(growable: false);
     void addToQueue() {
@@ -4833,6 +5167,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _searchDebounce?.cancel();
       _searchSuggestionDebounce?.cancel();
       _searchRequestId++;
+      _searchPageRequestId++;
       _searchSuggestionRequestId++;
       _hideSearchSuggestionOverlay();
     }
@@ -4862,8 +5197,13 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _lastObservedSearchQuery = '';
         _lastCommittedSearchState = null;
         _searchResult = null;
+        _aggregateSearchResult = null;
+        _searchPages = const {};
+        _searchPaginationUnavailable = const {};
         _searchErrorMessage = null;
         _isSearching = false;
+        _isSearchPageLoading = false;
+        _searchPageErrorMessage = null;
         _searchSuggestionSnapshot = null;
         _searchSuggestionErrorMessage = null;
         _isLoadingSearchSuggestions = false;
@@ -5341,22 +5681,31 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _catalogBrowseView == _CatalogBrowseView.discovery &&
         _selectedHub == null &&
         _searchController.text.trim().isEmpty;
+    final hasSearchQuery = _searchController.text.trim().isNotEmpty;
     final discoveryTitle =
         _selectedHub?.title ??
-        switch (_catalogBrowseView) {
-          _CatalogBrowseView.discovery => 'Khám phá',
-          _CatalogBrowseView.hubs => 'Chủ đề & Thể loại',
-          _CatalogBrowseView.top100 => 'Top 100',
-          _CatalogBrowseView.releases => 'Mới Phát Hành',
-          _CatalogBrowseView.weekly => 'Bảng Xếp Hạng Tuần',
-        };
-    final discoverySubtitle = switch (_catalogBrowseView) {
-      _CatalogBrowseView.discovery => 'BÀI HÁT · NGHỆ SĨ · LỜI BÀI HÁT · MV',
-      _CatalogBrowseView.hubs => 'QUỐC GIA · TÂM TRẠNG · HOẠT ĐỘNG · THỂ LOẠI',
-      _CatalogBrowseView.top100 => 'VIỆT NAM · CHÂU Á · ÂU MỸ · HÒA TẤU',
-      _CatalogBrowseView.releases => 'BÀI HÁT · ALBUM · CẬP NHẬT LIÊN TỤC',
-      _CatalogBrowseView.weekly => 'VIỆT NAM · US-UK · K-POP · THEO TUẦN',
-    };
+        (hasSearchQuery && _catalogBrowseView == _CatalogBrowseView.discovery
+            ? 'Kết Quả Tìm Kiếm'
+            : switch (_catalogBrowseView) {
+                _CatalogBrowseView.discovery => 'Khám phá',
+                _CatalogBrowseView.hubs => 'Chủ đề & Thể loại',
+                _CatalogBrowseView.top100 => 'Top 100',
+                _CatalogBrowseView.releases => 'Mới Phát Hành',
+                _CatalogBrowseView.weekly => 'Bảng Xếp Hạng Tuần',
+              });
+    final discoverySubtitle =
+        hasSearchQuery && _catalogBrowseView == _CatalogBrowseView.discovery
+        ? 'TẤT CẢ · BÀI HÁT · PLAYLIST/ALBUM · NGHỆ SĨ/OA · MV'
+        : switch (_catalogBrowseView) {
+            _CatalogBrowseView.discovery =>
+              'BÀI HÁT · NGHỆ SĨ · LỜI BÀI HÁT · MV',
+            _CatalogBrowseView.hubs =>
+              'QUỐC GIA · TÂM TRẠNG · HOẠT ĐỘNG · THỂ LOẠI',
+            _CatalogBrowseView.top100 => 'VIỆT NAM · CHÂU Á · ÂU MỸ · HÒA TẤU',
+            _CatalogBrowseView.releases =>
+              'BÀI HÁT · ALBUM · CẬP NHẬT LIÊN TỤC',
+            _CatalogBrowseView.weekly => 'VIỆT NAM · US-UK · K-POP · THEO TUẦN',
+          };
     final titles = [
       '#zingchart',
       discoveryTitle,
@@ -5815,53 +6164,169 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     scrollDirection: Axis.horizontal,
     child: Row(
       children: CatalogSearchSection.values
-          .map(
-            (section) => Padding(
+          .map((section) {
+            final selected = _searchSection == section;
+            return Padding(
               padding: const EdgeInsets.only(right: 28),
-              child: InkWell(
+              child: Semantics(
                 key: ValueKey('search-section-${section.name}'),
+                button: true,
+                selected: selected,
+                label: '${section.label}, tab kết quả tìm kiếm',
                 onTap: () => _selectSearchSection(section),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        section.label,
-                        style: TextStyle(
-                          color: _searchSection == section
-                              ? Theme.of(context).colorScheme.onSurface
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontSize: widget.tvMode ? 16 : 12,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.8,
+                child: ExcludeSemantics(
+                  child: InkWell(
+                    onTap: () => _selectSearchSection(section),
+                    borderRadius: BorderRadius.circular(8),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minWidth: 48,
+                        minHeight: widget.tvMode ? 56 : 48,
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              section.label,
+                              style: TextStyle(
+                                color: selected
+                                    ? Theme.of(context).colorScheme.onSurface
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                fontSize: widget.tvMode ? 16 : 12,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            const SizedBox(height: 7),
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              width: selected ? 38 : 0,
+                              height: 2,
+                              decoration: BoxDecoration(
+                                color: ZingColors.purpleBright,
+                                borderRadius: BorderRadius.circular(99),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 7),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        width: _searchSection == section ? 38 : 0,
-                        height: 2,
-                        decoration: BoxDecoration(
-                          color: ZingColors.purpleBright,
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          )
+            );
+          })
           .toList(growable: false),
     ),
   );
 
+  Widget _buildSearchPaginationFooter() {
+    final section = _searchSection;
+    final page = _searchPages[section];
+    final unavailable = _searchPaginationUnavailable.contains(section);
+    if (widget.searchCatalogPage == null || unavailable) {
+      return const SizedBox.shrink();
+    }
+    final total = page?.total;
+    final countLabel = total == null
+        ? '${page?.itemCount ?? 0} kết quả'
+        : '${page?.itemCount ?? 0} / $total kết quả';
+    Widget control;
+    if (_isSearchPageLoading) {
+      control = Semantics(
+        key: const ValueKey('search-page-loading'),
+        liveRegion: true,
+        label: page == null
+            ? 'Đang tải ${section.label}'
+            : 'Đang tải thêm ${section.label}',
+        child: const SizedBox.square(
+          dimension: 30,
+          child: CircularProgressIndicator(strokeWidth: 2.5),
+        ),
+      );
+    } else if (_searchPageErrorMessage != null) {
+      control = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Chưa tải được trang tiếp theo. Kết quả hiện tại vẫn được giữ.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            key: const ValueKey('search-page-retry'),
+            onPressed: () =>
+                unawaited(_loadSearchPage(section, loadMore: page != null)),
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('THỬ LẠI'),
+          ),
+        ],
+      );
+    } else if (page == null) {
+      return const SizedBox.shrink();
+    } else if (!page.hasMore) {
+      control = Text(
+        countLabel,
+        key: const ValueKey('search-page-complete'),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: widget.tvMode ? 15 : 12,
+          fontWeight: FontWeight.w700,
+        ),
+      );
+    } else {
+      control = OutlinedButton.icon(
+        key: const ValueKey('search-page-load-more'),
+        onPressed: () => unawaited(_loadSearchPage(section, loadMore: true)),
+        style: OutlinedButton.styleFrom(
+          minimumSize: Size(widget.tvMode ? 220 : 160, widget.tvMode ? 56 : 48),
+          padding: EdgeInsets.symmetric(horizontal: widget.tvMode ? 28 : 20),
+        ),
+        icon: const Icon(Icons.expand_more_rounded),
+        label: Text('XEM THÊM · $countLabel'),
+      );
+    }
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        widget.tvMode ? 32 : 20,
+        12,
+        widget.tvMode ? 32 : 20,
+        widget.tvMode ? 52 : 34,
+      ),
+      child: Center(child: control),
+    );
+  }
+
   void _selectSearchSection(CatalogSearchSection section) {
     if (_searchSection == section) return;
-    setState(() => _searchSection = section);
+    _recordNavigationOrigin();
+    _searchPageRequestId++;
+    final aggregate = _aggregateSearchResult ?? _searchResult;
+    setState(() {
+      _searchSection = section;
+      _isSearchPageLoading = false;
+      _searchPageErrorMessage = null;
+      if (aggregate != null) {
+        _searchResult = _resultForSearchSection(aggregate, section);
+      }
+    });
     _scrollContentToStart();
+    if (section == CatalogSearchSection.all &&
+        _aggregateSearchResult == null &&
+        _searchController.text.trim().isNotEmpty) {
+      unawaited(_runCatalogSearch(_searchController.text));
+    } else if (section != CatalogSearchSection.all &&
+        !_searchPages.containsKey(section) &&
+        !_searchPaginationUnavailable.contains(section)) {
+      unawaited(_loadSearchPage(section));
+    }
   }
 
   Widget _buildSearchField({required bool compact}) => Focus(
@@ -5971,7 +6436,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     final hasQuery = _searchController.text.trim().isNotEmpty;
     final visibleCount = _visibleSongs(controller).length;
     final totalCount = hasQuery
-        ? _searchResult?.songs.length ?? visibleCount
+        ? _searchPages[_searchSection]?.total ??
+              _searchResult?.songs.length ??
+              visibleCount
         : visibleCount;
     return Semantics(
       key: const ValueKey('search-song-section-header'),

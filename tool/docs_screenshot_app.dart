@@ -43,7 +43,7 @@ import 'package:zmp3chart/widgets/streaming_quality_controls.dart';
 /// Deterministic documentation-only entry point used to capture README images.
 ///
 /// It never calls the proxy or a platform media service. Choose a surface with
-/// `?screen=home|queue|smart-shuffle|stream-quality|desktop-lyrics|realtime-chart|discovery|discovery-recommendations|discovery-mv|discovery-recent|discovery-new-releases|discovery-new-release-chart|live-radio|artist|artist-follow|artist-mv|collection-save|collection-information|hubs|top-100|release-catalog|weekly-chart|search|search-results|new-releases|player|car-mode|song-detail|lyrics|lyric-share|radio|library|for-you|analytics|wrapped|tv`.
+/// `?screen=home|queue|smart-shuffle|stream-quality|desktop-lyrics|realtime-chart|discovery|discovery-recommendations|discovery-mv|discovery-recent|discovery-new-releases|discovery-new-release-chart|live-radio|artist|artist-follow|artist-mv|collection-save|collection-information|hubs|top-100|release-catalog|weekly-chart|search|search-all|search-songs|search-results|new-releases|player|car-mode|song-detail|lyrics|lyric-share|radio|library|for-you|analytics|wrapped|tv`.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final audioPlayer = _DocsAudioPlayer();
@@ -193,12 +193,33 @@ Future<void> main() async {
           initialTab: 1,
           initialSearchQuery: 'một',
         ),
+        'search-all' => ZingChartScreen(
+          loadSongs: _loadSongs,
+          loadDiscoveryHome: _loadDiscoveryHome,
+          searchSuggestions: (query) async =>
+              SearchSuggestionSnapshot.empty(query),
+          searchCatalog: (_) async => _docsSearchAllResult,
+          initialTab: 1,
+          initialSearchQuery: _docsSearchQuery,
+          initialSearchSection: CatalogSearchSection.all,
+        ),
+        'search-songs' => ZingChartScreen(
+          loadSongs: _loadSongs,
+          loadDiscoveryHome: _loadDiscoveryHome,
+          searchSuggestions: (query) async =>
+              SearchSuggestionSnapshot.empty(query),
+          searchCatalog: (_) async => _docsSearchAllResult,
+          searchCatalogPage: _loadDocsSearchPage,
+          initialTab: 1,
+          initialSearchQuery: _docsSearchQuery,
+          initialSearchSection: CatalogSearchSection.songs,
+        ),
         'search-results' => ZingChartScreen(
           loadSongs: _loadSongs,
           loadDiscoveryHome: _loadDiscoveryHome,
           searchSuggestions: (query) async =>
               SearchSuggestionSnapshot.empty(query),
-          searchCatalog: (_) async => _docsFullSearchResult,
+          searchCatalog: (_) async => _docsVideoSearchResult,
           initialTab: 1,
           initialSearchQuery: 'chúng ta không thuộc về nhau',
           initialSearchSection: CatalogSearchSection.videos,
@@ -246,7 +267,7 @@ Future<void> main() async {
             child: Padding(
               padding: const EdgeInsets.all(36),
               child: DiscoveryVideoShelf(
-                videos: _docsFullSearchResult.videos,
+                videos: _docsVideoSearchResult.videos,
                 onVideoTap: (_) {},
               ),
             ),
@@ -552,7 +573,458 @@ Future<SearchSuggestionSnapshot> _loadSearchSuggestions(String query) async =>
 
 Future<CatalogHubHome> _loadHubHome() async => _hubHome;
 
-const _docsFullSearchResult = CatalogSearchResult(
+const _docsSearchQuery = 'Sơn Tùng M-TP';
+
+const _docsSearchPrimaryArtist = CatalogArtist(
+  id: 'docs-search-son-tung',
+  name: 'Sơn Tùng M-TP',
+  aliasName: 'Son-Tung-M-TP',
+  avatar: 'docs-fixture-album-art.webp',
+  totalFollow: 2655838,
+);
+
+const _docsSearchAlbum = CatalogCollection(
+  id: 'docs-search-sky-decade',
+  title: 'Sky Decade',
+  artist: 'Sơn Tùng M-TP',
+  artists: [_docsSearchPrimaryArtist],
+  thumbnail: 'docs-fixture-album-art.webp',
+  kind: CatalogCollectionKind.album,
+  externalUrl:
+      'https://zingmp3.vn/album/sky-decade/docs-search-sky-decade.html',
+);
+
+CatalogSong _docsCatalogSearchSong(
+  String id,
+  String title,
+  String artist,
+  int durationSeconds, {
+  bool hasLyrics = true,
+}) => CatalogSong(
+  song: Song(
+    id: id,
+    name: id,
+    title: title,
+    thumbnail: id == 'noi-nay-co-anh' ? 'docs-fixture-album-art.webp' : '',
+    artistsNames: artist,
+    code: id,
+  ),
+  duration: Duration(seconds: durationSeconds),
+  externalUrl: 'https://zingmp3.vn/bai-hat/$id/$id.html',
+  playable: true,
+  hasLyrics: hasLyrics,
+  artists: artist.contains('Sơn Tùng M-TP')
+      ? const [_docsSearchPrimaryArtist]
+      : const [],
+  album: artist.contains('Sơn Tùng M-TP') ? _docsSearchAlbum : null,
+);
+
+final _docsTypedSearchSongs = <CatalogSong>[
+  _docsCatalogSearchSong(
+    'noi-nay-co-anh',
+    'Nơi Này Có Anh',
+    'Sơn Tùng M-TP',
+    278,
+  ),
+  _docsCatalogSearchSong(
+    'em-cua-ngay-hom-qua',
+    'Em Của Ngày Hôm Qua',
+    'Sơn Tùng M-TP',
+    233,
+  ),
+  _docsCatalogSearchSong(
+    'chung-ta-khong-thuoc-ve-nhau',
+    'Chúng Ta Không Thuộc Về Nhau',
+    'Sơn Tùng M-TP',
+    233,
+  ),
+  _docsCatalogSearchSong(
+    'chung-ta-cua-hien-tai-search',
+    'Chúng Ta Của Hiện Tại',
+    'Sơn Tùng M-TP',
+    301,
+  ),
+  _docsCatalogSearchSong(
+    'muon-roi-ma-sao-con-search',
+    'Muộn Rồi Mà Sao Còn',
+    'Sơn Tùng M-TP',
+    275,
+  ),
+  _docsCatalogSearchSong(
+    'hay-trao-cho-anh-search',
+    'Hãy Trao Cho Anh',
+    'Sơn Tùng M-TP, Snoop Dogg',
+    245,
+  ),
+  _docsCatalogSearchSong(
+    'chay-ngay-di-search',
+    'Chạy Ngay Đi',
+    'Sơn Tùng M-TP',
+    248,
+  ),
+  _docsCatalogSearchSong('lac-troi-search', 'Lạc Trôi', 'Sơn Tùng M-TP', 233),
+  _docsCatalogSearchSong(
+    'co-chac-yeu-la-day-search',
+    'Có Chắc Yêu Là Đây',
+    'Sơn Tùng M-TP',
+    202,
+  ),
+  _docsCatalogSearchSong(
+    'making-my-way-search',
+    'Making My Way',
+    'Sơn Tùng M-TP',
+    252,
+  ),
+  _docsCatalogSearchSong(
+    'buong-doi-tay-nhau-ra-search',
+    'Buông Đôi Tay Nhau Ra',
+    'Sơn Tùng M-TP',
+    226,
+  ),
+  _docsCatalogSearchSong(
+    'thai-binh-mo-hoi-roi-search',
+    'Thái Bình Mồ Hôi Rơi',
+    'Sơn Tùng M-TP',
+    260,
+  ),
+  _docsCatalogSearchSong(
+    'khong-phai-dang-vua-dau-search',
+    'Không Phải Dạng Vừa Đâu',
+    'Sơn Tùng M-TP',
+    247,
+  ),
+  _docsCatalogSearchSong(
+    'con-mua-ngang-qua-search',
+    'Cơn Mưa Ngang Qua',
+    'Sơn Tùng M-TP',
+    244,
+  ),
+  _docsCatalogSearchSong(
+    'am-tham-ben-em-search',
+    'Âm Thầm Bên Em',
+    'Sơn Tùng M-TP',
+    291,
+  ),
+  _docsCatalogSearchSong(
+    'nang-am-xa-dan-search',
+    'Nắng Ấm Xa Dần',
+    'Sơn Tùng M-TP',
+    219,
+  ),
+  _docsCatalogSearchSong(
+    'khuon-mat-dang-thuong-search',
+    'Khuôn Mặt Đáng Thương',
+    'Sơn Tùng M-TP',
+    242,
+  ),
+  _docsCatalogSearchSong(
+    'remember-me-search',
+    'Remember Me',
+    'Sơn Tùng M-TP',
+    223,
+  ),
+];
+
+final _docsTypedSearchContinuation = <CatalogSong>[
+  _docsCatalogSearchSong(
+    'binh-yen-nhung-phut-giay-search',
+    'Bình Yên Những Phút Giây',
+    'Sơn Tùng M-TP',
+    250,
+  ),
+  _docsCatalogSearchSong(
+    'mot-nam-moi-binh-an-search',
+    'Một Năm Mới Bình An',
+    'Sơn Tùng M-TP',
+    246,
+  ),
+  _docsCatalogSearchSong(
+    'tien-len-viet-nam-oi-search',
+    'Tiến Lên Việt Nam Ơi',
+    'Sơn Tùng M-TP',
+    235,
+  ),
+  _docsCatalogSearchSong(
+    'anh-sai-roi-search',
+    'Anh Sai Rồi',
+    'Sơn Tùng M-TP',
+    252,
+  ),
+  _docsCatalogSearchSong(
+    'chac-ai-do-se-ve-search',
+    'Chắc Ai Đó Sẽ Về',
+    'Sơn Tùng M-TP',
+    293,
+  ),
+  _docsCatalogSearchSong(
+    'dung-ve-tre-search',
+    'Đừng Về Trễ',
+    'Sơn Tùng M-TP',
+    210,
+  ),
+];
+
+const _docsSearchArtists = [
+  _docsSearchPrimaryArtist,
+  CatalogArtist(
+    id: 'docs-search-mono',
+    name: 'MONO',
+    aliasName: 'MONO-Nguyen-Viet-Hoang',
+    avatar: '',
+    totalFollow: 1084200,
+  ),
+  CatalogArtist(
+    id: 'docs-search-soobin',
+    name: 'SOOBIN',
+    aliasName: 'SOOBIN',
+    avatar: '',
+    totalFollow: 782400,
+  ),
+  CatalogArtist(
+    id: 'docs-search-hieuthuhai',
+    name: 'HIEUTHUHAI',
+    aliasName: 'HIEUTHUHAI',
+    avatar: '',
+    totalFollow: 936700,
+  ),
+  CatalogArtist(
+    id: 'docs-search-wren-evans',
+    name: 'Wren Evans',
+    aliasName: 'Wren-Evans',
+    avatar: '',
+    totalFollow: 516300,
+  ),
+  CatalogArtist(
+    id: 'docs-search-hoang-dung',
+    name: 'Hoàng Dũng',
+    aliasName: 'Hoang-Dung',
+    avatar: '',
+    totalFollow: 678900,
+  ),
+];
+
+const _docsSearchCollections = [
+  CatalogCollection(
+    id: 'docs-search-best-son-tung',
+    title: 'Những Bài Hát Hay Nhất Của Sơn Tùng M-TP',
+    artist: 'Sơn Tùng M-TP',
+    artists: [_docsSearchPrimaryArtist],
+    thumbnail: 'docs-fixture-album-art.webp',
+    kind: CatalogCollectionKind.playlist,
+    externalUrl:
+        'https://zingmp3.vn/album/nhung-bai-hat-hay-nhat/docs-search-best-son-tung.html',
+  ),
+  _docsSearchAlbum,
+  CatalogCollection(
+    id: 'docs-search-vpop-hits',
+    title: 'V-Pop: Hits Quốc Dân',
+    artist: 'Nhiều nghệ sĩ',
+    thumbnail: '',
+    kind: CatalogCollectionKind.playlist,
+    externalUrl:
+        'https://zingmp3.vn/album/v-pop-hits-quoc-dan/docs-search-vpop-hits.html',
+  ),
+  CatalogCollection(
+    id: 'docs-search-addictive',
+    title: 'Nhạc Trẻ Gây Nghiện',
+    artist: 'Nhiều nghệ sĩ',
+    thumbnail: '',
+    kind: CatalogCollectionKind.playlist,
+    externalUrl:
+        'https://zingmp3.vn/album/nhac-tre-gay-nghien/docs-search-addictive.html',
+  ),
+  CatalogCollection(
+    id: 'docs-search-hot-hits-vietnam',
+    title: 'Hot Hits Vietnam',
+    artist: 'Nhiều nghệ sĩ',
+    thumbnail: '',
+    kind: CatalogCollectionKind.playlist,
+    externalUrl:
+        'https://zingmp3.vn/album/hot-hits-vietnam/docs-search-hot-hits-vietnam.html',
+  ),
+  CatalogCollection(
+    id: 'docs-search-today-vpop',
+    title: "Today's V-Pop Hits",
+    artist: 'Nhiều nghệ sĩ',
+    thumbnail: '',
+    kind: CatalogCollectionKind.playlist,
+    externalUrl:
+        'https://zingmp3.vn/album/todays-v-pop-hits/docs-search-today-vpop.html',
+  ),
+  CatalogCollection(
+    id: 'docs-search-top-100-vpop',
+    title: 'Top 100 Nhạc Trẻ Việt Nam',
+    artist: 'Nhiều nghệ sĩ',
+    thumbnail: '',
+    kind: CatalogCollectionKind.playlist,
+    externalUrl:
+        'https://zingmp3.vn/album/top-100-nhac-tre/docs-search-top-100-vpop.html',
+  ),
+  CatalogCollection(
+    id: 'docs-search-vpop-chill',
+    title: 'V-Pop Chill',
+    artist: 'Nhiều nghệ sĩ',
+    thumbnail: '',
+    kind: CatalogCollectionKind.playlist,
+    externalUrl:
+        'https://zingmp3.vn/album/v-pop-chill/docs-search-vpop-chill.html',
+  ),
+  CatalogCollection(
+    id: 'docs-search-trending',
+    title: 'Đỉnh Cao Trending',
+    artist: 'Nhiều nghệ sĩ',
+    thumbnail: '',
+    kind: CatalogCollectionKind.playlist,
+    externalUrl:
+        'https://zingmp3.vn/album/dinh-cao-trending/docs-search-trending.html',
+  ),
+  CatalogCollection(
+    id: 'docs-search-pop-ballad',
+    title: 'Pop Ballad Việt',
+    artist: 'Nhiều nghệ sĩ',
+    thumbnail: '',
+    kind: CatalogCollectionKind.playlist,
+    externalUrl:
+        'https://zingmp3.vn/album/pop-ballad-viet/docs-search-pop-ballad.html',
+  ),
+  CatalogCollection(
+    id: 'docs-search-2010-hits',
+    title: 'Hits Thập Niên 2010',
+    artist: 'Nhiều nghệ sĩ',
+    thumbnail: '',
+    kind: CatalogCollectionKind.playlist,
+    externalUrl:
+        'https://zingmp3.vn/album/hits-thap-nien-2010/docs-search-2010-hits.html',
+  ),
+  CatalogCollection(
+    id: 'docs-search-vietnam-classics',
+    title: 'Nhạc Việt Bất Hủ',
+    artist: 'Nhiều nghệ sĩ',
+    thumbnail: '',
+    kind: CatalogCollectionKind.playlist,
+    externalUrl:
+        'https://zingmp3.vn/album/nhac-viet-bat-hu/docs-search-vietnam-classics.html',
+  ),
+];
+
+const _docsSearchVideos = [
+  CatalogVideo(
+    id: 'docs-search-video-one',
+    title: 'Nơi Này Có Anh (Official Music Video)',
+    artist: 'Sơn Tùng M-TP',
+    artists: [_docsSearchPrimaryArtist],
+    thumbnail: 'docs-fixture-album-art.webp',
+    duration: Duration(minutes: 4, seconds: 38),
+    externalUrl:
+        'https://zingmp3.vn/video-clip/noi-nay-co-anh/docs-search-video-one.html',
+  ),
+  CatalogVideo(
+    id: 'docs-search-video-two',
+    title: 'Chúng Ta Không Thuộc Về Nhau (Official MV)',
+    artist: 'Sơn Tùng M-TP',
+    artists: [_docsSearchPrimaryArtist],
+    thumbnail: '',
+    duration: Duration(minutes: 4, seconds: 2),
+    externalUrl:
+        'https://zingmp3.vn/video-clip/chung-ta-khong-thuoc-ve-nhau/docs-search-video-two.html',
+  ),
+  CatalogVideo(
+    id: 'docs-search-video-three',
+    title: 'Hãy Trao Cho Anh (Official MV)',
+    artist: 'Sơn Tùng M-TP, Snoop Dogg',
+    artists: [_docsSearchPrimaryArtist],
+    thumbnail: '',
+    duration: Duration(minutes: 4, seconds: 5),
+    externalUrl:
+        'https://zingmp3.vn/video-clip/hay-trao-cho-anh/docs-search-video-three.html',
+  ),
+  CatalogVideo(
+    id: 'docs-search-video-four',
+    title: 'Chạy Ngay Đi (Official Music Video)',
+    artist: 'Sơn Tùng M-TP',
+    artists: [_docsSearchPrimaryArtist],
+    thumbnail: '',
+    duration: Duration(minutes: 4, seconds: 33),
+    externalUrl:
+        'https://zingmp3.vn/video-clip/chay-ngay-di/docs-search-video-four.html',
+  ),
+  CatalogVideo(
+    id: 'docs-search-video-five',
+    title: 'Lạc Trôi (Official Music Video)',
+    artist: 'Sơn Tùng M-TP',
+    artists: [_docsSearchPrimaryArtist],
+    thumbnail: '',
+    duration: Duration(minutes: 4, seconds: 22),
+    externalUrl:
+        'https://zingmp3.vn/video-clip/lac-troi/docs-search-video-five.html',
+  ),
+  CatalogVideo(
+    id: 'docs-search-video-six',
+    title: 'Muộn Rồi Mà Sao Còn (Official MV)',
+    artist: 'Sơn Tùng M-TP',
+    artists: [_docsSearchPrimaryArtist],
+    thumbnail: '',
+    duration: Duration(minutes: 4, seconds: 57),
+    externalUrl:
+        'https://zingmp3.vn/video-clip/muon-roi-ma-sao-con/docs-search-video-six.html',
+  ),
+  CatalogVideo(
+    id: 'docs-search-video-seven',
+    title: 'Có Chắc Yêu Là Đây (Official MV)',
+    artist: 'Sơn Tùng M-TP',
+    artists: [_docsSearchPrimaryArtist],
+    thumbnail: '',
+    duration: Duration(minutes: 3, seconds: 22),
+    externalUrl:
+        'https://zingmp3.vn/video-clip/co-chac-yeu-la-day/docs-search-video-seven.html',
+  ),
+  CatalogVideo(
+    id: 'docs-search-video-eight',
+    title: 'Making My Way (Official Visualizer)',
+    artist: 'Sơn Tùng M-TP',
+    artists: [_docsSearchPrimaryArtist],
+    thumbnail: '',
+    duration: Duration(minutes: 4, seconds: 12),
+    externalUrl:
+        'https://zingmp3.vn/video-clip/making-my-way/docs-search-video-eight.html',
+  ),
+];
+
+final _docsSearchAllResult = CatalogSearchResult(
+  query: _docsSearchQuery,
+  catalogPlaybackEnabled: true,
+  songs: _docsTypedSearchSongs.take(6).toList(growable: false),
+  artists: _docsSearchArtists,
+  collections: _docsSearchCollections,
+  videos: _docsSearchVideos,
+);
+
+Future<CatalogSearchPage> _loadDocsSearchPage(
+  String query,
+  CatalogSearchSection section,
+  int page,
+  int limit,
+) async {
+  if (section != CatalogSearchSection.songs || limit != 18) {
+    throw UnsupportedError('The docs fixture exposes 18-item song pages only.');
+  }
+  final items = switch (page) {
+    1 => _docsTypedSearchSongs,
+    2 => _docsTypedSearchContinuation,
+    _ => const <CatalogSong>[],
+  };
+  return CatalogSongSearchPage(
+    query: query,
+    page: page,
+    limit: limit,
+    total: _docsTypedSearchSongs.length + _docsTypedSearchContinuation.length,
+    hasMore: page == 1,
+    catalogPlaybackEnabled: true,
+    items: items,
+  );
+}
+
+const _docsVideoSearchResult = CatalogSearchResult(
   query: 'chúng ta không thuộc về nhau',
   catalogPlaybackEnabled: true,
   songs: [

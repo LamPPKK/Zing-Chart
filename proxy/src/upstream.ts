@@ -29,6 +29,8 @@ import {
   type ReleaseSongDto,
   type SearchArtistDto,
   type SearchCollectionDto,
+  type SearchPageDto,
+  type SearchResultType,
   type SearchSnapshotDto,
   type SearchSuggestionSnapshotDto,
   type SearchSuggestionSongDto,
@@ -74,7 +76,12 @@ function normalizeUrl(value: string, baseUrl: string) {
   } catch {
     throw new UpstreamError('Upstream returned an invalid media URL');
   }
-  if (parsed.protocol !== 'https:') {
+  if (
+    parsed.protocol !== 'https:'
+    || parsed.username !== ''
+    || parsed.password !== ''
+    || (parsed.port !== '' && parsed.port !== '443')
+  ) {
     throw new UpstreamError('Upstream returned an unsafe media URL');
   }
   return parsed.toString();
@@ -236,6 +243,7 @@ function artistSongs(
 }
 
 const MAX_COLLECTION_PAGE_BYTES = 2_000_000;
+const MAX_SEARCH_PAGE_BYTES = 2_000_000;
 const MAX_COLLECTION_REDIRECTS = 3;
 const COLLECTION_PLAYABILITY_CONCURRENCY = 4;
 const MAX_LYRIC_LINES = 500;
@@ -246,6 +254,13 @@ const MAX_LYRIC_TIME_MS = 24 * 60 * 60 * 1000;
 const MAX_LYRIC_FILE_BYTES = 512_000;
 const MAX_LYRIC_REDIRECTS = 3;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const CATALOG_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+const CURRENT_SEARCH_TYPES: Record<SearchResultType, string> = {
+  songs: 'song',
+  artists: 'artist',
+  collections: 'playlist',
+  videos: 'video',
+};
 const WEEKLY_CHART_IDS: Record<WeeklyChartRegion, string> = {
   vietnam: 'IWZ9Z08I',
   usuk: 'IWZ9Z0BW',
@@ -427,6 +442,113 @@ function discoveryVideo(
   } catch {
     return undefined;
   }
+}
+
+function currentSearchSong(
+  value: JsonObject,
+  apiBaseUrl: string,
+): SearchSongDto | undefined {
+  if (
+    value.isPrivate === true
+    || value.preRelease === true
+    || text(value.block).toLowerCase() === 'true'
+  ) {
+    return undefined;
+  }
+  const id = text(value.encodeId) || text(value.id);
+  const title = text(value.title) || text(value.name);
+  if (!CATALOG_ID_PATTERN.test(id) || !title) return undefined;
+  try {
+    const link = text(value.link);
+    const artists = structuredSongArtists(value.artists, apiBaseUrl);
+    const album = structuredSongAlbum(value.album, apiBaseUrl);
+    return {
+      id,
+      code: id,
+      title: title.slice(0, 300),
+      artist: text(value.artistsNames || value.artist).slice(0, 300),
+      ...(artists.length ? { artists } : {}),
+      albumCover: optionalArtworkUrl(value.thumbnailM || value.thumbnail),
+      ...(album ? { album } : {}),
+      durationSeconds: Math.min(
+        24 * 60 * 60,
+        Math.max(0, Math.floor(finiteNumber(value.duration))),
+      ),
+      externalUrl: /^\/bai-hat\//.test(link)
+        ? normalizeUrl(link, apiBaseUrl)
+        : `${apiBaseUrl}/link/song/${encodeURIComponent(id)}`,
+      playable: String(value.streamingStatus ?? '').trim() === '1',
+      hasLyrics: value.hasLyric === true,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function currentSearchArtist(
+  value: JsonObject,
+  apiBaseUrl: string,
+): SearchArtistDto | undefined {
+  if (text(value.block).toLowerCase() === 'true') return undefined;
+  try {
+    const artist = artistProfile(value, apiBaseUrl);
+    if (
+      !artist
+      || !CATALOG_ID_PATTERN.test(artist.id)
+      || !/^[A-Za-z0-9_-]{1,200}$/.test(artist.aliasName)
+      || artist.name.length > 300
+    ) {
+      return undefined;
+    }
+    return artist;
+  } catch {
+    return undefined;
+  }
+}
+
+function currentSearchCollection(
+  value: JsonObject,
+  apiBaseUrl: string,
+): SearchCollectionDto | undefined {
+  if (
+    value.isPrivate === true
+    || value.preRelease === true
+    || text(value.block).toLowerCase() === 'true'
+  ) {
+    return undefined;
+  }
+  const collection = discoveryCollection(value, apiBaseUrl);
+  if (!collection || !CATALOG_ID_PATTERN.test(collection.id)) return undefined;
+  return {
+    ...collection,
+    title: collection.title.slice(0, 300),
+    artist: collection.artist.slice(0, 300),
+  };
+}
+
+function currentSearchVideo(
+  value: JsonObject,
+  apiBaseUrl: string,
+): SearchVideoDto | undefined {
+  if (text(value.block).toLowerCase() === 'true') return undefined;
+  return discoveryVideo(value, apiBaseUrl);
+}
+
+function uniqueSearchItems<T extends { id: string }>(
+  value: unknown,
+  limit: number,
+  normalize: (item: JsonObject) => T | undefined,
+) {
+  const byId = new Map<string, T>();
+  const rawItems = Array.isArray(value) ? value : [];
+  for (const raw of rawItems) {
+    const item = asObject(raw);
+    const normalized = item ? normalize(item) : undefined;
+    if (!normalized || byId.has(normalized.id)) continue;
+    byId.set(normalized.id, normalized);
+    if (byId.size === limit) break;
+  }
+  return [...byId.values()];
 }
 
 function discoverySection(
@@ -671,12 +793,22 @@ function isAbortError(error: unknown) {
   return error instanceof Error && error.name === 'AbortError';
 }
 
-async function readJson(response: Response): Promise<JsonObject> {
+async function readJson(
+  response: Response,
+  byteLimit?: number,
+): Promise<JsonObject> {
   if (!response.ok) throw new UpstreamError('Upstream request failed', response.status);
   let body: unknown;
   try {
-    body = await response.json();
-  } catch {
+    body = byteLimit === undefined
+      ? await response.json()
+      : JSON.parse(await readTextWithByteLimit(
+        response,
+        byteLimit,
+        'search response',
+      ));
+  } catch (error) {
+    if (error instanceof UpstreamError || isAbortError(error)) throw error;
     throw new UpstreamError('Upstream returned invalid JSON', response.status);
   }
   const object = asObject(body);
@@ -711,6 +843,10 @@ export class ZingUpstream implements MusicUpstream {
 
   private get hasCurrentApiCredentials() {
     return Boolean(this.config.currentApiKey && this.config.currentApiSigningKey);
+  }
+
+  get supportsPaginatedSearch() {
+    return this.hasCurrentApiCredentials;
   }
 
   async fetchChart(signal?: AbortSignal): Promise<ChartSnapshotDto> {
@@ -1455,14 +1591,17 @@ export class ZingUpstream implements MusicUpstream {
         if (!item || text(item.block).toLowerCase() === 'true') continue;
         const id = text(item.id);
         const title = text(item.name) || text(item.title);
-        if (!id || !title || songById.has(id)) continue;
+        if (!CATALOG_ID_PATTERN.test(id) || !title || songById.has(id)) continue;
         songById.set(id, {
           id,
           code: id,
-          title,
-          artist: text(item.artist),
-          albumCover: normalizeArtworkUrl(text(item.thumb)),
-          durationSeconds: Math.max(0, Math.floor(finiteNumber(item.duration))),
+          title: title.slice(0, 300),
+          artist: text(item.artist).slice(0, 300),
+          albumCover: optionalArtworkUrl(item.thumb),
+          durationSeconds: Math.min(
+            24 * 60 * 60,
+            Math.max(0, Math.floor(finiteNumber(item.duration))),
+          ),
           externalUrl: `${this.config.currentApiBaseUrl}/link/song/${encodeURIComponent(id)}`,
           playable: false,
           hasLyrics: false,
@@ -1476,7 +1615,15 @@ export class ZingUpstream implements MusicUpstream {
         const id = text(item.id);
         const name = text(item.name);
         const aliasName = text(item.aliasName);
-        if (!id || !name || !aliasName || artistById.has(id)) continue;
+        if (
+          !CATALOG_ID_PATTERN.test(id)
+          || !name
+          || name.length > 300
+          || !/^[A-Za-z0-9_-]{1,200}$/.test(aliasName)
+          || artistById.has(id)
+        ) {
+          continue;
+        }
         const totalFollow = Math.min(
           2_147_483_647,
           Math.max(0, Math.floor(finiteNumber(item.totalFollow))),
@@ -1485,7 +1632,7 @@ export class ZingUpstream implements MusicUpstream {
           id,
           name,
           aliasName,
-          avatar: normalizeArtworkUrl(text(item.thumb)),
+          avatar: optionalArtworkUrl(item.thumb),
           externalUrl: normalizeUrl(
             `/nghe-si/${encodeURIComponent(aliasName)}`,
             this.config.currentApiBaseUrl,
@@ -1500,12 +1647,14 @@ export class ZingUpstream implements MusicUpstream {
         if (!item || text(item.block).toLowerCase() === 'true') continue;
         const id = text(item.id);
         const title = text(item.name) || text(item.title);
-        if (!id || !title || collectionById.has(id)) continue;
+        if (!CATALOG_ID_PATTERN.test(id) || !title || collectionById.has(id)) {
+          continue;
+        }
         collectionById.set(id, {
           id,
-          title,
-          artist: text(item.artist),
-          thumbnail: normalizeArtworkUrl(text(item.thumb)),
+          title: title.slice(0, 300),
+          artist: text(item.artist).slice(0, 300),
+          thumbnail: optionalArtworkUrl(item.thumb),
           kind: collectionKind(item),
           externalUrl: `${this.config.currentApiBaseUrl}/link/album/${encodeURIComponent(id)}`,
         });
@@ -1535,130 +1684,139 @@ export class ZingUpstream implements MusicUpstream {
     const data = asObject(payload.data);
     if (!data) throw new UpstreamError('Current search payload is missing');
 
-    const songById = new Map<string, SearchSongDto>();
-    const rawSongs = Array.isArray(data.songs) ? data.songs : [];
-    for (const raw of rawSongs) {
-      const item = asObject(raw);
-      if (
-        !item ||
-        item.isPrivate === true ||
-        item.preRelease === true ||
-        text(item.block).toLowerCase() === 'true'
-      ) {
-        continue;
-      }
-      const id = text(item.encodeId) || text(item.id);
-      const title = text(item.title) || text(item.name);
-      if (!id || !title || songById.has(id)) continue;
-      const link = text(item.link);
-      const artists = structuredSongArtists(
-        item.artists,
-        this.config.currentApiBaseUrl,
-      );
-      const album = structuredSongAlbum(
-        item.album,
-        this.config.currentApiBaseUrl,
-      );
-      songById.set(id, {
-        id,
-        code: id,
-        title: title.slice(0, 300),
-        artist: text(item.artistsNames || item.artist).slice(0, 300),
-        ...(artists.length ? { artists } : {}),
-        albumCover: optionalArtworkUrl(item.thumbnailM || item.thumbnail),
-        ...(album ? { album } : {}),
-        durationSeconds: Math.min(
-          24 * 60 * 60,
-          Math.max(0, Math.floor(finiteNumber(item.duration))),
-        ),
-        externalUrl: /^\/bai-hat\//.test(link)
-          ? normalizeUrl(link, this.config.currentApiBaseUrl)
-          : `${this.config.currentApiBaseUrl}/link/song/${encodeURIComponent(id)}`,
-        playable: String(item.streamingStatus ?? '').trim() === '1',
-        hasLyrics: item.hasLyric === true,
-      });
-      if (songById.size === 25) break;
-    }
-
-    const artistById = new Map<string, SearchArtistDto>();
-    const rawArtists = Array.isArray(data.artists) ? data.artists : [];
-    for (const raw of rawArtists) {
-      const item = asObject(raw);
-      if (!item || text(item.block).toLowerCase() === 'true') continue;
-      const artist = artistProfile(item, this.config.currentApiBaseUrl);
-      if (!artist || artistById.has(artist.id)) continue;
-      artistById.set(artist.id, artist);
-      if (artistById.size === 10) break;
-    }
-
-    const collectionById = new Map<string, SearchCollectionDto>();
-    const rawCollections = Array.isArray(data.playlists) ? data.playlists : [];
-    for (const raw of rawCollections) {
-      const item = asObject(raw);
-      if (!item || item.isPrivate === true || item.preRelease === true) continue;
-      const collection = discoveryCollection(
-        item,
-        this.config.currentApiBaseUrl,
-      );
-      if (!collection || collectionById.has(collection.id)) continue;
-      collectionById.set(collection.id, collection);
-      if (collectionById.size === 25) break;
-    }
-
-    const videoById = new Map<string, SearchVideoDto>();
-    const rawVideos = Array.isArray(data.videos) ? data.videos : [];
-    for (const raw of rawVideos) {
-      const item = asObject(raw);
-      if (
-        !item ||
-        item.isPrivate === true ||
-        item.preRelease === true ||
-        String(item.streamingStatus ?? '').trim() !== '1'
-      ) {
-        continue;
-      }
-      const id = text(item.encodeId) || text(item.id);
-      const title = text(item.title) || text(item.name);
-      const link = text(item.link);
-      if (
-        !id ||
-        !title ||
-        videoById.has(id) ||
-        !/^\/video-clip\//.test(link)
-      ) {
-        continue;
-      }
-      try {
-        const artists = structuredSongArtists(
-          item.artists,
-          this.config.currentApiBaseUrl,
-        );
-        videoById.set(id, {
-          id,
-          title: title.slice(0, 300),
-          artist: text(item.artistsNames || item.artist).slice(0, 300),
-          ...(artists.length > 0 ? { artists } : {}),
-          thumbnail: optionalArtworkUrl(item.thumbnailM || item.thumbnail),
-          durationSeconds: Math.min(
-            24 * 60 * 60,
-            Math.max(0, Math.floor(finiteNumber(item.duration))),
-          ),
-          externalUrl: normalizeUrl(link, this.config.currentApiBaseUrl),
-        });
-      } catch {
-        continue;
-      }
-      if (videoById.size === 20) break;
-    }
+    const songs = uniqueSearchItems(
+      data.songs,
+      25,
+      (item) => currentSearchSong(item, this.config.currentApiBaseUrl),
+    );
+    const artists = uniqueSearchItems(
+      data.artists,
+      10,
+      (item) => currentSearchArtist(item, this.config.currentApiBaseUrl),
+    );
+    const collections = uniqueSearchItems(
+      data.playlists,
+      25,
+      (item) => currentSearchCollection(item, this.config.currentApiBaseUrl),
+    );
+    const videos = uniqueSearchItems(
+      data.videos,
+      20,
+      (item) => currentSearchVideo(item, this.config.currentApiBaseUrl),
+    );
 
     return {
       query,
-      songs: [...songById.values()],
-      artists: [...artistById.values()],
-      collections: [...collectionById.values()],
-      videos: [...videoById.values()],
+      songs,
+      artists,
+      collections,
+      videos,
       catalogPlaybackEnabled: true,
     };
+  }
+
+  async fetchSearchPage(
+    query: string,
+    type: SearchResultType,
+    page: number,
+    limit: number,
+    signal?: AbortSignal,
+  ): Promise<SearchPageDto> {
+    if (!this.hasCurrentApiCredentials) {
+      throw new UpstreamError('Paginated search adapter is not configured');
+    }
+    const normalizedQuery = query.trim().replace(/\s+/g, ' ');
+    const upstreamType = CURRENT_SEARCH_TYPES[type];
+    if (
+      !normalizedQuery
+      || normalizedQuery.length > 100
+      || !upstreamType
+      || !Number.isSafeInteger(page)
+      || page < 1
+      || page > 100
+      || !Number.isSafeInteger(limit)
+      || limit < 1
+      || limit > 50
+    ) {
+      throw new UpstreamError('Paginated search request is invalid');
+    }
+
+    const endpoint = this.signedCurrentApiUrl('/api/v2/search', {
+      q: normalizedQuery,
+      type: upstreamType,
+      page: String(page),
+      count: String(limit),
+      allowCorrect: '1',
+    });
+    const response = await this.request(endpoint, signal);
+    const payload = await readJson(response, MAX_SEARCH_PAGE_BYTES);
+    const data = asObject(payload.data);
+    if (!data) throw new UpstreamError('Paginated search payload is missing');
+    const rawItems = Array.isArray(data.items) ? data.items : [];
+    const rawTotal = data.total;
+    const parsedTotal = Number(rawTotal);
+    const total = rawTotal === undefined || rawTotal === null || rawTotal === ''
+      ? null
+      : Number.isFinite(parsedTotal)
+        ? Math.min(
+          Number.MAX_SAFE_INTEGER,
+          Math.max(0, Math.floor(parsedTotal)),
+        )
+        : null;
+    const hasMore = page < 100 && (total === null
+      ? rawItems.length >= limit
+      : page * limit < total);
+    const base = {
+      query: normalizedQuery,
+      page,
+      limit,
+      total,
+      hasMore,
+      catalogPlaybackEnabled: true,
+    };
+
+    switch (type) {
+      case 'songs':
+        return {
+          ...base,
+          type,
+          items: uniqueSearchItems(
+            rawItems,
+            limit,
+            (item) => currentSearchSong(item, this.config.currentApiBaseUrl),
+          ),
+        };
+      case 'artists':
+        return {
+          ...base,
+          type,
+          items: uniqueSearchItems(
+            rawItems,
+            limit,
+            (item) => currentSearchArtist(item, this.config.currentApiBaseUrl),
+          ),
+        };
+      case 'collections':
+        return {
+          ...base,
+          type,
+          items: uniqueSearchItems(
+            rawItems,
+            limit,
+            (item) => currentSearchCollection(item, this.config.currentApiBaseUrl),
+          ),
+        };
+      case 'videos':
+        return {
+          ...base,
+          type,
+          items: uniqueSearchItems(
+            rawItems,
+            limit,
+            (item) => currentSearchVideo(item, this.config.currentApiBaseUrl),
+          ),
+        };
+    }
   }
 
   async fetchSearchSuggestions(

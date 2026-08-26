@@ -2,6 +2,7 @@ import 'catalog_search.dart';
 import 'weekly_chart.dart';
 
 enum OfficialZingLinkKind {
+  search,
   song,
   video,
   artist,
@@ -30,6 +31,8 @@ class OfficialZingLink {
     this.collectionKind,
     this.weeklyRegion,
     this.artistSection = OfficialArtistSection.profile,
+    this.searchQuery = '',
+    this.searchSection = CatalogSearchSection.all,
   });
 
   final OfficialZingLinkKind kind;
@@ -39,6 +42,8 @@ class OfficialZingLink {
   final CatalogCollectionKind? collectionKind;
   final WeeklyChartRegion? weeklyRegion;
   final OfficialArtistSection artistSection;
+  final String searchQuery;
+  final CatalogSearchSection searchSection;
 
   static OfficialZingLink? tryParse(String input) {
     final uri = Uri.tryParse(input.trim());
@@ -53,6 +58,30 @@ class OfficialZingLink {
     if (host != 'zingmp3.vn' && !host.endsWith('.zingmp3.vn')) return null;
     final segments = uri.pathSegments;
     if (segments.isEmpty) return null;
+
+    if (segments.first == 'tim-kiem') {
+      final section = switch (segments.length) {
+        1 => CatalogSearchSection.all,
+        2 => switch (segments.last) {
+          'tat-ca' => CatalogSearchSection.all,
+          'bai-hat' => CatalogSearchSection.songs,
+          'playlist' => CatalogSearchSection.collections,
+          'artist' => CatalogSearchSection.artists,
+          'video' => CatalogSearchSection.videos,
+          _ => null,
+        },
+        _ => null,
+      };
+      if (section == null) return null;
+      final searchQuery = _searchQuery(uri);
+      if (searchQuery == null) return null;
+      return OfficialZingLink._(
+        kind: OfficialZingLinkKind.search,
+        uri: uri,
+        searchQuery: searchQuery,
+        searchSection: section,
+      );
+    }
 
     if (segments.length == 1) {
       return switch (segments.single.toLowerCase()) {
@@ -72,7 +101,7 @@ class OfficialZingLink {
           kind: OfficialZingLinkKind.liveRadio,
           uri: uri,
         ),
-        final alias when _isAlias(alias) && !_reservedRoots.contains(alias) =>
+        final alias when _isAlias(alias) && !_isReservedRoot(alias) =>
           OfficialZingLink._(
             kind: OfficialZingLinkKind.artist,
             uri: uri,
@@ -99,7 +128,7 @@ class OfficialZingLink {
         'video' => OfficialArtistSection.videos,
         _ => null,
       };
-      if (artistSection != null && !_reservedRoots.contains(segments.first)) {
+      if (artistSection != null && !_isReservedRoot(segments.first)) {
         return OfficialZingLink._(
           kind: OfficialZingLinkKind.artist,
           uri: uri,
@@ -221,6 +250,7 @@ const _reservedRoots = <String>{
   'playlist',
   'radio',
   'single',
+  'tim-kiem',
   'top100',
   'video',
   'video-clip',
@@ -237,10 +267,23 @@ const _weeklyChartIds = <String, WeeklyChartRegion>{
 final _idPattern = RegExp(r'^[A-Za-z0-9_-]{1,128}$');
 final _aliasPattern = RegExp(r'^[A-Za-z0-9._-]{1,128}$');
 final _slugPattern = RegExp(r'^[A-Za-z0-9._-]{1,180}$');
+final _controlCharacterPattern = RegExp(r'[\u0000-\u001F\u007F-\u009F]');
 
 bool _isId(String value) => _idPattern.hasMatch(value);
 bool _isAlias(String value) => _aliasPattern.hasMatch(value);
 bool _isSlug(String value) => _slugPattern.hasMatch(value);
+bool _isReservedRoot(String value) =>
+    _reservedRoots.contains(value.toLowerCase());
+
+String? _searchQuery(Uri uri) {
+  final values = uri.queryParametersAll['q'];
+  if (values == null || values.length != 1) return null;
+  final rawQuery = values.single;
+  if (_controlCharacterPattern.hasMatch(rawQuery)) return null;
+  final normalizedQuery = rawQuery.trim().replaceAll(RegExp(r'\s+'), ' ');
+  if (normalizedQuery.isEmpty || normalizedQuery.length > 100) return null;
+  return normalizedQuery;
+}
 
 String? _htmlId(String value) {
   if (!value.endsWith('.html')) return null;

@@ -85,6 +85,7 @@
                 <data android:pathPrefix="/zing-chart-tuan/" />
                 <data android:pathPrefix="/moi-phat-hanh" />
                 <data android:pathPrefix="/new-release/" />
+                <data android:pathPrefix="/tim-kiem" />
                 <data android:pathPrefix="/top100" />
                 <data android:pathPrefix="/radio" />
                 <!-- Root artist aliases (for example /Taylor-Swift) have no

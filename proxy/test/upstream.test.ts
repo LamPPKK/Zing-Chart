@@ -2132,6 +2132,197 @@ describe('ZingUpstream', () => {
     expect(fetcher.mock.calls[0]?.[1]?.redirect).toBe('error');
   });
 
+  it('signs and normalizes every typed search page', async () => {
+    const cases = [
+      {
+        type: 'songs' as const,
+        upstreamType: 'song',
+        item: {
+          encodeId: 'SONG_PAGE_1',
+          title: 'Bài hát phân trang',
+          artistsNames: 'Nghệ sĩ A',
+          thumbnailM: '//image.example.test/song-page.jpg',
+          duration: 245,
+          link: '/bai-hat/bai-hat-phan-trang/SONG_PAGE_1.html',
+          streamingStatus: 1,
+          hasLyric: true,
+        },
+      },
+      {
+        type: 'artists' as const,
+        upstreamType: 'artist',
+        item: {
+          id: 'ARTIST_PAGE_1',
+          name: 'Nghệ sĩ phân trang',
+          alias: 'Nghe-Si-Phan-Trang',
+          thumbnail: '//image.example.test/artist-page.jpg',
+          link: '/nghe-si/Nghe-Si-Phan-Trang',
+          totalFollow: 42,
+        },
+      },
+      {
+        type: 'collections' as const,
+        upstreamType: 'playlist',
+        item: {
+          encodeId: 'COLLECTION_PAGE_1',
+          title: 'Tuyển tập phân trang',
+          artistsNames: 'Nghệ sĩ A',
+          thumbnail: '//image.example.test/collection-page.jpg',
+          link: '/album/tuyen-tap-phan-trang/COLLECTION_PAGE_1.html',
+          isAlbum: true,
+        },
+      },
+      {
+        type: 'videos' as const,
+        upstreamType: 'video',
+        item: {
+          encodeId: 'VIDEO_PAGE_1',
+          title: 'MV phân trang',
+          artistsNames: 'Nghệ sĩ A',
+          thumbnail: '//image.example.test/video-page.jpg',
+          duration: 263,
+          link: '/video-clip/mv-phan-trang/VIDEO_PAGE_1.html',
+          streamingStatus: 1,
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+        err: 0,
+        data: { items: [testCase.item, testCase.item], total: '37' },
+      }), { status: 200 }));
+      const upstream = new ZingUpstream({
+        ...config,
+        currentApiKey: 'authorized-test-api-key',
+        currentApiSigningKey: 'authorized-test-signing-key',
+      }, fetcher, () => 1_787_267_600_000);
+
+      const result = await upstream.fetchSearchPage(
+        '  tìm   kiếm  ',
+        testCase.type,
+        2,
+        18,
+      );
+
+      expect(result).toMatchObject({
+        query: 'tìm kiếm',
+        type: testCase.type,
+        page: 2,
+        limit: 18,
+        total: 37,
+        hasMore: true,
+        catalogPlaybackEnabled: true,
+      });
+      expect(result.items).toHaveLength(1);
+      const signedUrl = new URL(String(fetcher.mock.calls[0]?.[0]));
+      expect(signedUrl.pathname).toBe('/api/v2/search');
+      expect(signedUrl.searchParams.get('q')).toBe('tìm kiếm');
+      expect(signedUrl.searchParams.get('type')).toBe(testCase.upstreamType);
+      expect(signedUrl.searchParams.get('page')).toBe('2');
+      expect(signedUrl.searchParams.get('count')).toBe('18');
+      expect(signedUrl.searchParams.get('allowCorrect')).toBe('1');
+      expect(signedUrl.searchParams.get('apiKey')).toBe(
+        'authorized-test-api-key',
+      );
+      expect(signedUrl.searchParams.get('sig')).toBeTruthy();
+      expect(fetcher.mock.calls[0]?.[1]?.redirect).toBe('error');
+    }
+  });
+
+  it('forces the maximum typed search page to be terminal', async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      err: 0,
+      data: {
+        items: [{
+          encodeId: 'LAST_PAGE_SONG',
+          title: 'Bài hát trang cuối',
+          artistsNames: 'Nghệ sĩ A',
+          thumbnailM: '//image.example.test/last-page-song.jpg',
+          duration: 245,
+          link: '/bai-hat/bai-hat-trang-cuoi/LAST_PAGE_SONG.html',
+          streamingStatus: 1,
+        }],
+        total: 10_000,
+      },
+    }), { status: 200 }));
+    const upstream = new ZingUpstream({
+      ...config,
+      currentApiKey: 'authorized-test-api-key',
+      currentApiSigningKey: 'authorized-test-signing-key',
+    }, fetcher);
+
+    const result = await upstream.fetchSearchPage(
+      'trang cuối',
+      'songs',
+      100,
+      18,
+    );
+
+    expect(result).toMatchObject({
+      page: 100,
+      limit: 18,
+      total: 10_000,
+      hasMore: false,
+    });
+  });
+
+  it('fails typed search before fetching without authorized credentials', async () => {
+    const fetcher = vi.fn();
+    const upstream = new ZingUpstream(config, fetcher);
+
+    expect(upstream.supportsPaginatedSearch).toBe(false);
+    await expect(
+      upstream.fetchSearchPage('tìm kiếm', 'songs', 1, 18),
+    ).rejects.toThrow('not configured');
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('bounds typed search responses and drops malformed records independently', async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      err: 0,
+      data: {
+        items: [
+          { encodeId: 'BAD SONG ID', title: 'Sai ID', streamingStatus: 1 },
+          { encodeId: 'PRIVATE', title: 'Riêng tư', isPrivate: true },
+          {
+            encodeId: 'SAFE',
+            title: 'An toàn',
+            thumbnail: 'https://user:secret@image.example.test/unsafe.jpg',
+            streamingStatus: 1,
+          },
+        ],
+      },
+    }), { status: 200 }));
+    const upstream = new ZingUpstream({
+      ...config,
+      currentApiKey: 'authorized-test-api-key',
+      currentApiSigningKey: 'authorized-test-signing-key',
+    }, fetcher);
+
+    await expect(upstream.fetchSearchPage('an toàn', 'songs', 1, 2)).resolves
+      .toMatchObject({
+        total: null,
+        hasMore: true,
+        items: [{ id: 'SAFE', albumCover: '', playable: true }],
+      });
+  });
+
+  it('rejects a typed search JSON response above the byte cap', async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      err: 0,
+      data: { items: [], padding: 'x'.repeat(2_000_001) },
+    }), { status: 200 }));
+    const upstream = new ZingUpstream({
+      ...config,
+      currentApiKey: 'authorized-test-api-key',
+      currentApiSigningKey: 'authorized-test-signing-key',
+    }, fetcher);
+
+    await expect(upstream.fetchSearchPage('lớn', 'songs', 1, 18)).rejects
+      .toThrow('too large');
+  });
+
   it('accepts a discovery home containing only safe Quick Play cards', async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       err: 0,

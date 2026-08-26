@@ -111,12 +111,16 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   显示的内容类型、标题、艺人/关注人数；专辑、时长和详细操作留在下方“歌曲”列表。
   每个分组的“全部”操作都会打开完整列表。艺人/OA 使用贴近 Zing 搜索页的圆形头像
   自适应网格（2/3/5 列），支持 hover、focus 与 TV 遥控器；仅在官方 API 返回真实数据时
-  显示关注人数。“歌曲”页使用类似 Zing 的紧凑行：40 px 封面、艺人、中间专辑列、
-  右侧两位数时长，并且桌面操作只在 hover/focus 时显示。“歌单/专辑”页使用轻微圆角的
+  显示关注人数。“歌曲”页使用类似 Zing 的紧凑行，包含 40 px 封面、艺人与两位数时长；
+  宽屏桌面采用双栏网格并始终提供喜欢/更多操作，单栏布局仅在内容宽度充足时保留专辑
+  metadata。“歌单/专辑”页使用轻微圆角的
   方形封面、单行标题、最多两行艺人信息和 2/3/4/5 列自适应网格；Zing 风格播放层仅在
   hover/focus 时出现，同时整张卡仍可通过触摸、点击、Enter 或电视遥控器打开详情。“MV”页使用
   16:9 缩略图、两位数时长、经过验证的官方艺人头像和单行 metadata；播放层同样仅在
   hover/focus 时出现，随后打开可信的 Zing/电视二维码交接。
+  四个分类页使用官方分页 contract，每页最多 18 项；手机、平板与桌面端在接近列表末尾时自动加载，
+  可访问的“查看更多”仍作为失败回退，并作为电视端的主要控制。加载失败时会保留已有结果，
+  并按公开 ID 去重。代理未配置签名凭据时，客户端保留“全部”预览并隐藏分页，不会猜测更多结果。
   “全部播放”只用代理允许播放的曲目建立队列；播放器还支持播放/暂停/
   停止、进度跳转、上一首/下一首、随机、循环、音量/静音、队列和睡眠定时。
   “播放来源”标题会保留真实队列上下文，例如 #zingchart、搜索、专辑、歌手、周榜、
@@ -190,6 +194,9 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 ### 打开 Zing MP3 链接
 
 - 在应用搜索框点击链条图标粘贴 URL，也可以直接粘贴后按 Enter/Search。
+- 官方 `/tim-kiem/tat-ca`、`/tim-kiem/bai-hat`、`/tim-kiem/playlist`、
+  `/tim-kiem/artist` 与 `/tim-kiem/video` URL（且仅含一个 `q` 参数）会直接
+  打开对应查询和分类，不会重启播放器。
 - `https://zingmp3.vn/video-clip/.../<id>.html` 格式的 MV 链接始终等待用户
   主动点击“打开 Zing MP3”；TV 仅提供二维码/复制，避免启动器循环。
 - 跨平台 scheme：
@@ -277,6 +284,9 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-all-desktop.png" alt="包含三张等高 Zing 风格精选卡片的全部搜索结果"><br><sub><b>全部 · 精选</b> · 一位艺人、两首歌曲、真实关注人数与 1/2/3 列自适应布局</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-songs-desktop.png" alt="Zing 风格歌曲结果，以桌面双栏显示官方 18 项分页"><br><sub><b>歌曲 · 官方分页</b> · 每页 18 项并采用桌面双栏；手机/平板/桌面接近末尾自动加载，同时保留“查看更多”作为回退和电视遥控入口</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-mv-desktop.png" alt="桌面端 Zing 风格官方 MV 结果"><br><sub><b>官方 MV 搜索</b> · 16:9 封面、时长、艺人头像与 hover/focus 浮层；通过可信 Zing 链接或电视二维码打开</sub></td>
@@ -429,6 +439,8 @@ curl http://localhost:8080/v1/top-100
 curl http://localhost:8080/v1/releases
 curl http://localhost:8080/v1/artists/Son-Tung-M-TP
 curl --get http://localhost:8080/v1/search --data-urlencode 'q=Sơn Tùng M-TP'
+curl --get http://localhost:8080/v1/search --data-urlencode 'q=Sơn Tùng M-TP' \
+  --data 'type=songs&page=1&limit=18'
 curl http://localhost:8080/v1/collections/6DIZIU79
 curl http://localhost:8080/v1/songs/ZW79ZBE8/detail
 curl http://localhost:8080/v1/songs/Z9WE0E96/lyrics
@@ -452,6 +464,10 @@ fvm flutter run -d <device-id> \
 目录歌曲的播放权限，也不返回 MV。歌单详情由代理从公开 metadata 和 track list
 规范化；当前榜单歌曲会复用可播放的 legacy code，current-API 凭据始终仅保存在
 服务端，不会写入 Flutter 包。
+加入 `type=songs|artists|collections|videos&page=1&limit=18` 可请求官方分类页。
+代理按完整 query/type/page/limit 组合缓存并合并并发请求，只在歌曲页叠加榜单
+source code；未配置签名 adapter 时返回 `SEARCH_PAGINATION_UNAVAILABLE`。
+客户端会保留 aggregate 预览，且搜索请求绝不包含收听历史、收藏或 analytics。
 新歌榜同样需要该授权适配器；代理会短期缓存，并且只有
 `streamingStatus = 1` 的歌曲才标记为可播放。
 官方周榜由 `GET /v1/charts/weekly` 提供，地区值为 `vietnam`、`usuk` 或

@@ -32,6 +32,7 @@ after changing the file.
 - `GET /v1/artists/:alias` → official artist/OA metadata (including a validated `externalUrl`), six `featuredSongs`, up to 50 `songs` with structured artists/albums, up to 50 public MVs, releases, related artists, and biography
 - `GET /v1/search/suggestions?q=<query>` → `{ "query", "keywords", "songs" }`
 - `GET /v1/search?q=<query>` → `{ "query", "songs" (with `hasLyrics` and structured artists/albums when authorized), "artists", "collections", "videos" (with validated structured artists when supplied), "catalogPlaybackEnabled" }`
+- `GET /v1/search?q=<query>&type=songs|artists|collections|videos[&page=1&limit=18]` → `{ "query", "type", "page", "limit", "total", "hasMore", "items", "catalogPlaybackEnabled" }`; `page` is limited to 1–100 and `limit` to 1–50
 - `GET /v1/collections/:id` → normalized playlist/album metadata, validated structured `artists`, official `likeCount`, release/distributor metadata, track list, and bounded related collection sections
 - `GET /v1/songs/:id/detail` → official song, artist, album, release, genre, composer, engagement, lyric/MV, and strict playback metadata; this route uses the public song ID, not the legacy audio-source code
 - `GET /v1/songs/:code/lyrics` → `{ "songId", "synced", "lines": [{ "startTimeMs", "endTimeMs", "text", "words"? }] }`
@@ -87,6 +88,19 @@ is not relayed: the client opens only a validated official `zingmp3.vn/video-cli
 page, or displays a QR/copy handoff on TV and unsupported platforms. Without
 credentials, the legacy adapter returns the compatible shape with no playable
 catalog songs or MV entries.
+
+Adding `type` switches the same route to a typed, paginated contract. The public
+types `songs`, `artists`, `collections`, and `videos` are mapped server-side to
+the signed current `/api/v2/search` types `song`, `artist`, `playlist`, and
+`video`. `page` defaults to 1 (maximum 100) and `limit` defaults to 18 (maximum
+50). `total` is nullable when upstream omits it, while `hasMore` remains explicit.
+Responses echo the normalized query and effective type/page/limit, and each
+page is single-flight cached by that complete tuple for `SEARCH_CACHE_TTL_MS`.
+Only song pages consult the realtime chart to upgrade a matching legacy source
+code; chart failure never prevents catalog discovery. A deployment without the
+authorized current adapter keeps aggregate legacy search unchanged and returns
+HTTP 501 with `SEARCH_PAGINATION_UNAVAILABLE` for typed pages, allowing clients
+to retain the aggregate seed and hide Load more without inventing pagination.
 
 The lyrics route signs `/api/v2/lyric/get/lyric` only on the proxy. Karaoke
 sentences are normalized into ordered, bounded lines and optional ordered
@@ -185,7 +199,10 @@ credentials are configured, preserves validated structured artist/album
 metadata on song rows, normalizes at most 25 songs, 10 artists, 25
 playlist/album cards, and 20 public MV cards, and is cached for
 `SEARCH_CACHE_TTL_MS`. Without credentials it uses the public autocomplete
-boundary but fails closed for catalog playback and returns no MVs. Collection
+boundary but fails closed for catalog playback and returns no MVs. Typed pages
+use the independently bounded `/api/v2/search` contract described above, cap
+upstream JSON at 2 MB, discard malformed records independently, and never expose
+credentials, signatures, or raw upstream URLs. Collection
 detail parses the public JSON-LD
 `MusicPlaylist`/`MusicAlbum` document, validates every redirect before following
 it, enforces a 2 MB streamed-body limit, and caches at most 100 entries. When

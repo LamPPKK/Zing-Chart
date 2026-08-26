@@ -315,6 +315,30 @@ export interface SearchSnapshotDto {
   catalogPlaybackEnabled: boolean;
 }
 
+export type SearchResultType =
+  | 'songs'
+  | 'artists'
+  | 'collections'
+  | 'videos';
+
+interface SearchPageBaseDto {
+  query: string;
+  page: number;
+  limit: number;
+  total: number | null;
+  hasMore: boolean;
+  catalogPlaybackEnabled: boolean;
+}
+
+export type SearchPageDto =
+  | (SearchPageBaseDto & { type: 'songs'; items: SearchSongDto[] })
+  | (SearchPageBaseDto & { type: 'artists'; items: SearchArtistDto[] })
+  | (SearchPageBaseDto & {
+    type: 'collections';
+    items: SearchCollectionDto[];
+  })
+  | (SearchPageBaseDto & { type: 'videos'; items: SearchVideoDto[] });
+
 export interface SearchSuggestionSongDto {
   id: string;
   title: string;
@@ -331,6 +355,7 @@ export interface SearchSuggestionSnapshotDto {
 }
 
 export interface MusicUpstream {
+  readonly supportsPaginatedSearch?: boolean;
   fetchChart(signal?: AbortSignal): Promise<ChartSnapshotDto>;
   fetchNewReleases?(signal?: AbortSignal): Promise<NewReleaseSnapshotDto>;
   fetchWeeklyChart?(
@@ -358,6 +383,13 @@ export interface MusicUpstream {
     signal?: AbortSignal,
   ): Promise<ArtistDetailDto>;
   fetchSearch(query: string, signal?: AbortSignal): Promise<SearchSnapshotDto>;
+  fetchSearchPage?(
+    query: string,
+    type: SearchResultType,
+    page: number,
+    limit: number,
+    signal?: AbortSignal,
+  ): Promise<SearchPageDto>;
   fetchSearchSuggestions?(
     query: string,
     signal?: AbortSignal,

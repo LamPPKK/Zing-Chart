@@ -158,9 +158,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             widget.home ??
             widget.homeBuilder?.call(_officialUrl) ??
             ZingChartScreen(
-              key: ValueKey('zing-chart-link-$_officialUrlRevision'),
               tvMode: widget.tvMode,
               initialOfficialUrl: _officialUrl,
+              officialUrlRevision: _officialUrlRevision,
+              searchCatalogPage: (query, section, page, limit) =>
+                  ZingMP3API.searchCatalogPage(
+                    query,
+                    section,
+                    page: page,
+                    limit: limit,
+                  ),
               loadChartSuggestion: ZingMP3API.getDiscoveryRecommendations,
             ),
       ),

@@ -4,6 +4,49 @@ import 'package:zmp3chart/models/official_zing_link.dart';
 import 'package:zmp3chart/models/weekly_chart.dart';
 
 void main() {
+  test('parses strict official search routes and their sections', () {
+    final cases = <String, CatalogSearchSection>{
+      'https://zingmp3.vn/tim-kiem?q=lofi': CatalogSearchSection.all,
+      'https://zingmp3.vn/tim-kiem/tat-ca?q=lofi': CatalogSearchSection.all,
+      'https://zingmp3.vn/tim-kiem/bai-hat?q=lofi': CatalogSearchSection.songs,
+      'https://zingmp3.vn/tim-kiem/playlist?q=lofi':
+          CatalogSearchSection.collections,
+      'https://zingmp3.vn/tim-kiem/artist?q=lofi': CatalogSearchSection.artists,
+      'https://zingmp3.vn/tim-kiem/video?q=lofi': CatalogSearchSection.videos,
+    };
+
+    for (final MapEntry(key: url, value: section) in cases.entries) {
+      final link = OfficialZingLink.tryParse(url);
+      expect(link?.kind, OfficialZingLinkKind.search, reason: url);
+      expect(link?.searchQuery, 'lofi', reason: url);
+      expect(link?.searchSection, section, reason: url);
+    }
+
+    final normalized = OfficialZingLink.tryParse(
+      'https://zingmp3.vn/tim-kiem/bai-hat?'
+      'q=%20S%C6%A1n%20%20T%C3%B9ng%20',
+    );
+    expect(normalized?.searchQuery, 'Sơn Tùng');
+    expect(normalized?.searchSection, CatalogSearchSection.songs);
+  });
+
+  test('rejects malformed official search routes and queries', () {
+    final overLimit = List.filled(101, 'a').join();
+    for (final value in [
+      'https://zingmp3.vn/tim-kiem',
+      'https://zingmp3.vn/tim-kiem?q=',
+      'https://zingmp3.vn/tim-kiem?q=%20%20',
+      'https://zingmp3.vn/tim-kiem?q=one&q=two',
+      'https://zingmp3.vn/tim-kiem?q=lofi%09mix',
+      'https://zingmp3.vn/tim-kiem?q=lofi%00mix',
+      'https://zingmp3.vn/tim-kiem?q=$overLimit',
+      'https://zingmp3.vn/tim-kiem/unknown?q=lofi',
+      'https://zingmp3.vn/tim-kiem/bai-hat/extra?q=lofi',
+    ]) {
+      expect(OfficialZingLink.tryParse(value), isNull, reason: value);
+    }
+  });
+
   test('parses official Zing song, collection and artist links', () {
     final song = OfficialZingLink.tryParse(
       'https://zingmp3.vn/bai-hat/Mot-Bai-Hat/SONG_1.html',

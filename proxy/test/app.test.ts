@@ -14,6 +14,7 @@ import type {
   MusicUpstream,
   NewReleaseSnapshotDto,
   ReleaseCatalogDto,
+  SearchPageDto,
   SearchSuggestionSnapshotDto,
   SearchSnapshotDto,
   SongDto,
@@ -108,6 +109,17 @@ const searchSuggestions: SearchSuggestionSnapshotDto = {
     durationSeconds: 254,
     externalUrl: 'https://zingmp3.vn/link/song/song-1',
   }],
+};
+
+const searchSongPage: SearchPageDto = {
+  query: 'nàng thơ',
+  type: 'songs',
+  page: 1,
+  limit: 18,
+  total: 37,
+  hasMore: true,
+  items: searchSnapshot.songs,
+  catalogPlaybackEnabled: true,
 };
 
 const discoveryRecommendations: DiscoveryRecommendationsDto = {
@@ -891,6 +903,145 @@ describe('proxy contract', () => {
 
     await app.inject({ method: 'GET', url: '/v1/search?q=N%C3%80NG%20TH%C6%A0' });
     expect(fetchSearch).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns and single-flight caches a typed song page with chart upgrades', async () => {
+    const fetchSearchPage = vi.fn().mockResolvedValue(searchSongPage);
+    const upstream: MusicUpstream = {
+      supportsPaginatedSearch: true,
+      fetchChart: vi.fn().mockResolvedValue(snapshot),
+      fetchSearch: vi.fn(),
+      fetchSearchPage,
+      fetchCollection: vi.fn(),
+      fetchSource: vi.fn(),
+    };
+    const app = await setup(upstream);
+
+    const [first, second] = await Promise.all([
+      app.inject({
+        method: 'GET',
+        url: '/v1/search?q=%20n%C3%A0ng%20%20th%C6%A1%20&type=songs',
+      }),
+      app.inject({
+        method: 'GET',
+        url: '/v1/search?q=N%C3%80NG%20TH%C6%A0&type=songs&page=1&limit=18',
+      }),
+    ]);
+
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toEqual({
+      ...searchSongPage,
+      items: [{ ...searchSongPage.items[0], code: 'ABC123', playable: true }],
+    });
+    expect(second.json().query).toBe('NÀNG THƠ');
+    expect(fetchSearchPage).toHaveBeenCalledTimes(1);
+    expect(fetchSearchPage).toHaveBeenCalledWith(
+      'nàng thơ',
+      'songs',
+      1,
+      18,
+      expect.any(AbortSignal),
+    );
+    expect(upstream.fetchChart).toHaveBeenCalledTimes(1);
+  });
+
+  it('keys typed search cache by query, type, page, and limit', async () => {
+    const fetchSearchPage = vi.fn().mockImplementation(
+      async (query: string, type: 'songs' | 'artists', page: number, limit: number) => {
+        if (type === 'artists') {
+          return {
+            query,
+            type,
+            page,
+            limit,
+            total: 1,
+            hasMore: false,
+            items: searchSnapshot.artists,
+            catalogPlaybackEnabled: true,
+          } satisfies SearchPageDto;
+        }
+        return {
+          ...searchSongPage,
+          query,
+          page,
+          limit,
+        } satisfies SearchPageDto;
+      },
+    );
+    const upstream: MusicUpstream = {
+      supportsPaginatedSearch: true,
+      fetchChart: vi.fn().mockRejectedValue(new UpstreamError('chart unavailable')),
+      fetchSearch: vi.fn(),
+      fetchSearchPage,
+      fetchCollection: vi.fn(),
+      fetchSource: vi.fn(),
+    };
+    const app = await setup(upstream);
+
+    for (const url of [
+      '/v1/search?q=n%C3%A0ng%20th%C6%A1&type=songs&page=2&limit=18',
+      '/v1/search?q=N%C3%80NG%20TH%C6%A0&type=songs&page=2&limit=18',
+      '/v1/search?q=n%C3%A0ng%20th%C6%A1&type=songs&page=3&limit=18',
+      '/v1/search?q=n%C3%A0ng%20th%C6%A1&type=songs&page=2&limit=19',
+      '/v1/search?q=n%C3%A0ng%20th%C6%A1&type=artists&page=2&limit=18',
+    ]) {
+      const response = await app.inject({ method: 'GET', url });
+      expect(response.statusCode).toBe(200);
+    }
+
+    expect(fetchSearchPage).toHaveBeenCalledTimes(4);
+    expect(upstream.fetchChart).toHaveBeenCalledTimes(4);
+  });
+
+  it('validates typed pagination and reports unavailable adapters explicitly', async () => {
+    const fetchSearchPage = vi.fn();
+    const unavailable: MusicUpstream = {
+      fetchChart: vi.fn(),
+      fetchSearch: vi.fn(),
+      fetchSearchPage,
+      fetchCollection: vi.fn(),
+      fetchSource: vi.fn(),
+    };
+    const unavailableApp = await setup(unavailable);
+    const unavailableResponse = await unavailableApp.inject({
+      method: 'GET',
+      url: '/v1/search?q=n%C3%A0ng&type=songs',
+    });
+    expect(unavailableResponse.statusCode).toBe(501);
+    expect(unavailableResponse.json().error.code).toBe(
+      'SEARCH_PAGINATION_UNAVAILABLE',
+    );
+    expect(unavailableResponse.json().error.requestId).toBeTruthy();
+    expect(unavailableResponse.headers['cache-control']).toContain('no-store');
+    expect(fetchSearchPage).not.toHaveBeenCalled();
+
+    const enabledFetch = vi.fn();
+    const enabled: MusicUpstream = {
+      supportsPaginatedSearch: true,
+      fetchChart: vi.fn(),
+      fetchSearch: vi.fn(),
+      fetchSearchPage: enabledFetch,
+      fetchCollection: vi.fn(),
+      fetchSource: vi.fn(),
+    };
+    const enabledApp = await setup(enabled);
+    const invalidCases = [
+      ['/v1/search?q=n%C3%A0ng&page=1', 'INVALID_SEARCH_PAGINATION'],
+      ['/v1/search?q=n%C3%A0ng&type=all', 'INVALID_SEARCH_TYPE'],
+      ['/v1/search?q=n%C3%A0ng&type=songs&page=0', 'INVALID_SEARCH_PAGE'],
+      ['/v1/search?q=n%C3%A0ng&type=songs&page=101', 'INVALID_SEARCH_PAGE'],
+      ['/v1/search?q=n%C3%A0ng&type=songs&page=1.5', 'INVALID_SEARCH_PAGE'],
+      ['/v1/search?q=n%C3%A0ng&type=songs&page=1e2', 'INVALID_SEARCH_PAGE'],
+      ['/v1/search?q=n%C3%A0ng&type=songs&limit=0', 'INVALID_SEARCH_LIMIT'],
+      ['/v1/search?q=n%C3%A0ng&type=songs&limit=51', 'INVALID_SEARCH_LIMIT'],
+    ] as const;
+    for (const [url, code] of invalidCases) {
+      const response = await enabledApp.inject({ method: 'GET', url });
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error.code).toBe(code);
+    }
+    expect(enabledFetch).not.toHaveBeenCalled();
+    expect(enabled.fetchChart).not.toHaveBeenCalled();
   });
 
   it('returns cached autocomplete suggestions with normalized queries', async () => {

@@ -12,6 +12,7 @@ void main() {
     expect(android, contains('android:host="zingmp3.vn"'));
     expect(android, contains('android:pathPrefix="/bai-hat/"'));
     expect(android, contains('android:pathPrefix="/video-clip/"'));
+    expect(android, contains('android:pathPrefix="/tim-kiem"'));
     expect(android, contains('android:pathPattern="/.*"'));
     expect(android, contains('flutter_deeplinking_enabled'));
 

@@ -52,10 +52,10 @@ class SearchDiscoverySummary extends StatelessWidget {
 
   Widget _content(BuildContext context) {
     if (query.isEmpty) return _SearchInvitation(onSuggestion: onSuggestion);
-    if (isLoading) {
+    if (isLoading && result == null) {
       return _CatalogSearchLoadingState(tvMode: tvMode);
     }
-    if (errorMessage != null) {
+    if (errorMessage != null && result == null) {
       return Container(
         key: const ValueKey('catalog-search-error'),
         padding: const EdgeInsets.all(20),
@@ -153,6 +153,7 @@ class SearchDiscoverySummary extends StatelessWidget {
           _Highlights(
             artist: artist,
             songs: highlightedSongs,
+            catalogPlaybackEnabled: searchResult.catalogPlaybackEnabled,
             onArtistTap: onArtistTap,
             onSongTap: onSongTap,
             tvMode: tvMode,
@@ -175,7 +176,9 @@ class SearchDiscoverySummary extends StatelessWidget {
         if (section != CatalogSearchSection.artists &&
             section != CatalogSearchSection.collections &&
             section != CatalogSearchSection.videos &&
-            searchResult.songs.any((item) => !item.playable))
+            (searchResult.songs.any((item) => !item.playable) ||
+                (searchResult.songs.isNotEmpty &&
+                    !searchResult.catalogPlaybackEnabled)))
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(
@@ -246,7 +249,10 @@ class SearchDiscoverySecondarySections extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final collections = result.collections.take(8).toList(growable: false);
+    final collections = result.collections
+        .skip(4)
+        .take(4)
+        .toList(growable: false);
     final videos = result.videos.take(8).toList(growable: false);
     final artists = result.artists.take(6).toList(growable: false);
     if (collections.isEmpty && videos.isEmpty && artists.isEmpty) {
@@ -324,6 +330,7 @@ class _Highlights extends StatelessWidget {
   const _Highlights({
     required this.artist,
     required this.songs,
+    required this.catalogPlaybackEnabled,
     required this.onArtistTap,
     required this.onSongTap,
     required this.tvMode,
@@ -331,6 +338,7 @@ class _Highlights extends StatelessWidget {
 
   final CatalogArtist? artist;
   final List<CatalogSong> songs;
+  final bool catalogPlaybackEnabled;
   final ValueChanged<CatalogArtist> onArtistTap;
   final ValueChanged<CatalogSong> onSongTap;
   final bool tvMode;
@@ -347,6 +355,7 @@ class _Highlights extends StatelessWidget {
       ...songs.map(
         (song) => _SongHighlightCard(
           catalogSong: song,
+          playbackEnabled: catalogPlaybackEnabled,
           onTap: () => onSongTap(song),
           onArtistTap: onArtistTap,
           tvMode: tvMode,
@@ -1266,12 +1275,14 @@ class _ArtistHighlightCard extends StatelessWidget {
 class _SongHighlightCard extends StatelessWidget {
   const _SongHighlightCard({
     required this.catalogSong,
+    required this.playbackEnabled,
     required this.onTap,
     required this.onArtistTap,
     required this.tvMode,
   });
 
   final CatalogSong catalogSong;
+  final bool playbackEnabled;
   final VoidCallback onTap;
   final ValueChanged<CatalogArtist> onArtistTap;
   final bool tvMode;
@@ -1279,9 +1290,10 @@ class _SongHighlightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final song = catalogSong.song;
+    final canPlay = playbackEnabled && catalogSong.playable;
     return _HighlightCardFrame(
       key: ValueKey('catalog-highlight-song-${song.id}'),
-      semanticLabel: catalogSong.playable
+      semanticLabel: canPlay
           ? 'Mở bài hát ${song.displayTitle}, ${song.artistsNames}'
           : 'Mở thông tin bài hát bị giới hạn ${song.displayTitle}',
       onTap: onTap,
@@ -1301,7 +1313,7 @@ class _SongHighlightCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  catalogSong.playable ? 'Bài hát' : 'Bài hát · Bị giới hạn',
+                  canPlay ? 'Bài hát' : 'Bài hát · Bị giới hạn',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(

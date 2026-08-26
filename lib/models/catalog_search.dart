@@ -10,7 +10,24 @@ extension CatalogSearchSectionLabel on CatalogSearchSection {
     CatalogSearchSection.artists => 'NGHỆ SĨ/OA',
     CatalogSearchSection.videos => 'MV',
   };
+
+  String? get wireValue => switch (this) {
+    CatalogSearchSection.all => null,
+    CatalogSearchSection.songs => 'songs',
+    CatalogSearchSection.collections => 'collections',
+    CatalogSearchSection.artists => 'artists',
+    CatalogSearchSection.videos => 'videos',
+  };
 }
+
+CatalogSearchSection? catalogSearchSectionFromWire(String value) =>
+    switch (value.trim().toLowerCase()) {
+      'songs' => CatalogSearchSection.songs,
+      'collections' => CatalogSearchSection.collections,
+      'artists' => CatalogSearchSection.artists,
+      'videos' => CatalogSearchSection.videos,
+      _ => null,
+    };
 
 enum CatalogCollectionKind { playlist, album }
 
@@ -204,4 +221,239 @@ class CatalogSearchResult {
 
   bool get isEmpty =>
       songs.isEmpty && artists.isEmpty && collections.isEmpty && videos.isEmpty;
+}
+
+/// One authoritative page from an official, typed Zing MP3 search section.
+///
+/// Aggregate search remains represented by [CatalogSearchResult]. Typed pages
+/// deliberately keep their concrete item type so an artist or video payload
+/// can never be interpreted as a playable song list.
+sealed class CatalogSearchPage {
+  const CatalogSearchPage({
+    required this.query,
+    required this.section,
+    required this.page,
+    required this.limit,
+    required this.total,
+    required this.hasMore,
+    required this.catalogPlaybackEnabled,
+  });
+
+  final String query;
+  final CatalogSearchSection section;
+  final int page;
+  final int limit;
+  final int? total;
+  final bool hasMore;
+  final bool catalogPlaybackEnabled;
+
+  int get itemCount;
+  CatalogSearchResult get asSearchResult;
+  CatalogSearchPage append(CatalogSearchPage next);
+}
+
+class CatalogSongSearchPage extends CatalogSearchPage {
+  CatalogSongSearchPage({
+    required super.query,
+    required super.page,
+    required super.limit,
+    required super.total,
+    required super.hasMore,
+    required super.catalogPlaybackEnabled,
+    required List<CatalogSong> items,
+  }) : items = List<CatalogSong>.unmodifiable(items),
+       super(section: CatalogSearchSection.songs);
+
+  final List<CatalogSong> items;
+
+  @override
+  int get itemCount => items.length;
+
+  @override
+  CatalogSearchResult get asSearchResult => CatalogSearchResult(
+    query: query,
+    songs: items,
+    artists: const [],
+    catalogPlaybackEnabled: catalogPlaybackEnabled,
+  );
+
+  @override
+  CatalogSongSearchPage append(CatalogSearchPage next) {
+    _validateSearchPageAppend(this, next);
+    if (next is! CatalogSongSearchPage) {
+      throw ArgumentError('Cannot append a different search result type.');
+    }
+    final byId = <String, CatalogSong>{};
+    for (final item in [...items, ...next.items]) {
+      byId.putIfAbsent(item.song.id, () => item);
+    }
+    return CatalogSongSearchPage(
+      query: query,
+      page: next.page,
+      limit: limit,
+      total: next.total ?? total,
+      hasMore: next.hasMore,
+      catalogPlaybackEnabled:
+          catalogPlaybackEnabled && next.catalogPlaybackEnabled,
+      items: byId.values.toList(growable: false),
+    );
+  }
+}
+
+class CatalogArtistSearchPage extends CatalogSearchPage {
+  CatalogArtistSearchPage({
+    required super.query,
+    required super.page,
+    required super.limit,
+    required super.total,
+    required super.hasMore,
+    required super.catalogPlaybackEnabled,
+    required List<CatalogArtist> items,
+  }) : items = List<CatalogArtist>.unmodifiable(items),
+       super(section: CatalogSearchSection.artists);
+
+  final List<CatalogArtist> items;
+
+  @override
+  int get itemCount => items.length;
+
+  @override
+  CatalogSearchResult get asSearchResult => CatalogSearchResult(
+    query: query,
+    songs: const [],
+    artists: items,
+    catalogPlaybackEnabled: catalogPlaybackEnabled,
+  );
+
+  @override
+  CatalogArtistSearchPage append(CatalogSearchPage next) {
+    _validateSearchPageAppend(this, next);
+    if (next is! CatalogArtistSearchPage) {
+      throw ArgumentError('Cannot append a different search result type.');
+    }
+    final byId = <String, CatalogArtist>{};
+    for (final item in [...items, ...next.items]) {
+      byId.putIfAbsent(item.id, () => item);
+    }
+    return CatalogArtistSearchPage(
+      query: query,
+      page: next.page,
+      limit: limit,
+      total: next.total ?? total,
+      hasMore: next.hasMore,
+      catalogPlaybackEnabled:
+          catalogPlaybackEnabled && next.catalogPlaybackEnabled,
+      items: byId.values.toList(growable: false),
+    );
+  }
+}
+
+class CatalogCollectionSearchPage extends CatalogSearchPage {
+  CatalogCollectionSearchPage({
+    required super.query,
+    required super.page,
+    required super.limit,
+    required super.total,
+    required super.hasMore,
+    required super.catalogPlaybackEnabled,
+    required List<CatalogCollection> items,
+  }) : items = List<CatalogCollection>.unmodifiable(items),
+       super(section: CatalogSearchSection.collections);
+
+  final List<CatalogCollection> items;
+
+  @override
+  int get itemCount => items.length;
+
+  @override
+  CatalogSearchResult get asSearchResult => CatalogSearchResult(
+    query: query,
+    songs: const [],
+    artists: const [],
+    collections: items,
+    catalogPlaybackEnabled: catalogPlaybackEnabled,
+  );
+
+  @override
+  CatalogCollectionSearchPage append(CatalogSearchPage next) {
+    _validateSearchPageAppend(this, next);
+    if (next is! CatalogCollectionSearchPage) {
+      throw ArgumentError('Cannot append a different search result type.');
+    }
+    final byId = <String, CatalogCollection>{};
+    for (final item in [...items, ...next.items]) {
+      byId.putIfAbsent(item.id, () => item);
+    }
+    return CatalogCollectionSearchPage(
+      query: query,
+      page: next.page,
+      limit: limit,
+      total: next.total ?? total,
+      hasMore: next.hasMore,
+      catalogPlaybackEnabled:
+          catalogPlaybackEnabled && next.catalogPlaybackEnabled,
+      items: byId.values.toList(growable: false),
+    );
+  }
+}
+
+class CatalogVideoSearchPage extends CatalogSearchPage {
+  CatalogVideoSearchPage({
+    required super.query,
+    required super.page,
+    required super.limit,
+    required super.total,
+    required super.hasMore,
+    required super.catalogPlaybackEnabled,
+    required List<CatalogVideo> items,
+  }) : items = List<CatalogVideo>.unmodifiable(items),
+       super(section: CatalogSearchSection.videos);
+
+  final List<CatalogVideo> items;
+
+  @override
+  int get itemCount => items.length;
+
+  @override
+  CatalogSearchResult get asSearchResult => CatalogSearchResult(
+    query: query,
+    songs: const [],
+    artists: const [],
+    videos: items,
+    catalogPlaybackEnabled: catalogPlaybackEnabled,
+  );
+
+  @override
+  CatalogVideoSearchPage append(CatalogSearchPage next) {
+    _validateSearchPageAppend(this, next);
+    if (next is! CatalogVideoSearchPage) {
+      throw ArgumentError('Cannot append a different search result type.');
+    }
+    final byId = <String, CatalogVideo>{};
+    for (final item in [...items, ...next.items]) {
+      byId.putIfAbsent(item.id, () => item);
+    }
+    return CatalogVideoSearchPage(
+      query: query,
+      page: next.page,
+      limit: limit,
+      total: next.total ?? total,
+      hasMore: next.hasMore,
+      catalogPlaybackEnabled:
+          catalogPlaybackEnabled && next.catalogPlaybackEnabled,
+      items: byId.values.toList(growable: false),
+    );
+  }
+}
+
+void _validateSearchPageAppend(
+  CatalogSearchPage current,
+  CatalogSearchPage next,
+) {
+  if (current.query != next.query ||
+      current.section != next.section ||
+      current.limit != next.limit ||
+      next.page != current.page + 1) {
+    throw ArgumentError('Search pages are not contiguous.');
+  }
 }

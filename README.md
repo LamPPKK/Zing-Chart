@@ -164,14 +164,19 @@ proxy Node/TypeScript do người triển khai tự host.
   avatar tròn responsive 2/3/5 cột giống bề mặt tìm kiếm Zing, hỗ trợ
   hover/focus/remote TV và chỉ hiển thị số người quan tâm khi API chính thức
   cung cấp giá trị thật. Tab Bài hát dùng hàng compact kiểu Zing với cover
-  40 px, nghệ sĩ, album ở cột giữa, thời lượng hai chữ số ở mép phải và chỉ
-  hiện action khi hover/focus trên desktop. Tab Playlist/Album dùng card ảnh
+  40 px, nghệ sĩ và thời lượng hai chữ số. Desktop rộng xếp lưới hai cột với
+  Tim/Thêm luôn sẵn; bố cục một cột chỉ giữ metadata album khi vùng nội dung
+  đủ rộng. Tab Playlist/Album dùng card ảnh
   vuông bo nhẹ, tiêu đề một dòng, nghệ sĩ tối đa hai dòng và lưới adaptive
   2/3/4/5 cột; lớp Play kiểu Zing chỉ xuất hiện khi hover/focus nhưng toàn bộ
   card vẫn mở detail bằng chạm, click, Enter hoặc remote TV. Tab MV dùng
   thumbnail 16:9, thời lượng hai chữ số, avatar nghệ sĩ chính thức và metadata
   một dòng; overlay Play cũng chỉ hiện khi hover/focus rồi mở handoff Zing/QR
-  đã kiểm tra.
+  đã kiểm tra. Bốn tab chuyên biệt dùng contract phân trang chính thức, mỗi
+  trang tối đa 18 mục; mobile/tablet/desktop tự tải khi cuộn gần cuối, còn nút
+  **XEM THÊM** vẫn là fallback truy cập được và là điều khiển chính trên TV.
+  Kết quả cũ được giữ khi tải lỗi, loại trùng theo public ID. Nếu proxy chưa có
+  credential ký, app giữ preview “Tất cả” và ẩn phân trang thay vì suy đoán.
 - Trang Thông Tin bài hát ngay trong Now Playing hiển thị metadata chính thức:
   nghệ sĩ, album, ngày phát hành, nhà phát hành, thể loại, nhạc sĩ, lượt nghe,
   lượt thích và bình luận. MV chỉ mở trang Zing đã kiểm tra hoặc dùng QR/copy
@@ -274,6 +279,9 @@ proxy Node/TypeScript do người triển khai tự host.
 
 - Trong app: bấm biểu tượng mắt xích trong ô tìm kiếm để dán URL, hoặc dán URL
   trực tiếp rồi nhấn Enter/Search.
+- Các URL tìm kiếm chính thức `/tim-kiem/tat-ca`, `/tim-kiem/bai-hat`,
+  `/tim-kiem/playlist`, `/tim-kiem/artist` và `/tim-kiem/video` (kèm đúng một
+  tham số `q`) mở thẳng query và tab tương ứng mà không khởi động lại player.
 - Link MV `https://zingmp3.vn/video-clip/.../<id>.html` luôn chờ thao tác
   **MỞ ZING MP3**; TV chỉ hiện QR/copy để tránh vòng lặp launcher.
 - Scheme đa nền tảng:
@@ -389,6 +397,9 @@ không chứa dữ liệu người dùng thật.
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-all-desktop.png" alt="Kết quả Tất cả với ba card Nổi bật đồng chiều cao kiểu Zing"><br><sub><b>Tất cả · Nổi bật</b> · một nghệ sĩ, hai bài hát, follower thật và bố cục responsive 1/2/3 cột</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-songs-desktop.png" alt="Trang kết quả Bài hát kiểu Zing với 18 mục phân trang trong lưới hai cột"><br><sub><b>Bài hát · phân trang chính thức</b> · 18 mục/trang, desktop hai cột; tự tải gần cuối trên mobile/tablet/desktop và giữ XEM THÊM cho fallback hoặc remote TV</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-mv-desktop.png" alt="Kết quả MV chính thức kiểu Zing trên desktop"><br><sub><b>Tìm kiếm MV chính thức</b> · thumbnail 16:9, thời lượng, avatar nghệ sĩ và overlay hover/focus; mở bằng liên kết Zing hoặc QR trên TV</sub></td>
@@ -600,6 +611,12 @@ chỉ được bật Play khi proxy có current-API adapter được cấp quy�
 của adapter chỉ nằm trong biến môi trường proxy, tuyệt đối không đóng gói vào
 Flutter.
 
+Thêm `type=songs|artists|collections|videos&page=1&limit=18` để lấy trang typed
+chính thức; proxy cache/single-flight theo đầy đủ query/type/page/limit, chỉ nâng
+mã phát từ chart cho trang bài hát và trả `SEARCH_PAGINATION_UNAVAILABLE` khi
+adapter ký chưa được cấu hình. Client giữ kết quả aggregate lúc đó và không gửi
+lịch sử nghe, favorites hay analytics trong request tìm kiếm.
+
 ## 3. Yêu cầu chung
 
 ### Bắt buộc
@@ -681,6 +698,8 @@ curl http://localhost:8080/v1/releases
 curl http://localhost:8080/v1/artists/Son-Tung-M-TP
 curl --get http://localhost:8080/v1/search/suggestions --data-urlencode 'q=Sơn Tùng M-TP'
 curl --get http://localhost:8080/v1/search --data-urlencode 'q=Sơn Tùng M-TP'
+curl --get http://localhost:8080/v1/search --data-urlencode 'q=Sơn Tùng M-TP' \
+  --data 'type=songs&page=1&limit=18'
 curl http://localhost:8080/v1/collections/6DIZIU79
 curl http://localhost:8080/v1/songs/ZW79ZBE8/detail
 curl http://localhost:8080/v1/songs/Z9WE0E96/lyrics

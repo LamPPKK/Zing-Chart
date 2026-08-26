@@ -50,6 +50,13 @@ abstract interface class MusicRepository {
 
   Future<CatalogSearchResult> searchCatalog(String query);
 
+  Future<CatalogSearchPage> searchCatalogPage(
+    String query,
+    CatalogSearchSection section, {
+    int page = 1,
+    int limit = 18,
+  });
+
   Future<SearchSuggestionSnapshot> getSearchSuggestions(String query);
 
   Future<CatalogCollectionDetail> getCollection(String id);
@@ -882,6 +889,169 @@ class ProxyMusicRepository implements MusicRepository {
       rethrow;
     } catch (_) {
       throw const MusicRepositoryException('Phản hồi tìm kiếm không hợp lệ.');
+    }
+  }
+
+  @override
+  Future<CatalogSearchPage> searchCatalogPage(
+    String query,
+    CatalogSearchSection section, {
+    int page = 1,
+    int limit = 18,
+  }) async {
+    final normalizedQuery = query.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final type = section.wireValue;
+    if (normalizedQuery.isEmpty || normalizedQuery.length > 100) {
+      throw const MusicRepositoryException(
+        'Từ khóa tìm kiếm phải có từ 1 đến 100 ký tự.',
+      );
+    }
+    if (type == null) {
+      throw const MusicRepositoryException(
+        'Tìm kiếm phân trang cần một nhóm kết quả cụ thể.',
+      );
+    }
+    if (page < 1 || page > 100 || limit < 1 || limit > 50) {
+      throw const MusicRepositoryException(
+        'Trang tìm kiếm hoặc giới hạn kết quả không hợp lệ.',
+      );
+    }
+
+    try {
+      final response = await _dio.get<dynamic>(
+        '/v1/search',
+        queryParameters: {
+          'q': normalizedQuery,
+          'type': type,
+          'page': page,
+          'limit': limit,
+        },
+      );
+      final data = response.data;
+      if (data is! Map<String, dynamic> || data['items'] is! List) {
+        throw const FormatException('Missing typed search payload');
+      }
+      final responseQuery = data['query']?.toString().trim() ?? '';
+      final responseType = data['type']?.toString().trim() ?? '';
+      final responsePage = (data['page'] as num?)?.toInt();
+      final responseLimit = (data['limit'] as num?)?.toInt();
+      final rawTotal = data['total'];
+      final total = rawTotal == null ? null : (rawTotal as num?)?.toInt();
+      final hasMore = data['hasMore'];
+      final rawItems = data['items'] as List<dynamic>;
+      if (responseQuery != normalizedQuery ||
+          responseType != type ||
+          responsePage != page ||
+          responseLimit != limit ||
+          total != null && total < 0 ||
+          hasMore is! bool ||
+          rawItems.length > limit) {
+        throw const FormatException('Mismatched typed search payload');
+      }
+      final playbackEnabled = data['catalogPlaybackEnabled'] == true;
+      switch (section) {
+        case CatalogSearchSection.songs:
+          final items = rawItems
+              .whereType<Map<String, dynamic>>()
+              .map(_catalogSongFromJson)
+              .where(
+                (item) =>
+                    item.song.id.isNotEmpty &&
+                    item.song.displayTitle.isNotEmpty &&
+                    _isTrustedCatalogPage(Uri.tryParse(item.externalUrl)),
+              )
+              .toList(growable: false);
+          if (items.length != rawItems.length) {
+            throw const FormatException('Invalid song search item');
+          }
+          return CatalogSongSearchPage(
+            query: responseQuery,
+            page: page,
+            limit: limit,
+            total: total,
+            hasMore: hasMore,
+            catalogPlaybackEnabled: playbackEnabled,
+            items: items,
+          );
+        case CatalogSearchSection.artists:
+          final items = rawItems
+              .whereType<Map<String, dynamic>>()
+              .map(_artistFromJson)
+              .where(
+                (item) =>
+                    item.id.isNotEmpty &&
+                    item.name.isNotEmpty &&
+                    item.aliasName.isNotEmpty &&
+                    _isSafeHttpsResource(item.avatar) &&
+                    _isTrustedArtistPage(
+                      Uri.tryParse(item.officialExternalUrl),
+                    ),
+              )
+              .toList(growable: false);
+          if (items.length != rawItems.length) {
+            throw const FormatException('Invalid artist search item');
+          }
+          return CatalogArtistSearchPage(
+            query: responseQuery,
+            page: page,
+            limit: limit,
+            total: total,
+            hasMore: hasMore,
+            catalogPlaybackEnabled: playbackEnabled,
+            items: items,
+          );
+        case CatalogSearchSection.collections:
+          final items = rawItems
+              .whereType<Map<String, dynamic>>()
+              .map(_collectionFromJson)
+              .where(
+                (item) =>
+                    item.id.isNotEmpty &&
+                    item.title.isNotEmpty &&
+                    _isSafeHttpsResource(item.thumbnail) &&
+                    _isTrustedCollectionPage(Uri.tryParse(item.externalUrl)),
+              )
+              .toList(growable: false);
+          if (items.length != rawItems.length) {
+            throw const FormatException('Invalid collection search item');
+          }
+          return CatalogCollectionSearchPage(
+            query: responseQuery,
+            page: page,
+            limit: limit,
+            total: total,
+            hasMore: hasMore,
+            catalogPlaybackEnabled: playbackEnabled,
+            items: items,
+          );
+        case CatalogSearchSection.videos:
+          final items = rawItems
+              .whereType<Map<String, dynamic>>()
+              .map(_catalogVideoFromJson)
+              .toList(growable: false);
+          if (items.length != rawItems.length) {
+            throw const FormatException('Invalid video search item');
+          }
+          return CatalogVideoSearchPage(
+            query: responseQuery,
+            page: page,
+            limit: limit,
+            total: total,
+            hasMore: hasMore,
+            catalogPlaybackEnabled: playbackEnabled,
+            items: items,
+          );
+        case CatalogSearchSection.all:
+          throw const FormatException('Invalid typed search section');
+      }
+    } on DioException catch (error) {
+      throw _networkException(error);
+    } on MusicRepositoryException {
+      rethrow;
+    } catch (_) {
+      throw const MusicRepositoryException(
+        'Phản hồi trang tìm kiếm không hợp lệ.',
+      );
     }
   }
 
@@ -1945,6 +2115,19 @@ class ProxyMusicRepository implements MusicRepository {
     }
     return 'Không thể kết nối máy chủ âm nhạc.';
   }
+
+  MusicRepositoryException _networkException(DioException error) {
+    final payload = error.response?.data;
+    String? code;
+    if (payload is Map<String, dynamic>) {
+      final details = payload['error'];
+      if (details is Map<String, dynamic>) {
+        final candidate = details['code']?.toString().trim();
+        if (candidate != null && candidate.isNotEmpty) code = candidate;
+      }
+    }
+    return MusicRepositoryException(_networkMessage(error), code: code);
+  }
 }
 
 class CachingMusicRepository implements MusicRepository {
@@ -2046,6 +2229,14 @@ class CachingMusicRepository implements MusicRepository {
       _remote.searchCatalog(query);
 
   @override
+  Future<CatalogSearchPage> searchCatalogPage(
+    String query,
+    CatalogSearchSection section, {
+    int page = 1,
+    int limit = 18,
+  }) => _remote.searchCatalogPage(query, section, page: page, limit: limit);
+
+  @override
   Future<SearchSuggestionSnapshot> getSearchSuggestions(String query) =>
       _remote.getSearchSuggestions(query);
 
@@ -2138,9 +2329,10 @@ class CachingMusicRepository implements MusicRepository {
 }
 
 class MusicRepositoryException implements Exception {
-  const MusicRepositoryException(this.message);
+  const MusicRepositoryException(this.message, {this.code});
 
   final String message;
+  final String? code;
 
   @override
   String toString() => message;

@@ -37,6 +37,8 @@ import type {
   MusicUpstream,
   NewReleaseSnapshotDto,
   ReleaseCatalogDto,
+  SearchPageDto,
+  SearchResultType,
   SearchSuggestionSnapshotDto,
   SearchSnapshotDto,
   SongDetailDto,
@@ -57,6 +59,11 @@ interface ChartCacheEntry {
 interface SearchCacheEntry {
   expiresAt: number;
   snapshot: SearchSnapshotDto;
+}
+
+interface SearchPageCacheEntry {
+  expiresAt: number;
+  page: SearchPageDto;
 }
 
 interface SearchSuggestionCacheEntry {
@@ -142,12 +149,33 @@ interface LiveRadioCacheEntry {
 const CODE_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
 const SEARCH_QUERY_MAX_LENGTH = 100;
+const SEARCH_PAGE_DEFAULT_LIMIT = 18;
+const SEARCH_PAGE_MAX = 100;
+const SEARCH_PAGE_LIMIT_MAX = 50;
+const SEARCH_CACHE_MAX_ENTRIES = 100;
 const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/;
+const SEARCH_RESULT_TYPES = new Set<SearchResultType>([
+  'songs',
+  'artists',
+  'collections',
+  'videos',
+]);
 const WEEKLY_REGIONS = new Set<WeeklyChartRegion>([
   'vietnam',
   'usuk',
   'korea',
 ]);
+
+function boundedSearchInteger(
+  value: unknown,
+  fallback: number,
+  maximum: number,
+) {
+  if (value === undefined) return fallback;
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed <= maximum ? parsed : undefined;
+}
 
 export async function buildApp(
   config: AppConfig,
@@ -221,6 +249,8 @@ export async function buildApp(
   const pendingHubDetail = new Map<string, Promise<HubDetailDto>>();
   const searchCache = new Map<string, SearchCacheEntry>();
   const pendingSearch = new Map<string, Promise<SearchSnapshotDto>>();
+  const searchPageCache = new Map<string, SearchPageCacheEntry>();
+  const pendingSearchPages = new Map<string, Promise<SearchPageDto>>();
   const searchSuggestionCache = new Map<string, SearchSuggestionCacheEntry>();
   const pendingSearchSuggestions = new Map<
     string,
@@ -852,7 +882,14 @@ export async function buildApp(
     },
   );
 
-  app.get<{ Querystring: { q?: string } }>('/v1/search', async (request, reply) => {
+  app.get<{
+    Querystring: {
+      q?: unknown;
+      type?: unknown;
+      page?: unknown;
+      limit?: unknown;
+    };
+  }>('/v1/search', async (request, reply) => {
     const rawQuery = typeof request.query.q === 'string'
       ? request.query.q.trim()
       : '';
@@ -871,46 +908,175 @@ export async function buildApp(
       });
     }
 
-    // Search and chart load concurrently. Awaiting this snapshot means chart
-    // songs are playable on the very first search response, while a chart
-    // outage never prevents public catalog discovery.
-    const chartSnapshot = loadChartSnapshot().catch(() => undefined);
+    const rawType = request.query.type;
+    if (rawType === undefined) {
+      if (request.query.page !== undefined || request.query.limit !== undefined) {
+        return reply.code(400).send({
+          error: {
+            code: 'INVALID_SEARCH_PAGINATION',
+            message: 'Phân trang tìm kiếm cần một loại kết quả hợp lệ.',
+            requestId: request.id,
+          },
+        });
+      }
 
-    const cacheKey = query.toLocaleLowerCase('vi');
-    const cached = searchCache.get(cacheKey);
-    let snapshot: SearchSnapshotDto;
+      // Search and chart load concurrently. Awaiting this snapshot means chart
+      // songs are playable on the very first search response, while a chart
+      // outage never prevents public catalog discovery.
+      const chartSnapshot = loadChartSnapshot().catch(() => undefined);
+
+      const cacheKey = query.toLocaleLowerCase('vi');
+      const cached = searchCache.get(cacheKey);
+      let snapshot: SearchSnapshotDto;
+      if (cached && cached.expiresAt > Date.now()) {
+        snapshot = cached.snapshot;
+      } else {
+        if (cached) searchCache.delete(cacheKey);
+        let pending = pendingSearch.get(cacheKey);
+        if (!pending) {
+          pending = withTimeout((signal) => upstream.fetchSearch(query, signal))
+            .then((result) => {
+              searchCache.set(cacheKey, {
+                snapshot: result,
+                expiresAt: Date.now() + config.searchCacheTtlMs,
+              });
+              while (searchCache.size > SEARCH_CACHE_MAX_ENTRIES) {
+                const oldestKey = searchCache.keys().next().value;
+                if (oldestKey === undefined) break;
+                searchCache.delete(oldestKey);
+              }
+              return result;
+            })
+            .finally(() => pendingSearch.delete(cacheKey));
+          pendingSearch.set(cacheKey, pending);
+        }
+        snapshot = await pending;
+      }
+
+      const chartCodes = new Map(
+        ((await chartSnapshot)?.songs ?? []).map((song) => [song.id, song.code]),
+      );
+      return {
+        ...snapshot,
+        query,
+        videos: snapshot.videos ?? [],
+        songs: snapshot.songs.map((song) => {
+          const chartCode = chartCodes.get(song.id);
+          return chartCode
+            ? { ...song, code: chartCode, playable: true }
+            : song;
+        }),
+      };
+    }
+
+    if (
+      typeof rawType !== 'string'
+      || !SEARCH_RESULT_TYPES.has(rawType as SearchResultType)
+    ) {
+      return reply.code(400).send({
+        error: {
+          code: 'INVALID_SEARCH_TYPE',
+          message: 'Loại kết quả phải là songs, artists, collections hoặc videos.',
+          requestId: request.id,
+        },
+      });
+    }
+    const type = rawType as SearchResultType;
+    const page = boundedSearchInteger(request.query.page, 1, SEARCH_PAGE_MAX);
+    if (page === undefined) {
+      return reply.code(400).send({
+        error: {
+          code: 'INVALID_SEARCH_PAGE',
+          message: 'Trang tìm kiếm phải là số nguyên từ 1 đến 100.',
+          requestId: request.id,
+        },
+      });
+    }
+    const limit = boundedSearchInteger(
+      request.query.limit,
+      SEARCH_PAGE_DEFAULT_LIMIT,
+      SEARCH_PAGE_LIMIT_MAX,
+    );
+    if (limit === undefined) {
+      return reply.code(400).send({
+        error: {
+          code: 'INVALID_SEARCH_LIMIT',
+          message: 'Số kết quả mỗi trang phải là số nguyên từ 1 đến 50.',
+          requestId: request.id,
+        },
+      });
+    }
+
+    const fetchSearchPage = upstream.fetchSearchPage;
+    if (upstream.supportsPaginatedSearch !== true || !fetchSearchPage) {
+      reply.header('cache-control', 'private, no-store, max-age=0');
+      return reply.code(501).send({
+        error: {
+          code: 'SEARCH_PAGINATION_UNAVAILABLE',
+          message: 'Tìm kiếm phân trang chưa khả dụng trên máy chủ này.',
+          requestId: request.id,
+        },
+      });
+    }
+
+    const chartSnapshot = type === 'songs'
+      ? loadChartSnapshot().catch(() => undefined)
+      : Promise.resolve(undefined);
+    const cacheKey = JSON.stringify([
+      query.toLocaleLowerCase('vi'),
+      type,
+      page,
+      limit,
+    ]);
+    const cached = searchPageCache.get(cacheKey);
+    let searchPage: SearchPageDto;
     if (cached && cached.expiresAt > Date.now()) {
-      snapshot = cached.snapshot;
+      searchPage = cached.page;
     } else {
-      let pending = pendingSearch.get(cacheKey);
+      if (cached) searchPageCache.delete(cacheKey);
+      let pending = pendingSearchPages.get(cacheKey);
       if (!pending) {
-        pending = withTimeout((signal) => upstream.fetchSearch(query, signal))
+        pending = withTimeout((signal) =>
+          fetchSearchPage.call(upstream, query, type, page, limit, signal))
           .then((result) => {
-            searchCache.set(cacheKey, {
-              snapshot: result,
+            if (
+              result.query !== query
+              || result.type !== type
+              || result.page !== page
+              || result.limit !== limit
+            ) {
+              throw new UpstreamError('Paginated search identity is invalid');
+            }
+            searchPageCache.set(cacheKey, {
+              page: result,
               expiresAt: Date.now() + config.searchCacheTtlMs,
             });
-            while (searchCache.size > 100) {
-              const oldestKey = searchCache.keys().next().value;
+            while (searchPageCache.size > SEARCH_CACHE_MAX_ENTRIES) {
+              const oldestKey = searchPageCache.keys().next().value;
               if (oldestKey === undefined) break;
-              searchCache.delete(oldestKey);
+              searchPageCache.delete(oldestKey);
             }
             return result;
           })
-          .finally(() => pendingSearch.delete(cacheKey));
-        pendingSearch.set(cacheKey, pending);
+          .finally(() => pendingSearchPages.delete(cacheKey));
+        pendingSearchPages.set(cacheKey, pending);
       }
-      snapshot = await pending;
+      searchPage = await pending;
     }
 
+    if (searchPage.type !== 'songs') {
+      return { ...searchPage, query, type, page, limit };
+    }
     const chartCodes = new Map(
       ((await chartSnapshot)?.songs ?? []).map((song) => [song.id, song.code]),
     );
     return {
-      ...snapshot,
+      ...searchPage,
       query,
-      videos: snapshot.videos ?? [],
-      songs: snapshot.songs.map((song) => {
+      type,
+      page,
+      limit,
+      items: searchPage.items.map((song) => {
         const chartCode = chartCodes.get(song.id);
         return chartCode
           ? { ...song, code: chartCode, playable: true }

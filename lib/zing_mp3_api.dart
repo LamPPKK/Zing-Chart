@@ -92,6 +92,13 @@ class ZingMP3API {
   static Future<CatalogSearchResult> searchCatalog(String query) =>
       _client.searchCatalog(query);
 
+  static Future<CatalogSearchPage> searchCatalogPage(
+    String query,
+    CatalogSearchSection section, {
+    int page = 1,
+    int limit = 18,
+  }) => _client.searchCatalogPage(query, section, page: page, limit: limit);
+
   static Future<SearchSuggestionSnapshot> getSearchSuggestions(String query) =>
       _client.getSearchSuggestions(query);
 

@@ -164,16 +164,23 @@ clients never call Zing upstream directly.
   list below. Artists/OA use a responsive 2/3/5-column circular-avatar grid matching Zing's
   search surface, with hover, focus, TV-remote activation, and an official
   follower count only when the API supplies a real value. The Songs tab uses
-  Zing-style compact rows with 40 px artwork, artist, a middle album column,
-  two-digit duration at the right edge, and desktop actions revealed only on
-  hover or focus. The Playlists/Albums tab uses lightly rounded square artwork,
+  Zing-style compact rows with 40 px artwork, artist, and two-digit duration.
+  Wide desktop uses a two-column grid with Like/More always available; the
+  one-column layout retains album metadata only when its content width allows
+  it. The Playlists/Albums tab uses lightly rounded square artwork,
   a single-line title, up to two artist lines, and an adaptive 2/3/4/5-column
   grid. Its Zing-style Play layer appears only on hover/focus while the full
   card remains openable by touch, click, Enter, or TV remote. The MV tab uses
   16:9 thumbnails, two-digit duration labels, validated official artist
   avatars, and single-line metadata; its Play layer also appears only on
   hover/focus before opening the trusted Zing/QR handoff.
-  each See all action opens the complete section. The player also supports
+  The four typed tabs use the official paginated contract with up to 18 items
+  per page. Phone, tablet, and desktop auto-load near the end; the accessible
+  **XEM THÊM (Load more)** action remains the fallback and the primary TV
+  control. Existing items survive failures and are deduplicated by public ID.
+  Without proxy signing credentials, the client keeps the aggregate All
+  preview and hides pagination instead of inferring more results.
+  Each See all action opens the complete section. The player also supports
   play/pause/stop, seek, previous/next, shuffle,
   repeat, volume/mute, queue management, and sleep timer.
   The “Playing from” header preserves the real queue source—chart, search,
@@ -278,6 +285,9 @@ clients never call Zing upstream directly.
 
 - In the app, press the chain-link icon in search to paste a URL, or paste it
   directly and press Enter/Search.
+- Official `/tim-kiem/tat-ca`, `/tim-kiem/bai-hat`, `/tim-kiem/playlist`,
+  `/tim-kiem/artist`, and `/tim-kiem/video` URLs with exactly one `q` parameter
+  open the matching query/tab without restarting the player.
 - MV links shaped as `https://zingmp3.vn/video-clip/.../<id>.html` always wait
   for **OPEN ZING MP3**; TVs expose QR/copy only to prevent launcher loops.
 - Cross-platform scheme:
@@ -369,6 +379,9 @@ historical binaries and contain no real user data.
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-all-desktop.png" alt="All results with three equal-height Zing-style Highlight cards"><br><sub><b>All · Highlights</b> · one artist, two songs, a real follower count, and responsive 1/2/3-column layout</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-songs-desktop.png" alt="Zing-style Songs results with an official 18-item page in a two-column desktop grid"><br><sub><b>Songs · official pagination</b> · 18 items per page and a two-column desktop layout; near-end auto-load on phone/tablet/desktop with XEM THÊM retained for fallback and TV remote</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-mv-desktop.png" alt="Zing-style official MV results on desktop"><br><sub><b>Official MV search</b> · 16:9 artwork, duration, artist avatar, and hover/focus overlay; opens through a trusted Zing link or TV QR handoff</sub></td>
@@ -530,6 +543,8 @@ curl http://localhost:8080/v1/releases
 curl http://localhost:8080/v1/artists/Son-Tung-M-TP
 curl --get http://localhost:8080/v1/search/suggestions --data-urlencode 'q=Sơn Tùng M-TP'
 curl --get http://localhost:8080/v1/search --data-urlencode 'q=Sơn Tùng M-TP'
+curl --get http://localhost:8080/v1/search --data-urlencode 'q=Sơn Tùng M-TP' \
+  --data 'type=songs&page=1&limit=18'
 curl http://localhost:8080/v1/collections/6DIZIU79
 curl http://localhost:8080/v1/songs/ZW79ZBE8/detail
 curl http://localhost:8080/v1/songs/Z9WE0E96/lyrics
@@ -557,6 +572,12 @@ playlists/albums, and public MV metadata. Playback fails closed unless a song ha
 validated official `zingmp3.vn/video-clip/` page, with a QR/copy fallback on TV
 and unsupported platforms. Without credentials, the legacy search keeps the
 same response shape but does not infer catalog playability or return MVs.
+Adding `type=songs|artists|collections|videos&page=1&limit=18` requests an
+official typed page. The proxy caches/single-flights the exact query/type/page/
+limit tuple, overlays chart source codes only on song pages, and returns
+`SEARCH_PAGINATION_UNAVAILABLE` when no signing adapter exists. The client then
+retains the aggregate seed and never sends listening history, favorites, or
+analytics with search.
 Collection detail is normalized by the proxy from public metadata and track
 lists. Current-chart songs reuse their working legacy code; current-API
 credentials remain server-side and are never embedded into Flutter.

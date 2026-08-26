@@ -7141,38 +7141,23 @@ void main() {
               tester.getTopLeft(officialRow).dx,
           closeTo(10, 0.5),
         );
-        expect(tester.widget<AnimatedOpacity>(officialActions).opacity, 0);
+        expect(tester.widget<AnimatedOpacity>(officialActions).opacity, 1);
         expect(
           find.byKey(const ValueKey('song-album-link-responsive-search-song')),
-          findsOneWidget,
+          findsNothing,
         );
         expect(
           find.descendant(of: officialRow, matching: find.text('04:00')),
           findsOneWidget,
         );
-        final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-        addTearDown(mouse.removePointer);
-        await mouse.addPointer(location: Offset.zero);
-        await mouse.moveTo(tester.getCenter(officialRow));
-        await tester.pump(const Duration(milliseconds: 200));
-        expect(tester.widget<AnimatedOpacity>(officialActions).opacity, 1);
-
-        final albumLink = find.byKey(
-          const ValueKey('song-album-link-responsive-search-song'),
-        );
-        expect(albumLink, findsOneWidget);
-        expect(find.textContaining('4:00'), findsWidgets);
-        await tester.ensureVisible(albumLink);
+        final pageScroll = find
+            .descendant(
+              of: find.byType(CustomScrollView).first,
+              matching: find.byType(Scrollable),
+            )
+            .first;
+        tester.state<ScrollableState>(pageScroll).position.jumpTo(0);
         await tester.pumpAndSettle();
-        await tester.tap(albumLink);
-        await tester.pumpAndSettle();
-        expect(
-          find.byKey(const ValueKey('collection-detail-hero')),
-          findsOneWidget,
-        );
-        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-        await tester.pumpAndSettle();
-        expect(find.text('NỔI BẬT'), findsOneWidget);
       }
       final videoTab = find.byKey(const ValueKey('search-section-videos'));
       await tester.ensureVisible(videoTab);
