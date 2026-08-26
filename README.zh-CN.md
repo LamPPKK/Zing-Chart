@@ -130,6 +130,10 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   流媒体质量是真实的并写入签名中继 URL：自动模式优先 320 kbps、必要时回退
   128，省流量模式固定 128，高品质模式只接受可用的 320 kbps 音源。若 320 音源
   失败，Now Playing 可重试或一键切回 Auto，同时保留当前歌曲与队列。
+- Seamless Next 在“自动”模式下只会在当前歌曲剩余不超过 30 秒时，准备“下一首”中的
+  第一个准确项目。自然播放结束后切换到已准备的 deck；平台不支持或音源准备失败时，
+  应用会安全回退到标准播放流程，不会卡住队列。待命 deck 只临时缓冲流，不保存离线
+  音频文件或持久缓存，也不会把队列或收听历史发送到代理。
 - 桌面端选择歌曲后默认保留目录内容，并显示类似 Zing MP3 的横向播放坞，包含歌曲
   信息、播放控制、进度、音量，以及官方 MV、歌词/卡拉 OK、Now Playing 和“播放队列”
   快捷入口。收藏旁的“更多选项”可打开歌曲信息、Song Radio、加入歌单和分享 Zing
@@ -144,7 +148,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   下一首，统一放在五标签导航上方的 76 px 播放条中。停止操作保留在完整“正在播放”
   页面，避免在高频点击的迷你区域放置破坏性播放操作。
 - 顶部“设置”在手机上打开底部面板，在平板、桌面和电视上打开对话框，统一管理
-  主题、随机、Smart Shuffle、循环、Song Radio 自动播放、睡眠定时、桌面端始终全屏打开“正在播放”、
+  主题、随机、Smart Shuffle、循环、Seamless Next 自动/关闭、Song Radio 自动播放、睡眠定时、桌面端始终全屏打开“正在播放”、
   Auto/128/320 kbps 音质以及 Local-First 计数。所有选项都连接真实控制器并保存在
   本机，不包含占位开关。
 - 手机“正在播放”采用更接近 Zing MP3 的层级：封面与歌曲信息保持核心位置，真实的
@@ -236,6 +240,18 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   Universal Link。
 
 在获得合法音源和存储许可前，不提供离线音频下载。PWA 只缓存应用外壳和非音频数据。
+
+### Seamless Next v1.3a
+
+- 两个 audio deck 由同一接口管理：只有活动 deck 向界面发布事件；待命 deck 静默准备，
+  并且只在当前歌曲自然结束后接管播放。
+- 预加载目标绑定当前歌曲、True Up Next 中第一个准确 occurrence、队列 revision 与流媒体
+  音质。重新排序、手动选歌、切换循环或音质、停止、LIVE，以及“当前歌曲结束后睡眠”
+  都会取消旧预加载。
+- 手动上一首/下一首仍按 analytics 规则记录 early skip；自然切换只记录一次 completion。
+  任何预加载错误都会回退到普通 resolve/play。
+- 选项保存在本机 player snapshot v12。这是带安全回退的 **Seamless Next**；在完整真机
+  capability matrix 通过前，不宣称 gapless 或 crossfade。
 
 ## 按版本展示界面
 
@@ -373,6 +389,14 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-live-radio-desktop.png" alt="包含 V-Pop Bolero 欧美与 K-Pop 的 LIVE 电台"><br><sub><b>LIVE 电台</b> · 直播房间、当前节目、听众人数，以及手机/桌面/电视同源 HLS</sub></td>
+  </tr>
+</table>
+
+### v1.3a — Seamless Next
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3a-seamless-next-settings-desktop.png" alt="#zingChart 桌面设置中的 Seamless Next 自动或关闭选项"><br><sub><b>带回退的 Seamless Next</b> · 最后 30 秒只临时缓冲准确的第一首待播歌曲，不保存离线音频文件或持久缓存</sub></td>
   </tr>
 </table>
 

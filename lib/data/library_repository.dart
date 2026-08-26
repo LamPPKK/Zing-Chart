@@ -33,6 +33,7 @@ class PlayerSnapshot {
     this.carModeEnabled = false,
     this.volume = 1,
     this.streamingQualityPreferenceIndex = 0,
+    this.seamlessPlaybackPreferenceIndex = 0,
     this.radioSongIds = const [],
     this.playlists = const [],
     this.history = const [],
@@ -63,6 +64,7 @@ class PlayerSnapshot {
   final bool carModeEnabled;
   final double volume;
   final int streamingQualityPreferenceIndex;
+  final int seamlessPlaybackPreferenceIndex;
   final List<String> radioSongIds;
   final List<LocalPlaylist> playlists;
   final List<ListeningRecord> history;
@@ -93,6 +95,7 @@ class PlayerSnapshot {
     'carModeEnabled': carModeEnabled,
     'volume': volume,
     'streamingQualityPreferenceIndex': streamingQualityPreferenceIndex,
+    'seamlessPlaybackPreferenceIndex': seamlessPlaybackPreferenceIndex,
     'radioSongIds': radioSongIds,
     'playlists': playlists.map((playlist) => playlist.toJson()).toList(),
     'history': history.map((record) => record.toJson()).toList(),
@@ -159,6 +162,10 @@ class PlayerSnapshot {
       volume: _readVolume(json['volume']),
       streamingQualityPreferenceIndex:
           (json['streamingQualityPreferenceIndex'] as num?)?.toInt() ?? 0,
+      seamlessPlaybackPreferenceIndex:
+          json['seamlessPlaybackPreferenceIndex'] is num
+          ? (json['seamlessPlaybackPreferenceIndex'] as num).toInt()
+          : 0,
       radioSongIds: json['radioSongIds'] is List
           ? (json['radioSongIds'] as List)
                 .whereType<String>()
@@ -321,8 +328,9 @@ class SharedPreferencesLibraryRepository implements LibraryRepository {
   SharedPreferencesLibraryRepository({SharedPreferencesAsync? preferences})
     : _preferences = preferences;
 
-  static const _snapshotKey = 'player_snapshot_v11';
-  static const _legacySnapshotKey = 'player_snapshot_v10';
+  static const _snapshotKey = 'player_snapshot_v12';
+  static const _legacySnapshotKey = 'player_snapshot_v11';
+  static const _legacySnapshotKeyV10 = 'player_snapshot_v10';
   static const _legacySnapshotKeyV9 = 'player_snapshot_v9';
   static const _legacySnapshotKeyV8 = 'player_snapshot_v8';
   static const _legacySnapshotKeyV7 = 'player_snapshot_v7';
@@ -337,22 +345,31 @@ class SharedPreferencesLibraryRepository implements LibraryRepository {
   Future<PlayerSnapshot> load() async {
     try {
       final preferences = _preferences ??= SharedPreferencesAsync();
-      final encoded =
-          await preferences.getString(_snapshotKey) ??
-          await preferences.getString(_legacySnapshotKey) ??
-          await preferences.getString(_legacySnapshotKeyV9) ??
-          await preferences.getString(_legacySnapshotKeyV8) ??
-          await preferences.getString(_legacySnapshotKeyV7) ??
-          await preferences.getString(_legacySnapshotKeyV6) ??
-          await preferences.getString(_legacySnapshotKeyV5) ??
-          await preferences.getString(_legacySnapshotKeyV4) ??
-          await preferences.getString(_legacySnapshotKeyV3) ??
-          await preferences.getString(_legacySnapshotKeyV2);
-      if (encoded == null || encoded.isEmpty) return const PlayerSnapshot();
-      final json = jsonDecode(encoded);
-      return json is Map<String, dynamic>
-          ? PlayerSnapshot.fromJson(json)
-          : const PlayerSnapshot();
+      for (final key in const [
+        _snapshotKey,
+        _legacySnapshotKey,
+        _legacySnapshotKeyV10,
+        _legacySnapshotKeyV9,
+        _legacySnapshotKeyV8,
+        _legacySnapshotKeyV7,
+        _legacySnapshotKeyV6,
+        _legacySnapshotKeyV5,
+        _legacySnapshotKeyV4,
+        _legacySnapshotKeyV3,
+        _legacySnapshotKeyV2,
+      ]) {
+        final encoded = await preferences.getString(key);
+        if (encoded == null || encoded.isEmpty) continue;
+        try {
+          final json = jsonDecode(encoded);
+          if (json is Map<String, dynamic>) {
+            return PlayerSnapshot.fromJson(json);
+          }
+        } catch (_) {
+          // A partial write must not hide the last decodable snapshot.
+        }
+      }
+      return const PlayerSnapshot();
     } catch (_) {
       return const PlayerSnapshot();
     }

@@ -4,6 +4,14 @@ enum AppThemePreference { system, light, dark }
 
 enum StreamingQualityPreference { automatic, standard, high }
 
+/// Controls whether the player prepares the first item in True Up Next before
+/// the current song finishes.
+///
+/// Automatic is deliberately the default: unsupported platform backends fall
+/// back to the normal single-player transition without changing queue state or
+/// surfacing an error to the listener.
+enum SeamlessPlaybackPreference { automatic, off }
+
 extension StreamingQualityPreferenceLabel on StreamingQualityPreference {
   String get apiValue => switch (this) {
     StreamingQualityPreference.automatic => 'auto',

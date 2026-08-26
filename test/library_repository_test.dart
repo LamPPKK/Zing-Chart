@@ -42,7 +42,7 @@ void main() {
     'memory repository persists the complete local player snapshot',
     () async {
       final repository = MemoryLibraryRepository();
-      const snapshot = PlayerSnapshot(
+      final snapshot = PlayerSnapshot(
         likedSongs: [song],
         followedArtists: [artist],
         savedCollections: [collection],
@@ -68,6 +68,7 @@ void main() {
         alwaysOpenFullscreenPlayer: true,
         carModeEnabled: true,
         volume: 0.42,
+        seamlessPlaybackPreferenceIndex: SeamlessPlaybackPreference.off.index,
         radioSongIds: ['one'],
       );
 
@@ -97,6 +98,10 @@ void main() {
       expect(restored.alwaysOpenFullscreenPlayer, isTrue);
       expect(restored.carModeEnabled, isTrue);
       expect(restored.volume, 0.42);
+      expect(
+        restored.seamlessPlaybackPreferenceIndex,
+        SeamlessPlaybackPreference.off.index,
+      );
       expect(restored.radioSongIds, ['one']);
     },
   );
@@ -125,6 +130,7 @@ void main() {
       playbackCursor: 1,
       playbackHistoryCursor: 2,
       streamingQualityPreferenceIndex: StreamingQualityPreference.high.index,
+      seamlessPlaybackPreferenceIndex: SeamlessPlaybackPreference.off.index,
       repeatModeIndex: 2,
       autoplayRecommendationsEnabled: false,
       alwaysOpenFullscreenPlayer: true,
@@ -176,6 +182,10 @@ void main() {
     expect(
       restored.streamingQualityPreferenceIndex,
       StreamingQualityPreference.high.index,
+    );
+    expect(
+      restored.seamlessPlaybackPreferenceIndex,
+      SeamlessPlaybackPreference.off.index,
     );
     expect(restored.repeatModeIndex, 2);
     expect(restored.autoplayRecommendationsEnabled, isFalse);
@@ -339,6 +349,7 @@ void main() {
       'playbackHistoryCursor': -4,
       'repeatModeIndex': null,
       'volume': 4,
+      'seamlessPlaybackPreferenceIndex': 'broken',
     });
 
     expect(restored.likedSongs, isEmpty);
@@ -355,6 +366,10 @@ void main() {
     expect(restored.playbackHistoryCursor, -1);
     expect(restored.repeatModeIndex, 0);
     expect(restored.volume, 1);
+    expect(
+      restored.seamlessPlaybackPreferenceIndex,
+      SeamlessPlaybackPreference.automatic.index,
+    );
   });
 
   test('player snapshot sanitizes and caps playback navigator state', () {
@@ -454,7 +469,7 @@ void main() {
     expect(invalidCursor.playbackHistoryCursor, -1);
   });
 
-  group('shared preferences player snapshot v11 migration', () {
+  group('shared preferences player snapshot v12 migration', () {
     late InMemorySharedPreferencesAsync store;
     late SharedPreferencesAsync preferences;
 
@@ -468,9 +483,9 @@ void main() {
       SharedPreferencesAsyncPlatform.instance = null;
     });
 
-    test('loads a v10 snapshot with Repeat All provenance defaults', () async {
+    test('loads a v11 snapshot with seamless playback default', () async {
       await preferences.setString(
-        'player_snapshot_v10',
+        'player_snapshot_v11',
         jsonEncode({
           'queue': [song.toJson()],
           'currentSong': song.toJson(),
@@ -497,18 +512,49 @@ void main() {
       expect(restored.playbackUpcomingRepeatAllFlags, [false]);
       expect(restored.playbackCursor, 0);
       expect(restored.playbackHistoryCursor, 0);
+      expect(
+        restored.seamlessPlaybackPreferenceIndex,
+        SeamlessPlaybackPreference.automatic.index,
+      );
     });
 
-    test('prefers v11 over v10 and restores provenance idempotently', () async {
+    test('falls back to v11 when the v12 payload is corrupt', () async {
+      await preferences.setString('player_snapshot_v12', '{not-json');
       await preferences.setString(
-        'player_snapshot_v10',
+        'player_snapshot_v11',
+        jsonEncode({
+          'queue': [song.toJson()],
+          'currentSong': song.toJson(),
+          'currentIndex': 0,
+          'playbackOrderIds': ['one'],
+          'playbackCursor': 0,
+        }),
+      );
+      final repository = SharedPreferencesLibraryRepository(
+        preferences: preferences,
+      );
+
+      final restored = await repository.load();
+
+      expect(restored.currentSong?.id, 'one');
+      expect(restored.playbackOrderIds, ['one']);
+      expect(restored.playbackCursor, 0);
+      expect(
+        restored.seamlessPlaybackPreferenceIndex,
+        SeamlessPlaybackPreference.automatic.index,
+      );
+    });
+
+    test('prefers v12 over v11 and restores seamless preference', () async {
+      await preferences.setString(
+        'player_snapshot_v11',
         jsonEncode({
           'playbackOrderIds': ['legacy'],
           'playbackCursor': 0,
         }),
       );
       await preferences.setString(
-        'player_snapshot_v11',
+        'player_snapshot_v12',
         jsonEncode({
           'queue': [song.toJson()],
           'playbackOrderIds': ['one'],
@@ -517,6 +563,8 @@ void main() {
           'playbackUpcomingRepeatAllFlags': [true, false],
           'playbackCursor': 0,
           'playbackHistoryCursor': 0,
+          'seamlessPlaybackPreferenceIndex':
+              SeamlessPlaybackPreference.off.index,
         }),
       );
       final repository = SharedPreferencesLibraryRepository(
@@ -527,6 +575,10 @@ void main() {
       expect(restored.playbackOrderIds, ['one']);
       expect(restored.playbackUpcomingIds, ['one', 'one']);
       expect(restored.playbackUpcomingRepeatAllFlags, [true, false]);
+      expect(
+        restored.seamlessPlaybackPreferenceIndex,
+        SeamlessPlaybackPreference.off.index,
+      );
       final restoredAgain = await repository.load();
       expect(restoredAgain.playbackUpcomingIds, restored.playbackUpcomingIds);
       expect(
@@ -543,10 +595,11 @@ void main() {
           playbackUpcomingRepeatAllFlags: const [true, false],
           playbackCursor: 0,
           playbackHistoryCursor: 0,
+          seamlessPlaybackPreferenceIndex: SeamlessPlaybackPreference.off.index,
         ),
       );
       final saved =
-          jsonDecode((await preferences.getString('player_snapshot_v11'))!)
+          jsonDecode((await preferences.getString('player_snapshot_v12'))!)
               as Map<String, dynamic>;
       expect(saved['playbackOrderIds'], ['one']);
       expect(saved['playbackHistoryIds'], ['one']);
@@ -555,7 +608,11 @@ void main() {
       expect(saved['playbackCursor'], 0);
       expect(saved['playbackHistoryCursor'], 0);
       expect(
-        jsonDecode((await preferences.getString('player_snapshot_v10'))!)
+        saved['seamlessPlaybackPreferenceIndex'],
+        SeamlessPlaybackPreference.off.index,
+      );
+      expect(
+        jsonDecode((await preferences.getString('player_snapshot_v11'))!)
             as Map<String, dynamic>,
         containsPair('playbackOrderIds', ['legacy']),
       );

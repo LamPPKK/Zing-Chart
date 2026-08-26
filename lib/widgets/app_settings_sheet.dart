@@ -205,6 +205,51 @@ class AppSettingsPanel extends StatelessWidget {
                           ),
                         ),
                         const _CardDivider(),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const _InlineLabel(
+                                icon: Icons.multiple_stop_rounded,
+                                title: 'Chuyển bài liền mạch',
+                              ),
+                              const SizedBox(height: 7),
+                              Text(
+                                controller.seamlessPlaybackSupported
+                                    ? 'Tự động chuẩn bị đúng bài đầu của Tiếp theo trong 30 giây cuối; không lưu file hoặc cache offline.'
+                                    : 'Backend phát nhạc này chưa hỗ trợ deck chờ; app tự dùng chuyển bài tiêu chuẩn.',
+                                style: TextStyle(
+                                  color: scheme.onSurfaceVariant,
+                                  fontSize: 12.5,
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              _ChoiceRow<SeamlessPlaybackPreference>(
+                                current: controller.seamlessPlaybackPreference,
+                                options: const [
+                                  _ChoiceOption(
+                                    value: SeamlessPlaybackPreference.automatic,
+                                    label: 'Tự động',
+                                    icon: Icons.bolt_rounded,
+                                    keyName: 'auto',
+                                  ),
+                                  _ChoiceOption(
+                                    value: SeamlessPlaybackPreference.off,
+                                    label: 'Tắt',
+                                    icon: Icons.block_rounded,
+                                    keyName: 'off',
+                                  ),
+                                ],
+                                keyPrefix: 'settings-seamless',
+                                onChanged:
+                                    controller.setSeamlessPlaybackPreference,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const _CardDivider(),
                         _SettingsSwitch(
                           key: const ValueKey('settings-autoplay'),
                           icon: Icons.auto_awesome_rounded,
@@ -595,7 +640,9 @@ class _InlineLabel extends StatelessWidget {
     children: [
       Icon(icon, color: Theme.of(context).colorScheme.primary),
       const SizedBox(width: 14),
-      Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      Expanded(
+        child: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      ),
     ],
   );
 }

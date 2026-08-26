@@ -33,6 +33,7 @@ import 'package:zmp3chart/wrapped_screen.dart';
 import 'package:zmp3chart/zing_chart_screen.dart';
 import 'package:zmp3chart/widgets/discovery_home_hub.dart';
 import 'package:zmp3chart/widgets/artist_profile_catalog.dart';
+import 'package:zmp3chart/widgets/app_settings_sheet.dart';
 import 'package:zmp3chart/widgets/collection_detail_catalog.dart';
 import 'package:zmp3chart/widgets/desktop_playback_queue_panel.dart';
 import 'package:zmp3chart/widgets/lyric_share_composer.dart';
@@ -44,7 +45,7 @@ import 'package:zmp3chart/widgets/streaming_quality_controls.dart';
 /// Deterministic documentation-only entry point used to capture README images.
 ///
 /// It never calls the proxy or a platform media service. Choose a surface with
-/// `?screen=home|queue|smart-shuffle|stream-quality|desktop-lyrics|realtime-chart|discovery|discovery-recommendations|discovery-mv|discovery-recent|discovery-new-releases|discovery-new-release-chart|live-radio|artist|artist-follow|artist-mv|collection-save|collection-information|hubs|top-100|release-catalog|weekly-chart|search|search-all|search-songs|search-results|new-releases|player|car-mode|song-detail|lyrics|lyric-share|radio|library|playlist-workspace|history-workspace|for-you|analytics|wrapped|tv`.
+/// `?screen=home|queue|smart-shuffle|stream-quality|settings|desktop-lyrics|realtime-chart|discovery|discovery-recommendations|discovery-mv|discovery-recent|discovery-new-releases|discovery-new-release-chart|live-radio|artist|artist-follow|artist-mv|collection-save|collection-information|hubs|top-100|release-catalog|weekly-chart|search|search-all|search-songs|search-results|new-releases|player|car-mode|song-detail|lyrics|lyric-share|radio|library|playlist-workspace|history-workspace|for-you|analytics|wrapped|tv`.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final audioPlayer = _DocsAudioPlayer();
@@ -174,6 +175,31 @@ Future<void> main() async {
                 child: StreamingQualityPickerPanel(
                   controller: controller,
                   showCloseButton: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+        'settings' => Scaffold(
+          backgroundColor: ZingColors.ink,
+          body: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF21142F), ZingColors.ink],
+              ),
+            ),
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: SizedBox(
+                  width: 680,
+                  height: 820,
+                  child: AppSettingsPanel(
+                    controller: controller,
+                    showFullscreenPlayerPreference: true,
+                  ),
                 ),
               ),
             ),
@@ -2650,6 +2676,7 @@ class _DocsAudioPlayer implements PlaybackAudioPlayer {
   final _durations = StreamController<Duration>.broadcast(sync: true);
   final _positions = StreamController<Duration>.broadcast(sync: true);
   final _completions = StreamController<void>.broadcast(sync: true);
+  bool _hasPreparedSource = false;
 
   @override
   Stream<PlayerState> get onPlayerStateChanged => _states.stream;
@@ -2662,6 +2689,9 @@ class _DocsAudioPlayer implements PlaybackAudioPlayer {
 
   @override
   Stream<void> get onPlayerComplete => _completions.stream;
+
+  @override
+  bool get supportsSeamlessPreload => true;
 
   @override
   Future<void> setAudioContext(AudioContext context) async {}
@@ -2689,6 +2719,23 @@ class _DocsAudioPlayer implements PlaybackAudioPlayer {
 
   @override
   Future<void> seek(Duration position) async => _positions.add(position);
+
+  @override
+  Future<bool> prepareNext(Source source) async {
+    _hasPreparedSource = true;
+    return true;
+  }
+
+  @override
+  Future<bool> promotePrepared() async {
+    if (!_hasPreparedSource) return false;
+    _hasPreparedSource = false;
+    _states.add(PlayerState.playing);
+    return true;
+  }
+
+  @override
+  Future<void> cancelPrepared() async => _hasPreparedSource = false;
 
   void emitDuration(Duration duration) => _durations.add(duration);
 

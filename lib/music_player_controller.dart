@@ -29,6 +29,8 @@ typedef LiveRadioSourceResolver = Future<String> Function(String id);
 enum PlayerRepeatMode { off, all, one }
 
 class PlaybackService extends ChangeNotifier {
+  static const _seamlessPreloadWindow = Duration(seconds: 30);
+
   PlaybackService({
     AudioPlayer? audioPlayer,
     PlaybackAudioPlayer? playbackAudioPlayer,
@@ -119,6 +121,13 @@ class PlaybackService extends ChangeNotifier {
   double _volumeBeforeMute = 1;
   StreamingQualityPreference _streamingQualityPreference =
       StreamingQualityPreference.automatic;
+  SeamlessPlaybackPreference _seamlessPlaybackPreference =
+      SeamlessPlaybackPreference.automatic;
+  _SeamlessPlaybackTarget? _pendingSeamlessTarget;
+  _PreparedSeamlessSource? _preparedSeamlessSource;
+  _SeamlessPlaybackTarget? _failedSeamlessTarget;
+  int? _seamlessPreloadInFlightGeneration;
+  int _seamlessPreloadGeneration = 0;
   String? _activeHistoryRecordId;
   Duration _lastListeningPosition = Duration.zero;
   Timer? _sleepTimer;
@@ -201,6 +210,12 @@ class PlaybackService extends ChangeNotifier {
   bool get isMuted => _volume <= 0.001;
   StreamingQualityPreference get streamingQualityPreference =>
       _streamingQualityPreference;
+  SeamlessPlaybackPreference get seamlessPlaybackPreference =>
+      _seamlessPlaybackPreference;
+  bool get seamlessPlaybackSupported => _audioPlayer.supportsSeamlessPreload;
+  bool get seamlessPlaybackEnabled =>
+      _seamlessPlaybackPreference == SeamlessPlaybackPreference.automatic &&
+      seamlessPlaybackSupported;
   Duration? get sleepTimerRemaining => _sleepTimerRemaining;
   bool get sleepAfterCurrentSong => _sleepAfterCurrentSong;
   bool get hasSleepTimer =>
@@ -434,6 +449,7 @@ class PlaybackService extends ChangeNotifier {
         _audioPlayer.onDurationChanged.listen((duration) {
           _duration = duration;
           if (!isLiveRadio) _analytics.updateDuration(duration);
+          _maybePrepareSeamlessNext();
           _notifyPlaybackChanged(catalogChanged: false);
         }),
       )
@@ -449,6 +465,7 @@ class PlaybackService extends ChangeNotifier {
             }
           }
           _position = position;
+          _maybePrepareSeamlessNext();
           _notifyPlaybackChanged(catalogChanged: false);
         }),
       )
@@ -475,9 +492,14 @@ class PlaybackService extends ChangeNotifier {
     Song song, {
     List<Song>? queue,
     PlaybackOrigin? origin,
+    bool completedCurrentSong = false,
   }) async {
+    final preparedSource = completedCurrentSong
+        ? _takePreparedSeamlessSource(song)
+        : null;
+    if (preparedSource == null) _invalidateSeamlessPreload();
     _cancelPendingQueueNavigationFor(song.id);
-    _analytics.finishSession(earlySkip: true);
+    _analytics.finishSession(earlySkip: !completedCurrentSong);
     final wasLiveRadio = isLiveRadio;
     _currentLiveRadio = null;
     _cancelRadioLoad(clearError: true);
@@ -519,8 +541,10 @@ class PlaybackService extends ChangeNotifier {
     _activePlaybackRequestId = -1;
     _activePlaybackSongId = null;
     if (song.id != _restoredSongId) _restoredPosition = Duration.zero;
-    await _runPlayerCommand(_audioPlayer.stop);
-    if (requestId != _requestId) return;
+    if (preparedSource == null) {
+      await _runPlayerCommand(_audioPlayer.stop);
+      if (requestId != _requestId) return;
+    }
     _currentSong = song;
     _state = PlayerState.stopped;
     _position = Duration.zero;
@@ -532,15 +556,19 @@ class PlaybackService extends ChangeNotifier {
     unawaited(_saveSnapshot());
 
     try {
-      final source = await _resolveSongSource(song.code);
+      final source =
+          preparedSource?.source ?? await _resolveSongSource(song.code);
       if (requestId != _requestId) return;
       _currentSource = source;
       await _runPlayerCommand(() async {
         if (requestId != _requestId) return;
         _activePlaybackRequestId = requestId;
         _activePlaybackSongId = song.id;
-        await _audioPlayer.play(UrlSource(source));
-        if (_restoredPosition > Duration.zero) {
+        final promoted = preparedSource != null
+            ? await _audioPlayer.promotePrepared()
+            : false;
+        if (!promoted) await _audioPlayer.play(UrlSource(source));
+        if (preparedSource == null && _restoredPosition > Duration.zero) {
           await _audioPlayer.seek(_restoredPosition);
           _position = _restoredPosition;
           _restoredPosition = Duration.zero;
@@ -570,6 +598,7 @@ class PlaybackService extends ChangeNotifier {
   Future<void> playLiveRadio(LiveRadioRoom room) async {
     final resolver = _liveRadioSourceResolver;
     if (resolver == null) return;
+    _invalidateSeamlessPreload();
     _analytics.finishSession(earlySkip: true);
     _cancelRadioLoad(clearError: true);
     _playbackOrigin = PlaybackOrigin(
@@ -652,6 +681,7 @@ class PlaybackService extends ChangeNotifier {
     _errorMessage = null;
     try {
       if (isPlaying) {
+        _invalidateSeamlessPreload();
         await _runPlayerCommand(_audioPlayer.pause);
       } else if (isLiveRadio && _state == PlayerState.completed) {
         await playLiveRadio(_currentLiveRadio!);
@@ -693,6 +723,7 @@ class PlaybackService extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    _invalidateSeamlessPreload();
     _analytics.finishSession(earlySkip: false);
     _cancelRadioLoad();
     _requestId++;
@@ -710,7 +741,7 @@ class PlaybackService extends ChangeNotifier {
 
   Future<void> next() => _runQueueNavigation(_next);
 
-  Future<void> _next() async {
+  Future<void> _next({bool completedCurrentSong = false}) async {
     if (isLiveRadio) return;
     if (_queue.isEmpty || _currentSong == null) return;
     final repeatAll = _repeatMode == PlayerRepeatMode.all;
@@ -725,6 +756,7 @@ class PlaybackService extends ChangeNotifier {
         nextId,
         rollbackState: previousNavigatorState,
         crossedRepeatAllBoundary: crossesRepeatAllBoundary,
+        completedCurrentSong: completedCurrentSong,
       );
       return;
     }
@@ -745,7 +777,11 @@ class PlaybackService extends ChangeNotifier {
               'Song Radio · ${_currentSong!.displayTitle}',
             ),
           );
-          await _playQueueSong(radioNextId, rollbackState: radioNavigatorState);
+          await _playQueueSong(
+            radioNextId,
+            rollbackState: radioNavigatorState,
+            completedCurrentSong: completedCurrentSong,
+          );
           return;
         }
       }
@@ -1362,6 +1398,15 @@ class PlaybackService extends ChangeNotifier {
   void setStreamingQualityPreference(StreamingQualityPreference preference) {
     if (_streamingQualityPreference == preference) return;
     _streamingQualityPreference = preference;
+    _invalidateSeamlessPreload();
+    _notifyPlaybackChanged(catalogChanged: false);
+    unawaited(_saveSnapshot());
+  }
+
+  void setSeamlessPlaybackPreference(SeamlessPlaybackPreference preference) {
+    if (_seamlessPlaybackPreference == preference) return;
+    _seamlessPlaybackPreference = preference;
+    _invalidateSeamlessPreload();
     _notifyPlaybackChanged(catalogChanged: false);
     unawaited(_saveSnapshot());
   }
@@ -1386,6 +1431,145 @@ class PlaybackService extends ChangeNotifier {
     return resolver == null
         ? _sourceResolver(code)
         : resolver(code, _streamingQualityPreference);
+  }
+
+  _SeamlessPlaybackTarget? _seamlessTargetIdentity() {
+    if ((_state != PlayerState.playing && _state != PlayerState.completed) ||
+        !seamlessPlaybackEnabled ||
+        isLiveRadio ||
+        _sleepAfterCurrentSong ||
+        _repeatMode == PlayerRepeatMode.one) {
+      return null;
+    }
+    final current = _currentSong;
+    final next = nextSong;
+    if (current == null || next == null || next.code.trim().isEmpty)
+      return null;
+    _refreshUpNextRevision();
+    return _SeamlessPlaybackTarget(
+      requestId: _requestId,
+      currentSongId: current.id,
+      nextSongId: next.id,
+      nextSongCode: next.code,
+      upNextRevision: _upNextRevision,
+      quality: _streamingQualityPreference,
+    );
+  }
+
+  void _maybePrepareSeamlessNext() {
+    if (_seamlessPreloadInFlightGeneration != null ||
+        _preparedSeamlessSource != null ||
+        !isPlaying ||
+        _isLoading ||
+        _duration <= Duration.zero ||
+        _position < Duration.zero ||
+        _activePlaybackRequestId != _requestId ||
+        _activePlaybackSongId != _currentSong?.id) {
+      return;
+    }
+    final remaining = _duration - _position;
+    if (remaining <= Duration.zero || remaining > _seamlessPreloadWindow) {
+      return;
+    }
+    final target = _seamlessTargetIdentity();
+    if (target == null ||
+        target == _pendingSeamlessTarget ||
+        target == _failedSeamlessTarget) {
+      return;
+    }
+    _pendingSeamlessTarget = target;
+    final generation = ++_seamlessPreloadGeneration;
+    _seamlessPreloadInFlightGeneration = generation;
+    unawaited(_prepareSeamlessNext(target, generation));
+  }
+
+  Future<void> _prepareSeamlessNext(
+    _SeamlessPlaybackTarget target,
+    int generation,
+  ) async {
+    try {
+      await _audioPlayer.cancelPrepared();
+      if (generation != _seamlessPreloadGeneration ||
+          target != _pendingSeamlessTarget) {
+        return;
+      }
+      final source = await _resolveSongSource(target.nextSongCode);
+      if (generation != _seamlessPreloadGeneration ||
+          target != _pendingSeamlessTarget) {
+        return;
+      }
+      final prepared = await _audioPlayer.prepareNext(UrlSource(source));
+      if (generation != _seamlessPreloadGeneration ||
+          target != _pendingSeamlessTarget) {
+        if (prepared) await _audioPlayer.cancelPrepared();
+        return;
+      }
+      if (prepared) {
+        _preparedSeamlessSource = _PreparedSeamlessSource(
+          target: target,
+          source: source,
+        );
+        _failedSeamlessTarget = null;
+      } else {
+        _failedSeamlessTarget = target;
+      }
+    } catch (_) {
+      final isCurrent =
+          generation == _seamlessPreloadGeneration &&
+          target == _pendingSeamlessTarget;
+      if (isCurrent) {
+        _failedSeamlessTarget = target;
+        try {
+          await _audioPlayer.cancelPrepared();
+        } catch (_) {
+          // Preloading is opportunistic; normal playback remains the fallback.
+        }
+      }
+    } finally {
+      if (_seamlessPreloadInFlightGeneration == generation) {
+        if (target == _pendingSeamlessTarget) _pendingSeamlessTarget = null;
+        _seamlessPreloadInFlightGeneration = null;
+      }
+    }
+  }
+
+  _PreparedSeamlessSource? _takePreparedSeamlessSource(Song song) {
+    final prepared = _preparedSeamlessSource;
+    if (prepared == null ||
+        prepared.target.requestId != _requestId ||
+        prepared.target.currentSongId != _currentSong?.id ||
+        prepared.target.nextSongId != song.id ||
+        prepared.target.quality != _streamingQualityPreference) {
+      return null;
+    }
+    _seamlessPreloadGeneration++;
+    _seamlessPreloadInFlightGeneration = null;
+    _pendingSeamlessTarget = null;
+    _preparedSeamlessSource = null;
+    _failedSeamlessTarget = null;
+    return prepared;
+  }
+
+  void _invalidateSeamlessPreload() {
+    final shouldCancelPlayer =
+        _pendingSeamlessTarget != null ||
+        _preparedSeamlessSource != null ||
+        _seamlessPreloadInFlightGeneration != null;
+    _seamlessPreloadGeneration++;
+    _seamlessPreloadInFlightGeneration = null;
+    _pendingSeamlessTarget = null;
+    _preparedSeamlessSource = null;
+    _failedSeamlessTarget = null;
+    if (shouldCancelPlayer) unawaited(_audioPlayer.cancelPrepared());
+  }
+
+  void _reconcileSeamlessPreload() {
+    final tracked =
+        _preparedSeamlessSource?.target ??
+        _pendingSeamlessTarget ??
+        _failedSeamlessTarget;
+    if (tracked == null) return;
+    if (tracked != _seamlessTargetIdentity()) _invalidateSeamlessPreload();
   }
 
   void cycleThemePreference() {
@@ -1534,6 +1718,7 @@ class PlaybackService extends ChangeNotifier {
     _sleepTimer = null;
     _sleepTimerRemaining = null;
     _sleepAfterCurrentSong = true;
+    _invalidateSeamlessPreload();
     notifyListeners();
   }
 
@@ -1553,6 +1738,7 @@ class PlaybackService extends ChangeNotifier {
         : target > _duration
         ? _duration
         : target;
+    _invalidateSeamlessPreload();
     _analytics.beginSeek(safeTarget);
     try {
       await _runPlayerCommand(() => _audioPlayer.seek(safeTarget));
@@ -1696,7 +1882,7 @@ class PlaybackService extends ChangeNotifier {
         await stop();
         return;
       }
-      await playSong(_currentSong!);
+      await playSong(_currentSong!, completedCurrentSong: true);
       return;
     }
     if (_sleepAfterCurrentSong) {
@@ -1704,13 +1890,14 @@ class PlaybackService extends ChangeNotifier {
       await stop();
       return;
     }
-    await next();
+    await _runQueueNavigation(() => _next(completedCurrentSong: true));
   }
 
   Future<void> _playQueueSong(
     String songId, {
     required PlaybackQueueNavigatorState rollbackState,
     bool crossedRepeatAllBoundary = false,
+    bool completedCurrentSong = false,
   }) async {
     final index = _queue.indexWhere((song) => song.id == songId);
     if (index < 0) {
@@ -1728,7 +1915,7 @@ class PlaybackService extends ChangeNotifier {
     _pendingQueueNavigation = transaction;
     _currentIndex = index;
     try {
-      await playSong(_queue[index]);
+      await playSong(_queue[index], completedCurrentSong: completedCurrentSong);
     } finally {
       if (identical(_pendingQueueNavigation, transaction)) {
         _pendingQueueNavigation = null;
@@ -1922,6 +2109,10 @@ class PlaybackService extends ChangeNotifier {
         StreamingQualityPreference.values[snapshot
             .streamingQualityPreferenceIndex
             .clamp(0, StreamingQualityPreference.values.length - 1)];
+    _seamlessPlaybackPreference =
+        SeamlessPlaybackPreference.values[snapshot
+            .seamlessPlaybackPreferenceIndex
+            .clamp(0, SeamlessPlaybackPreference.values.length - 1)];
     _radioSongIds = Set<String>.unmodifiable(
       snapshot.radioSongIds.where(restoredQueueIds.contains),
     );
@@ -1980,6 +2171,7 @@ class PlaybackService extends ChangeNotifier {
       carModeEnabled: carModeEnabled,
       volume: volume,
       streamingQualityPreferenceIndex: streamingQualityPreference.index,
+      seamlessPlaybackPreferenceIndex: seamlessPlaybackPreference.index,
       radioSongIds: persistPlayback
           ? _radioSongIds.toList(growable: false)
           : const [],
@@ -2012,6 +2204,7 @@ class PlaybackService extends ChangeNotifier {
 
   void _notifyPlaybackChanged({bool catalogChanged = true}) {
     _refreshUpNextRevision();
+    _reconcileSeamlessPreload();
     if (catalogChanged) _notifyCatalogChanged();
     notifyListeners();
     _publishCompanionSnapshot();
@@ -2169,6 +2362,7 @@ class PlaybackService extends ChangeNotifier {
   @override
   void dispose() {
     _sleepTimer?.cancel();
+    _seamlessPreloadGeneration++;
     unawaited(_saveSnapshot());
     for (final subscription in _subscriptions) {
       unawaited(subscription.cancel());
@@ -2198,6 +2392,52 @@ class _PendingQueueNavigation {
   final List<String> plannedUpcomingIdsAtStart;
   final List<bool> plannedUpcomingRepeatAllFlagsAtStart;
   final bool crossedRepeatAllBoundary;
+}
+
+class _SeamlessPlaybackTarget {
+  const _SeamlessPlaybackTarget({
+    required this.requestId,
+    required this.currentSongId,
+    required this.nextSongId,
+    required this.nextSongCode,
+    required this.upNextRevision,
+    required this.quality,
+  });
+
+  final int requestId;
+  final String currentSongId;
+  final String nextSongId;
+  final String nextSongCode;
+  final int upNextRevision;
+  final StreamingQualityPreference quality;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _SeamlessPlaybackTarget &&
+          requestId == other.requestId &&
+          currentSongId == other.currentSongId &&
+          nextSongId == other.nextSongId &&
+          nextSongCode == other.nextSongCode &&
+          upNextRevision == other.upNextRevision &&
+          quality == other.quality;
+
+  @override
+  int get hashCode => Object.hash(
+    requestId,
+    currentSongId,
+    nextSongId,
+    nextSongCode,
+    upNextRevision,
+    quality,
+  );
+}
+
+class _PreparedSeamlessSource {
+  const _PreparedSeamlessSource({required this.target, required this.source});
+
+  final _SeamlessPlaybackTarget target;
+  final String source;
 }
 
 class _MutableSongStat {

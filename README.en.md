@@ -195,6 +195,12 @@ clients never call Zing upstream directly.
   128, Data Saver requires 128, and High requires an available 320 kbps source.
   If a 320 source fails, Now Playing offers Retry or one-tap Auto recovery while
   preserving the current track and queue.
+- In Automatic mode, Seamless Next prepares only the exact first **Up Next**
+  item once the current track has at most 30 seconds remaining. Natural
+  completion promotes that prepared deck; unsupported platforms or failed
+  sources fall back to the standard playback path without stalling the queue.
+  The standby deck buffers the stream transiently, but saves no offline audio
+  file or persistent cache and sends no queue or listening history to the proxy.
 - After a song is selected, desktop keeps the catalog visible by default and
   shows a Zing MP3-style horizontal playback dock with metadata, transport,
   progress, volume, and direct official MV, Lyrics/Karaoke, Now Playing, and
@@ -215,7 +221,8 @@ clients never call Zing upstream directly.
   above the five-tab navigation. Stop remains in full Now Playing, avoiding a
   destructive playback action on the frequently tapped mini surface.
 - A header Settings action opens a bottom sheet on phones or a dialog on
-  tablet/desktop/TV. It centralizes theme, shuffle, Smart Shuffle, repeat, Song Radio
+  tablet/desktop/TV. It centralizes theme, shuffle, Smart Shuffle, repeat,
+  Automatic/Off Seamless Next, Song Radio
   autoplay, sleep timer, a desktop preference to always open full-screen Now
   Playing, Auto/128/320 kbps streaming quality, and Local-First counters. Every
   choice is wired to the real controller and persisted on-device; there are no
@@ -342,6 +349,21 @@ clients never call Zing upstream directly.
 Offline audio download is intentionally disabled until a licensed source and
 storage rights are available. The PWA caches only the app shell and non-audio
 data.
+
+### Seamless Next v1.3a
+
+- Two audio decks sit behind one interface: only the active deck publishes UI
+  events, while the standby deck prepares silently and is promoted only after a
+  natural completion.
+- The preload target is bound to the current track, the exact first True Up Next
+  occurrence, queue revision, and streaming quality. Reorder, manual selection,
+  repeat or quality changes, Stop, LIVE, and sleep-after-current invalidate it.
+- Manual Next/Previous remains an analytics early skip; a natural transition
+  records completion exactly once. Any preload error falls back to normal
+  resolve/play.
+- The local preference is stored in player snapshot v12. This is **Seamless
+  Next with a safe fallback**, not a gapless/crossfade claim until the complete
+  real-device capability matrix passes.
 
 ## Screenshots by release
 
@@ -480,6 +502,14 @@ historical binaries and contain no real user data.
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-live-radio-desktop.png" alt="LIVE Radio rooms for V-Pop Bolero US-UK and K-Pop"><br><sub><b>LIVE Radio</b> · live rooms, current programs, listener counts, and same-origin HLS on phone/desktop/TV</sub></td>
+  </tr>
+</table>
+
+### v1.3a — Seamless Next
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3a-seamless-next-settings-desktop.png" alt="#zingChart desktop settings with Automatic or Off Seamless Next"><br><sub><b>Seamless Next with fallback</b> · transiently buffers only the exact first Up Next item in the final 30 seconds, with no offline audio file or persistent cache</sub></td>
   </tr>
 </table>
 

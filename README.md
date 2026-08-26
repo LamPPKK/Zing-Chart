@@ -209,6 +209,12 @@ proxy Node/TypeScript do người triển khai tự host.
   ký trong URL relay, lưu trên thiết bị và không làm lộ CDN hay mở tải offline.
   Nếu nguồn 320 lỗi, Now Playing cho phép thử lại hoặc chuyển sang Auto bằng
   một chạm mà vẫn giữ nguyên bài và hàng đợi.
+- Seamless Next ở chế độ Tự động chỉ chuẩn bị đúng bài đầu tiên trong **Tiếp
+  theo** khi bài hiện tại còn tối đa 30 giây. Khi bài phát hết, player chuyển
+  sang deck đã chuẩn bị; nếu nền tảng hoặc nguồn không hỗ trợ, app tự dùng luồng
+  phát tiêu chuẩn và không làm kẹt hàng đợi. Deck chờ chỉ buffer stream tạm
+  thời; tính năng không lưu file audio/cache offline và không gửi queue hay lịch
+  sử nghe lên proxy.
 - Sau khi chọn bài, desktop mặc định giữ nguyên catalog và hiện playback dock
   ngang kiểu Zing MP3 với thông tin bài hát, transport, progress, volume và
   shortcut trực tiếp tới MV chính thức, Lời bài hát/Karaoke, Now Playing và
@@ -229,7 +235,8 @@ proxy Node/TypeScript do người triển khai tự host.
   tab. Stop vẫn nằm trong Now Playing đầy đủ để tránh nút phá hủy phát nhạc ở
   bề mặt mini thường xuyên chạm.
 - Nút Cài đặt trên header mở bottom sheet ở điện thoại hoặc dialog trên
-  tablet/desktop/TV, gom Theme, shuffle, Smart Shuffle, repeat, Song Radio autoplay, sleep
+  tablet/desktop/TV, gom Theme, shuffle, Smart Shuffle, repeat, Seamless Next
+  Tự động/Tắt, Song Radio autoplay, sleep
   timer, tùy chọn desktop luôn mở Now Playing toàn màn hình, chất lượng
   Auto/128/320 kbps và thống kê Local-First. Mọi lựa chọn đều nối vào controller thật
   và được lưu trên thiết bị; không có tùy chọn giả.
@@ -359,6 +366,21 @@ Wrapped dùng Canvas nội bộ để dựng gradient, typography và họa ti�
 hoặc chia sẻ PNG, desktop chọn nơi lưu; TV hiển thị QR chứa summary đã phiên bản
 hóa và không cần server. HarmonyOS tự rơi về summary/QR có thể sao chép nếu
 adapter share/save không khả dụng.
+
+### Seamless Next v1.3a
+
+- Hai audio deck được quản lý sau cùng một interface: chỉ deck đang hoạt động
+  phát event tới UI; deck chờ được chuẩn bị im lặng và chỉ được đưa lên khi bài
+  hiện tại hoàn tất tự nhiên.
+- Đích preload gắn với bài hiện tại, đúng occurrence đầu tiên của True Up Next,
+  revision hàng đợi và chất lượng stream. Reorder, chọn bài thủ công, đổi repeat,
+  đổi chất lượng, Stop, LIVE hoặc sleep-after-current đều hủy preload cũ.
+- Manual Next/Previous vẫn được ghi là early skip đúng quy tắc analytics; chuyển
+  tự nhiên chỉ ghi completion một lần. Lỗi preload luôn rơi về resolve/play bình
+  thường.
+- Preference được lưu local trong player snapshot v12. Đây là **Seamless Next
+  có fallback**, chưa tuyên bố gapless/crossfade cho tới khi vượt capability test
+  trên toàn bộ thiết bị thật.
 
 ## Ảnh giao diện theo phiên bản
 
@@ -497,6 +519,14 @@ không chứa dữ liệu người dùng thật.
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-live-radio-desktop.png" alt="Phòng Nhạc LIVE với các kênh V-Pop Bolero US-UK và K-Pop"><br><sub><b>Phòng Nhạc LIVE</b> · kênh trực tiếp, chương trình hiện tại, lượng người nghe và HLS same-origin trên mobile/desktop/TV</sub></td>
+  </tr>
+</table>
+
+### v1.3a — Seamless Next
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3a-seamless-next-settings-desktop.png" alt="Cài đặt desktop của #zingChart với lựa chọn Seamless Next Tự động hoặc Tắt"><br><sub><b>Seamless Next có fallback</b> · chỉ buffer tạm đúng bài đầu tiên của Tiếp theo trong 30 giây cuối, không lưu file audio/cache offline</sub></td>
   </tr>
 </table>
 

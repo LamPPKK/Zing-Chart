@@ -87,7 +87,7 @@ void main() {
   );
 
   group('PlaybackService controls', () {
-    test('uses and restores the selected streaming quality', () async {
+    test('restores streaming quality and Seamless Next preferences', () async {
       final repository = MemoryLibraryRepository();
       final requested = <StreamingQualityPreference>[];
       final controller = PlaybackService(
@@ -103,6 +103,7 @@ void main() {
       await controller.initialize();
 
       controller.setStreamingQualityPreference(StreamingQualityPreference.high);
+      controller.setSeamlessPlaybackPreference(SeamlessPlaybackPreference.off);
       await controller.playSong(songs.first);
       await _flushAsync();
 
@@ -110,6 +111,10 @@ void main() {
       expect(
         repository.snapshot.streamingQualityPreferenceIndex,
         StreamingQualityPreference.high.index,
+      );
+      expect(
+        repository.snapshot.seamlessPlaybackPreferenceIndex,
+        SeamlessPlaybackPreference.off.index,
       );
       controller.dispose();
 
@@ -123,6 +128,10 @@ void main() {
       expect(
         restored.streamingQualityPreference,
         StreamingQualityPreference.high,
+      );
+      expect(
+        restored.seamlessPlaybackPreference,
+        SeamlessPlaybackPreference.off,
       );
       restored.dispose();
     });
@@ -2082,6 +2091,308 @@ void main() {
       restored.dispose();
     });
 
+    test(
+      'preloads only the first True Up Next item and promotes it on completion',
+      () async {
+        final audio = FakePlaybackAudioPlayer(supportsSeamlessPreload: true);
+        final resolvedCodes = <String>[];
+        final controller = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (code) async {
+            resolvedCodes.add(code);
+            return 'https://audio.example.com/$code.mp3';
+          },
+          libraryRepository: MemoryLibraryRepository(),
+          analyticsRepository: MemoryListeningAnalyticsRepository(),
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: songs);
+        audio.emitDuration(const Duration(minutes: 3));
+        audio.emitPosition(const Duration(minutes: 2, seconds: 29));
+        await _flushAsync();
+
+        expect(audio.preparedSources, isEmpty);
+        expect(resolvedCodes, ['code-one']);
+
+        audio.emitPosition(const Duration(minutes: 2, seconds: 30));
+        await _flushAsync();
+        await _flushAsync();
+
+        expect(audio.preparedSources, hasLength(1));
+        expect(
+          (audio.preparedSources.single as UrlSource).url,
+          'https://audio.example.com/code-two.mp3',
+        );
+        expect(resolvedCodes, ['code-one', 'code-two']);
+
+        audio.complete();
+        await _flushAsync();
+        await _flushAsync();
+
+        expect(controller.currentSong, songs[1]);
+        expect(audio.promotePreparedCalls, 1);
+        expect(audio.playedSources, hasLength(2));
+        expect(resolvedCodes, ['code-one', 'code-two']);
+        expect(
+          controller.analyticsSummary(AnalyticsPeriod.sevenDays).completions,
+          1,
+        );
+        controller.dispose();
+      },
+    );
+
+    test(
+      'reorders invalidate a prepared deck before the new target preloads',
+      () async {
+        final audio = FakePlaybackAudioPlayer(supportsSeamlessPreload: true);
+        final controller = _controller(audio);
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: songs);
+        audio.emitDuration(const Duration(minutes: 3));
+        audio.emitPosition(const Duration(minutes: 2, seconds: 31));
+        await _flushAsync();
+        await _flushAsync();
+        expect(
+          (audio.preparedSources.single as UrlSource).url,
+          endsWith('/code-two.mp3'),
+        );
+
+        expect(controller.reorderUpNext(0, 1), isTrue);
+        await _flushAsync();
+        expect(audio.preparedSource, isNull);
+        audio.emitPosition(const Duration(minutes: 2, seconds: 32));
+        await _flushAsync();
+        await _flushAsync();
+
+        expect(audio.preparedSources, hasLength(2));
+        expect(
+          (audio.preparedSources.last as UrlSource).url,
+          endsWith('/code-three.mp3'),
+        );
+        controller.dispose();
+      },
+    );
+
+    test(
+      'a hung stale resolver cannot block or cancel a later preload',
+      () async {
+        final audio = FakePlaybackAudioPlayer(supportsSeamlessPreload: true);
+        final staleResolution = Completer<String>();
+        var codeTwoRequests = 0;
+        final controller = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (code) {
+            if (code == songs[1].code && codeTwoRequests++ == 0) {
+              return staleResolution.future;
+            }
+            return Future.value('https://audio.example.com/$code.mp3');
+          },
+          libraryRepository: MemoryLibraryRepository(),
+          analyticsRepository: MemoryListeningAnalyticsRepository(),
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: songs);
+        audio.emitDuration(const Duration(minutes: 3));
+        audio.emitPosition(const Duration(minutes: 2, seconds: 31));
+        await _flushAsync();
+
+        expect(codeTwoRequests, 1);
+        expect(audio.preparedSources, isEmpty);
+
+        await controller.next();
+        expect(controller.currentSong, songs[1]);
+        expect(codeTwoRequests, 2);
+
+        audio.emitDuration(const Duration(minutes: 3));
+        audio.emitPosition(const Duration(minutes: 2, seconds: 31));
+        await _flushAsync();
+        await _flushAsync();
+
+        expect(audio.preparedSources, hasLength(1));
+        expect(
+          (audio.preparedSources.single as UrlSource).url,
+          endsWith('/code-three.mp3'),
+        );
+
+        staleResolution.complete(
+          'https://audio.example.com/stale-code-two.mp3',
+        );
+        await _flushAsync();
+
+        expect(
+          (audio.preparedSource as UrlSource).url,
+          endsWith('/code-three.mp3'),
+        );
+        controller.dispose();
+      },
+    );
+
+    test(
+      'a stale resolver error cannot cancel a later prepared deck',
+      () async {
+        final audio = FakePlaybackAudioPlayer(supportsSeamlessPreload: true);
+        final staleResolution = Completer<String>();
+        var codeTwoRequests = 0;
+        final controller = PlaybackService(
+          playbackAudioPlayer: audio,
+          sourceResolver: (code) {
+            if (code == songs[1].code && codeTwoRequests++ == 0) {
+              return staleResolution.future;
+            }
+            return Future.value('https://audio.example.com/$code.mp3');
+          },
+          libraryRepository: MemoryLibraryRepository(),
+          analyticsRepository: MemoryListeningAnalyticsRepository(),
+          systemMediaBridge: NoopSystemMediaBridge(),
+        );
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: songs);
+        audio.emitDuration(const Duration(minutes: 3));
+        audio.emitPosition(const Duration(minutes: 2, seconds: 31));
+        await _flushAsync();
+
+        await controller.next();
+        audio.emitDuration(const Duration(minutes: 3));
+        audio.emitPosition(const Duration(minutes: 2, seconds: 31));
+        await _flushAsync();
+        await _flushAsync();
+        expect(
+          (audio.preparedSource as UrlSource).url,
+          endsWith('/code-three.mp3'),
+        );
+
+        staleResolution.completeError(StateError('stale preload failed'));
+        await _flushAsync();
+
+        expect(
+          (audio.preparedSource as UrlSource).url,
+          endsWith('/code-three.mp3'),
+        );
+        audio.complete();
+        await _flushAsync();
+        await _flushAsync();
+        expect(controller.currentSong, songs[2]);
+        expect(audio.promotePreparedCalls, 1);
+        controller.dispose();
+      },
+    );
+
+    test('a final position tick cannot retain preload after pause', () async {
+      final audio = BlockingPausePlaybackAudioPlayer(
+        supportsSeamlessPreload: true,
+      );
+      final controller = _controller(audio);
+      await controller.initialize();
+      await controller.playSong(songs.first, queue: songs);
+      audio.emitDuration(const Duration(minutes: 3));
+      audio.emitPosition(const Duration(minutes: 2, seconds: 29));
+      await _flushAsync();
+      expect(audio.preparedSources, isEmpty);
+
+      audio.blockNextPause();
+      final pause = controller.togglePlayPause();
+      await audio.pauseStarted;
+      audio.emitPosition(const Duration(minutes: 2, seconds: 31));
+      await _flushAsync();
+      await _flushAsync();
+      expect(audio.preparedSource, isNotNull);
+
+      audio.releasePause();
+      await pause;
+      await _flushAsync();
+
+      expect(controller.state, PlayerState.paused);
+      expect(audio.preparedSource, isNull);
+      controller.dispose();
+    });
+
+    test(
+      'failed preload falls back to the normal source without stalling',
+      () async {
+        final audio = FakePlaybackAudioPlayer(
+          supportsSeamlessPreload: true,
+          prepareNextSucceeds: false,
+        );
+        final controller = _controller(audio);
+        await controller.initialize();
+        await controller.playSong(songs.first, queue: songs);
+        audio.emitDuration(const Duration(minutes: 3));
+        audio.emitPosition(const Duration(minutes: 2, seconds: 31));
+        await _flushAsync();
+        await _flushAsync();
+        expect(audio.preparedSources, hasLength(1));
+
+        audio.complete();
+        await _flushAsync();
+        await _flushAsync();
+
+        expect(controller.currentSong, songs[1]);
+        expect(controller.isPlaying, isTrue);
+        expect(audio.promotePreparedCalls, 0);
+        expect(audio.playedSources, hasLength(2));
+        controller.dispose();
+      },
+    );
+
+    test('manual Next cancels preload and remains an early skip', () async {
+      final audio = FakePlaybackAudioPlayer(supportsSeamlessPreload: true);
+      final controller = PlaybackService(
+        playbackAudioPlayer: audio,
+        sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+        libraryRepository: MemoryLibraryRepository(),
+        analyticsRepository: MemoryListeningAnalyticsRepository(),
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await controller.initialize();
+      await controller.playSong(songs.first, queue: songs);
+      audio.emitDuration(const Duration(seconds: 20));
+      audio.emitPosition(const Duration(seconds: 1));
+      await _flushAsync();
+      await _flushAsync();
+      expect(audio.preparedSource, isNotNull);
+
+      await controller.next();
+
+      expect(controller.currentSong, songs[1]);
+      expect(audio.promotePreparedCalls, 0);
+      expect(audio.preparedSource, isNull);
+      expect(
+        controller.analyticsSummary(AnalyticsPeriod.sevenDays).earlySkips,
+        1,
+      );
+      controller.dispose();
+    });
+
+    test('off, Repeat One and sleep-after-current never preload', () async {
+      final audio = FakePlaybackAudioPlayer(supportsSeamlessPreload: true);
+      final controller = _controller(audio);
+      await controller.initialize();
+      await controller.playSong(songs.first, queue: songs);
+      audio.emitDuration(const Duration(minutes: 3));
+
+      controller.setSeamlessPlaybackPreference(SeamlessPlaybackPreference.off);
+      audio.emitPosition(const Duration(minutes: 2, seconds: 31));
+      await _flushAsync();
+      expect(audio.preparedSources, isEmpty);
+
+      controller.setSeamlessPlaybackPreference(
+        SeamlessPlaybackPreference.automatic,
+      );
+      controller.setRepeatMode(PlayerRepeatMode.one);
+      audio.emitPosition(const Duration(minutes: 2, seconds: 32));
+      await _flushAsync();
+      expect(audio.preparedSources, isEmpty);
+
+      controller.setRepeatMode(PlayerRepeatMode.off);
+      controller.setSleepAfterCurrentSong();
+      audio.emitPosition(const Duration(minutes: 2, seconds: 33));
+      await _flushAsync();
+      expect(audio.preparedSources, isEmpty);
+      controller.dispose();
+    });
+
     test('stops after the current song when sleep timer requests it', () async {
       final audio = FakePlaybackAudioPlayer();
       final controller = _controller(audio);
@@ -2146,6 +2457,38 @@ class BlockingStopPlaybackAudioPlayer extends FakePlaybackAudioPlayer {
       _stopStarted = null;
     }
     await super.stop();
+  }
+}
+
+class BlockingPausePlaybackAudioPlayer extends FakePlaybackAudioPlayer {
+  BlockingPausePlaybackAudioPlayer({super.supportsSeamlessPreload});
+
+  Completer<void>? _pauseGate;
+  Completer<void>? _pauseStarted;
+
+  void blockNextPause() {
+    _pauseGate = Completer<void>();
+    _pauseStarted = Completer<void>();
+  }
+
+  Future<void> get pauseStarted => _pauseStarted!.future;
+
+  void releasePause() {
+    final gate = _pauseGate;
+    if (gate != null && !gate.isCompleted) gate.complete();
+  }
+
+  @override
+  Future<void> pause() async {
+    final gate = _pauseGate;
+    if (gate != null && !gate.isCompleted) {
+      final started = _pauseStarted;
+      if (started != null && !started.isCompleted) started.complete();
+      await gate.future;
+      _pauseGate = null;
+      _pauseStarted = null;
+    }
+    await super.pause();
   }
 }
 

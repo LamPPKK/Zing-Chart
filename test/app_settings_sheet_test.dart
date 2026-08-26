@@ -71,6 +71,15 @@ void main() {
         );
       }
       await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('settings-seamless-auto')),
+        240,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(
+        find.byKey(const ValueKey('settings-seamless-off')),
+        findsOneWidget,
+      );
+      await tester.scrollUntilVisible(
         find.byKey(const ValueKey('quality-option-auto')),
         320,
         scrollable: find.byType(Scrollable).last,
@@ -94,6 +103,42 @@ void main() {
       controller.dispose();
       await tester.pumpWidget(const SizedBox.shrink());
     }
+  });
+
+  testWidgets('settings can disable Seamless Next locally', (tester) async {
+    tester.view.physicalSize = const Size(360, 844);
+    tester.view.devicePixelRatio = 1;
+    final controller = await _controller();
+    addTearDown(() {
+      controller.dispose();
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildZingDarkTheme(tvMode: false),
+        home: Scaffold(body: AppSettingsPanel(controller: controller)),
+      ),
+    );
+    await tester.pump();
+
+    final off = find.byKey(const ValueKey('settings-seamless-off'));
+    await tester.scrollUntilVisible(
+      off,
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.ensureVisible(off);
+    await tester.pumpAndSettle();
+    await tester.tap(off);
+    await tester.pump();
+
+    expect(
+      controller.seamlessPlaybackPreference,
+      SeamlessPlaybackPreference.off,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('streaming quality selector supports TV focus and Enter', (
