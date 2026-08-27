@@ -3,6 +3,7 @@ import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
 import type {
   ArtistDetailDto,
+  ArtistSongPageDto,
   ChartSnapshotDto,
   CollectionDetailDto,
   DiscoveryCategoriesDto,
@@ -411,6 +412,16 @@ const artistDetail: ArtistDetailDto = {
     collections: [collectionDetail],
   }],
   relatedArtists: searchSnapshot.artists,
+  catalogPlaybackEnabled: true,
+};
+
+const artistSongPage: ArtistSongPageDto = {
+  artistId: 'ARTIST1',
+  page: 2,
+  limit: 50,
+  total: 137,
+  hasMore: true,
+  items: searchSnapshot.songs,
   catalogPlaybackEnabled: true,
 };
 
@@ -867,6 +878,158 @@ describe('proxy contract', () => {
     expect(invalid.statusCode).toBe(400);
     expect(invalid.json().error.code).toBe('INVALID_ARTIST_ALIAS');
     expect(fetchArtistDetail).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns and single-flight caches bounded artist song pages', async () => {
+    const fetchArtistSongs = vi.fn((artistId: string, page: number, limit: number) =>
+      Promise.resolve({
+        ...artistSongPage,
+        artistId,
+        page,
+        limit,
+      }));
+    const app = await setup({
+      supportsPaginatedArtistSongs: true,
+      fetchChart: vi.fn(),
+      fetchArtistSongs,
+      fetchSearch: vi.fn(),
+      fetchCollection: vi.fn(),
+      fetchSource: vi.fn(),
+    });
+
+    const [first, second] = await Promise.all([
+      app.inject({
+        method: 'GET',
+        url: '/v1/artists/ARTIST1/songs?page=2',
+      }),
+      app.inject({
+        method: 'GET',
+        url: '/v1/artists/ARTIST1/songs?page=2',
+      }),
+    ]);
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toEqual(artistSongPage);
+    expect(second.json()).toEqual(artistSongPage);
+    expect(fetchArtistSongs).toHaveBeenCalledTimes(1);
+    expect(fetchArtistSongs).toHaveBeenCalledWith(
+      'ARTIST1',
+      2,
+      50,
+      expect.any(AbortSignal),
+    );
+
+    const distinct = await app.inject({
+      method: 'GET',
+      url: '/v1/artists/ARTIST1/songs?page=3&limit=25',
+    });
+    expect(distinct.statusCode).toBe(200);
+    expect(distinct.json()).toMatchObject({
+      artistId: 'ARTIST1',
+      page: 3,
+      limit: 25,
+    });
+    expect(fetchArtistSongs).toHaveBeenCalledTimes(2);
+  });
+
+  it('validates artist song pagination and fails closed when unavailable', async () => {
+    const fetchArtistSongs = vi.fn().mockResolvedValue(artistSongPage);
+    const enabled = await setup({
+      supportsPaginatedArtistSongs: true,
+      fetchChart: vi.fn(),
+      fetchArtistSongs,
+      fetchSearch: vi.fn(),
+      fetchCollection: vi.fn(),
+      fetchSource: vi.fn(),
+    });
+    const invalidCases = [
+      ['/v1/artists/bad%20id/songs', 'INVALID_ARTIST_ID'],
+      ['/v1/artists/ARTIST1/songs?page=0', 'INVALID_ARTIST_SONG_PAGE'],
+      ['/v1/artists/ARTIST1/songs?page=101', 'INVALID_ARTIST_SONG_PAGE'],
+      ['/v1/artists/ARTIST1/songs?page=1.5', 'INVALID_ARTIST_SONG_PAGE'],
+      ['/v1/artists/ARTIST1/songs?page=1e2', 'INVALID_ARTIST_SONG_PAGE'],
+      ['/v1/artists/ARTIST1/songs?limit=0', 'INVALID_ARTIST_SONG_LIMIT'],
+      ['/v1/artists/ARTIST1/songs?limit=51', 'INVALID_ARTIST_SONG_LIMIT'],
+    ] as const;
+    for (const [url, code] of invalidCases) {
+      const response = await enabled.inject({ method: 'GET', url });
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error.code).toBe(code);
+    }
+    expect(fetchArtistSongs).not.toHaveBeenCalled();
+
+    const unavailable = await setup({
+      fetchChart: vi.fn(),
+      fetchArtistSongs,
+      fetchSearch: vi.fn(),
+      fetchCollection: vi.fn(),
+      fetchSource: vi.fn(),
+    });
+    const response = await unavailable.inject({
+      method: 'GET',
+      url: '/v1/artists/ARTIST1/songs',
+    });
+    expect(response.statusCode).toBe(501);
+    expect(response.json().error.code).toBe(
+      'ARTIST_SONG_PAGINATION_UNAVAILABLE',
+    );
+    expect(response.headers['cache-control']).toContain('no-store');
+    expect(fetchArtistSongs).not.toHaveBeenCalled();
+  });
+
+  it('rejects and does not cache an artist song page with mismatched identity', async () => {
+    const fetchArtistSongs = vi.fn().mockResolvedValue({
+      ...artistSongPage,
+      artistId: 'OTHER_ARTIST',
+    });
+    const app = await setup({
+      supportsPaginatedArtistSongs: true,
+      fetchChart: vi.fn(),
+      fetchArtistSongs,
+      fetchSearch: vi.fn(),
+      fetchCollection: vi.fn(),
+      fetchSource: vi.fn(),
+    });
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/v1/artists/ARTIST1/songs?page=2',
+      });
+      expect(response.statusCode).toBe(502);
+      expect(response.json().error.code).toBe('UPSTREAM_ERROR');
+    }
+    expect(fetchArtistSongs).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects and does not cache hasMore beyond the artist page cap', async () => {
+    const fetchArtistSongs = vi.fn(
+      (artistId: string, page: number, limit: number) =>
+        Promise.resolve({
+          ...artistSongPage,
+          artistId,
+          page,
+          limit,
+          hasMore: true,
+        }),
+    );
+    const app = await setup({
+      supportsPaginatedArtistSongs: true,
+      fetchChart: vi.fn(),
+      fetchArtistSongs,
+      fetchSearch: vi.fn(),
+      fetchCollection: vi.fn(),
+      fetchSource: vi.fn(),
+    });
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/v1/artists/ARTIST1/songs?page=100',
+      });
+      expect(response.statusCode).toBe(502);
+      expect(response.json().error.code).toBe('UPSTREAM_ERROR');
+    }
+    expect(fetchArtistSongs).toHaveBeenCalledTimes(2);
   });
 
   it('returns normalized catalog search and reuses a playable chart code', async () => {

@@ -29,7 +29,8 @@ after changing the file.
 - `GET /v1/hubs/:id` → normalized hub metadata and playlist rails
 - `GET /v1/top-100` → `{ "updatedAt", "sections" }`
 - `GET /v1/releases` → `{ "updatedAt", "songs" (with structured artists/albums), "albums", "catalogPlaybackEnabled" }`
-- `GET /v1/artists/:alias` → official artist/OA metadata (including a validated `externalUrl`), six `featuredSongs`, up to 50 `songs` with structured artists/albums, up to 50 public MVs, releases, related artists, and biography
+- `GET /v1/artists/:alias` → official artist/OA metadata (including a validated `externalUrl`), six `featuredSongs`, the first 50 `songs` with optional `songPage` metadata and structured artists/albums, up to 50 public MVs, releases, related artists, and biography
+- `GET /v1/artists/:id/songs[?page=1&limit=50]` → `{ "artistId", "page", "limit", "total", "hasMore", "items", "catalogPlaybackEnabled" }`; `page` is limited to 1–100 and `limit` to 1–50
 - `GET /v1/search/suggestions?q=<query>` → `{ "query", "keywords", "songs" }`
 - `GET /v1/search?q=<query>` → `{ "query", "songs" (with `hasLyrics` and structured artists/albums when authorized), "artists", "collections", "videos" (with validated structured artists when supplied), "catalogPlaybackEnabled" }`
 - `GET /v1/search?q=<query>&type=songs|artists|collections|videos[&page=1&limit=18]` → `{ "query", "type", "page", "limit", "total", "hasMore", "items", "catalogPlaybackEnabled" }`; `page` is limited to 1–100 and `limit` to 1–50
@@ -189,10 +190,20 @@ bounded featured-song section instead of failing the whole page. Artist links
 are normalized to HTTPS `/nghe-si/` pages
 on the configured Zing origin; arbitrary upstream hosts are never forwarded.
 MV handoffs are restricted to official HTTPS `/video-clip/` pages. Private,
-pre-release, and explicitly locked entries are discarded, song
-playback is enabled only for `streamingStatus === 1`, malformed child cards are
+pre-release, and malformed entries are discarded; explicitly locked songs are
+retained as metadata but never become playable. Song playback is enabled only
+for `streamingStatus === 1`, malformed child cards are
 dropped without invalidating the whole page, and each alias is single-flight
 cached for `SEARCH_CACHE_TTL_MS`.
+
+The additive artist-song route continues the same signed catalog beyond the
+profile's first 50 songs. Pages are single-flight cached by exact artist ID,
+page, and limit; their upstream JSON is capped at 2 MB. `total` is nullable,
+`hasMore` is calculated from raw upstream pagination before malformed records
+are removed, and duplicate IDs are removed within each page. Clients must
+deduplicate while accumulating multiple pages because the upstream catalog may
+change between requests. Missing credentials/capability return a non-cacheable
+`501` instead of falling back to untrusted data.
 
 Catalog search signs Zing's current `/api/v2/search/multi` endpoint when
 credentials are configured, preserves validated structured artist/album

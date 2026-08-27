@@ -4,6 +4,7 @@ import type { AppConfig } from './config.js';
 import {
   type ArtistCollectionSectionDto,
   type ArtistDetailDto,
+  type ArtistSongPageDto,
   type ChartPointDto,
   type ChartSnapshotDto,
   type CollectionDetailDto,
@@ -200,24 +201,29 @@ function artistSongs(
   limit = 50,
 ) {
   const songs = new Map<string, SearchSongDto>();
+  const restrictedIds = new Set<string>();
   const rawItems = Array.isArray(value) ? value : [];
   for (const rawItem of rawItems) {
     const item = asObject(rawItem);
-    if (!item || item.isPrivate === true || item.preRelease === true) continue;
+    if (!item) continue;
     const id = text(item.encodeId);
-    const title = text(item.title);
-    if (
-      !/^[A-Za-z0-9_-]{1,128}$/.test(id)
-      || !title
-      || title.length > 300
-      || songs.has(id)
-    ) {
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) continue;
+    if (item.isPrivate === true || item.preRelease === true) {
+      restrictedIds.add(id);
+      songs.delete(id);
       continue;
     }
+    if (restrictedIds.has(id)) continue;
+    const title = text(item.title);
+    if (!title || title.length > 300) {
+      continue;
+    }
+    const existing = songs.get(id);
+    if (!existing && songs.size >= limit) continue;
     const link = text(item.link);
     try {
       const album = structuredSongAlbum(item.album, currentApiBaseUrl);
-      songs.set(id, {
+      const candidate: SearchSongDto = {
         id,
         code: id,
         title,
@@ -233,17 +239,24 @@ function artistSongs(
           ? normalizeUrl(link, currentApiBaseUrl)
           : `${currentApiBaseUrl}/link/song/${encodeURIComponent(id)}`,
         playable: String(item.streamingStatus ?? '').trim() === '1',
-      });
+      };
+      if (!existing) {
+        songs.set(id, candidate);
+      } else if (!candidate.playable && existing.playable) {
+        songs.set(id, { ...existing, playable: false });
+      }
     } catch {
       // One malformed song must not invalidate the complete artist catalog.
     }
-    if (songs.size >= limit) break;
   }
   return [...songs.values()];
 }
 
 const MAX_COLLECTION_PAGE_BYTES = 2_000_000;
 const MAX_SEARCH_PAGE_BYTES = 2_000_000;
+const MAX_ARTIST_SONG_PAGE_BYTES = 2_000_000;
+const ARTIST_SONG_PAGE_MAX = 100;
+const ARTIST_SONG_PAGE_LIMIT_MAX = 50;
 const MAX_COLLECTION_REDIRECTS = 3;
 const COLLECTION_PLAYABILITY_CONCURRENCY = 4;
 const MAX_LYRIC_LINES = 500;
@@ -846,6 +859,10 @@ export class ZingUpstream implements MusicUpstream {
   }
 
   get supportsPaginatedSearch() {
+    return this.hasCurrentApiCredentials;
+  }
+
+  get supportsPaginatedArtistSongs() {
     return this.hasCurrentApiCredentials;
   }
 
@@ -2074,14 +2091,18 @@ export class ZingUpstream implements MusicUpstream {
       }
     }
     const songs = [...featuredSongs];
+    let songPage: ArtistSongPageDto | undefined;
     try {
-      const completeSongs = await this.fetchArtistSongList(
+      const completePage = await this.fetchArtistSongPage(
         artist.id,
+        1,
+        ARTIST_SONG_PAGE_LIMIT_MAX,
         songSectionId,
         signal,
       );
-      if (completeSongs.length > 0) {
-        songs.splice(0, songs.length, ...completeSongs);
+      if (completePage.items.length > 0) {
+        songs.splice(0, songs.length, ...completePage.items);
+        songPage = completePage;
       }
     } catch (error) {
       if (isAbortError(error)) throw error;
@@ -2109,6 +2130,14 @@ export class ZingUpstream implements MusicUpstream {
       awardCount: awards,
       featuredSongs,
       songs,
+      ...(songPage ? {
+        songPage: {
+          page: songPage.page,
+          limit: songPage.limit,
+          total: songPage.total,
+          hasMore: songPage.hasMore,
+        },
+      } : {}),
       videos,
       collectionSections,
       relatedArtists,
@@ -2116,26 +2145,71 @@ export class ZingUpstream implements MusicUpstream {
     };
   }
 
-  private async fetchArtistSongList(
+  async fetchArtistSongs(
     artistId: string,
+    page: number,
+    limit: number,
+    signal?: AbortSignal,
+  ): Promise<ArtistSongPageDto> {
+    return this.fetchArtistSongPage(artistId, page, limit, '', signal);
+  }
+
+  private async fetchArtistSongPage(
+    artistId: string,
+    page: number,
+    limit: number,
     sectionId: string,
     signal?: AbortSignal,
-  ) {
+  ): Promise<ArtistSongPageDto> {
+    if (!this.hasCurrentApiCredentials) {
+      throw new UpstreamError('Artist song pagination adapter is not configured');
+    }
+    if (
+      !CATALOG_ID_PATTERN.test(artistId)
+      || !Number.isSafeInteger(page)
+      || page < 1
+      || page > ARTIST_SONG_PAGE_MAX
+      || !Number.isSafeInteger(limit)
+      || limit < 1
+      || limit > ARTIST_SONG_PAGE_LIMIT_MAX
+    ) {
+      throw new UpstreamError('Artist song pagination request is invalid');
+    }
     const params: Record<string, string> = {
       id: artistId,
       type: 'artist',
-      page: '1',
-      count: '50',
+      page: String(page),
+      count: String(limit),
     };
-    if (sectionId) params.sectionId = sectionId;
+    if (CATALOG_ID_PATTERN.test(sectionId)) params.sectionId = sectionId;
     const endpoint = this.signedCurrentApiUrl('/api/v2/song/get/list', params);
     const response = await this.request(endpoint, signal);
-    const payload = await readJson(response);
+    const payload = await readJson(response, MAX_ARTIST_SONG_PAGE_BYTES);
     const data = asObject(payload.data);
     if (!data || !Array.isArray(data.items)) {
       throw new UpstreamError('Artist song catalog is missing');
     }
-    return artistSongs(data.items, this.config.currentApiBaseUrl, 50);
+    const rawTotal = data.total;
+    const parsedTotal = Number(rawTotal);
+    const total = rawTotal === undefined || rawTotal === null || rawTotal === ''
+      ? null
+      : Number.isFinite(parsedTotal)
+        ? Math.min(
+          Number.MAX_SAFE_INTEGER,
+          Math.max(0, Math.floor(parsedTotal)),
+        )
+        : null;
+    return {
+      artistId,
+      page,
+      limit,
+      total,
+      hasMore: page < ARTIST_SONG_PAGE_MAX && (total === null
+        ? data.items.length >= limit
+        : page * limit < total),
+      items: artistSongs(data.items, this.config.currentApiBaseUrl, limit),
+      catalogPlaybackEnabled: true,
+    };
   }
 
   async fetchCollection(id: string, signal?: AbortSignal): Promise<CollectionDetailDto> {

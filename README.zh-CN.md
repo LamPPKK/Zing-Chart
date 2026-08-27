@@ -268,6 +268,20 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 - Back/Forward 与 Web 链接通过本地安全的 `?view=for-you&mix=...` 恢复所选 Mix。
   打开和浏览 Mix 不调用外部推荐 API，也不会上传收藏、Mood 或 analytics。
 
+### Artist Catalog Pagination v1.3c
+
+- 艺人/OA 主页仍会用前 50 首歌曲与精简分页元数据快速打开；随后
+  `/{alias}/bai-hat` 可通过
+  `GET /v1/artists/{id}/songs?page={page}&limit={limit}` 浏览完整的获授权曲库。
+- 手机、平板与桌面接近列表末尾时自动加载，同时保留易访问的 **查看更多** 按钮作为
+  回退。电视只在遥控器触发该按钮时加载，并在加载或重试后恢复 footer 焦点。
+- 分页错误只显示在 footer：已加载歌曲继续保留，并可重试。客户端按 ID 去重，切换
+  艺人或路由后丢弃过期响应，分页也不会增加 Browser History 记录。
+- 播放权限会同时检查主页、分页与单曲三层 gate，默认拒绝。受限歌曲仍显示元数据，
+  但不能播放、加入队列或用于 Radio。
+- 请求只包含 artist ID、page 与 limit。收藏、Mood、本地收听历史和 analytics 始终
+  完全保留在设备上，不会上传。
+
 ## 按版本展示界面
 
 以下图片由当前 UI 使用稳定、完全本地的演示数据渲染，再按功能里程碑分组。
@@ -363,7 +377,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-release-catalog-desktop.png" alt="带每首歌曲歌手专辑及时长和地区筛选的最新发行页面"><br><sub><b>最新发行</b> · 每首歌曲显示可导航的歌手/专辑及时长，并提供专辑标签、市场筛选、发行时间与默认拒绝播放策略</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Zing OA 风格艺人主页，紫色 Hero 下方并排显示最新发行与热门歌曲"><br><sub><b>艺人/OA</b> · 全宽 Hero 与双栏最新发行/热门歌曲；“全部”可在应用内打开最多 50 首歌曲、Single & EP 或 MV</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Zing OA 风格艺人主页，紫色 Hero 下方并排显示最新发行与热门歌曲"><br><sub><b>艺人/OA</b> · 全宽 Hero 与双栏最新发行/热门歌曲；“全部”先打开 50 首歌曲，再分页浏览完整曲库、Single & EP 或 MV</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="显示本地已关注状态的艺人主页"><br><sub><b>关注艺人</b> · 无需账号，使用 backup v3 恢复，并可从音乐库重新打开</sub></td>
@@ -423,6 +437,14 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   </tr>
 </table>
 
+### v1.3c — Artist Catalog Pagination
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3c-artist-pagination-desktop.png" alt="桌面端艺人歌曲目录显示 50/73 的分页进度"><br><sub><b>Artist Catalog Pagination</b> · 以前 50 首歌曲即时打开，触控设备/桌面接近末尾时自动加载，并为回退与电视遥控保留“查看更多”</sub></td>
+  </tr>
+</table>
+
 用于重建图片库的稳定 fixture 位于
 [`tool/docs_screenshot_app.dart`](tool/docs_screenshot_app.dart)。该入口不会
 请求代理、真实音频或操作系统媒体服务。
@@ -460,6 +482,7 @@ Flutter UI + PlaybackService
                                       ├── 授权同步歌词     → Zing 上游
                                       ├── 授权 Song Radio  → Zing 上游
                                       ├── 授权 LIVE 电台   → Zing 上游
+                                      ├── GET /v1/artists/{id}/songs → 授权艺人歌曲分页
                                       ├── 加密 HLS 中继    → Zing CDN
                                       └── 签名音频中继     → Zing 上游
 ```
@@ -518,6 +541,7 @@ curl http://localhost:8080/v1/hubs/IWZ9Z09B
 curl http://localhost:8080/v1/top-100
 curl http://localhost:8080/v1/releases
 curl http://localhost:8080/v1/artists/Son-Tung-M-TP
+curl 'http://localhost:8080/v1/artists/IWZ9Z017/songs?page=2&limit=50'
 curl --get http://localhost:8080/v1/search --data-urlencode 'q=Sơn Tùng M-TP'
 curl --get http://localhost:8080/v1/search --data-urlencode 'q=Sơn Tùng M-TP' \
   --data 'type=songs&page=1&limit=18'
@@ -585,13 +609,17 @@ single-flight 缓存，且不会接收客户端收听历史或个人数据。发
 展示最多 12 首歌曲；“国际”会合并越南以外的地区，播放队列始终排除锁定歌曲。
 
 `GET /v1/artists/{alias}` 返回权威的艺人/OA 主页，包括官方元数据、关注人数、
-6 首热门歌曲、最多 50 首来自签名艺人曲库的歌曲、用于“全部”页面的最多 50 个
+6 首热门歌曲、前 50 首歌曲与精简分页元数据、用于“全部”页面的最多 50 个
 公开 MV、单曲、专辑、精选集、相关艺人与纯文本简介。应用会把官方
 `/{alias}/bai-hat`、`/{alias}/single` 和 `/{alias}/video` 链接路由到内部
 分区，总览中的每组均提供“全部”操作。若完整曲库请求失败，代理会保留热门歌曲
-分区作为回退。代理会限制每组数量、
-丢弃异常子项，仅在 `streamingStatus = 1` 时允许播放，并按 alias 进行
-single-flight 缓存，签名凭据不会暴露给客户端。
+分区作为回退。`GET /v1/artists/{id}/songs?page={page}&limit={limit}` 会按
+artist ID 继续读取完整获授权歌曲目录，返回 `total` 与 `hasMore`，并按 ID、页码和
+limit 缓存及 single-flight 合并。分页失败时，前 50 首或此前已加载歌曲仍可使用并
+可重试；客户端会按 ID 去重并丢弃过期响应。代理限制每次响应大小、丢弃异常子项，
+且仅在主页、分页和单曲三层 gate 均允许时启用播放。受限元数据仍可见，但播放、
+加入队列与 Radio 均默认拒绝。两个接口都不接收收藏、Mood、收听历史或 analytics，
+签名凭据也不会暴露给客户端。
 
 ## 测试
 
@@ -785,7 +813,8 @@ MethodChannel，并生成 `dist/harmonyos/zingchart-harmonyos-<version>.hap`。
 - 收藏、已关注歌手、已保存的 Zing 专辑/歌单、个人歌单、队列、收听分析、Mood 和播放会话保留在设备本地。系统可能按
   Android Auto Backup/iOS 设备备份策略进行备份。
 - JSON v3 备份上限 5 MB，不含音频或签名流 URL，并兼容 v1/v2。
-- 代理提供 `/health`、`/v1/chart`、`/v1/artists/{alias}`、`/v1/search`、`/v1/collections/{id}`、
+- 代理提供 `/health`、`/v1/chart`、`/v1/artists/{alias}`、
+  `/v1/artists/{id}/songs`、`/v1/search`、`/v1/collections/{id}`、
   `/v1/songs/{code}/lyrics`、`/v1/songs/{code}/source` 和签名
   `/v1/streams/{token}` 中继，带 CORS
   allowlist、限流、超时与安全错误响应。

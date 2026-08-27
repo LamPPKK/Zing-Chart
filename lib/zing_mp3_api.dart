@@ -72,6 +72,12 @@ class ZingMP3API {
   static Future<CatalogArtistDetail> getArtistDetail(String alias) =>
       _client.getArtistDetail(alias);
 
+  static Future<CatalogArtistSongPage> getArtistSongs(
+    String artistId, {
+    int page = 1,
+    int limit = 50,
+  }) => _client.getArtistSongs(artistId, page: page, limit: limit);
+
   static Future<String> getSongUrlByCode(String code) =>
       _client.getSongSource(code);
 

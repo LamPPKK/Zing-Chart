@@ -399,6 +399,22 @@ adapter share/save không khả dụng.
   `?view=for-you&mix=...`. Việc mở/duyệt mix không gọi API recommendation và
   không gửi favorites, mood hoặc analytics lên mạng.
 
+### Artist Catalog Pagination v1.3c
+
+- Hồ sơ Nghệ sĩ/OA vẫn mở nhanh với 50 bài đầu tiên cùng metadata phân trang
+  gọn; trang `/{alias}/bai-hat` sau đó có thể duyệt toàn bộ catalog được phép
+  qua `GET /v1/artists/{id}/songs?page={page}&limit={limit}`.
+- Điện thoại, tablet và desktop tự tải khi gần cuối danh sách nhưng luôn giữ nút
+  **XEM THÊM** dễ truy cập làm fallback. TV chỉ tải khi người dùng bấm nút này
+  bằng remote và khôi phục focus sau mỗi lần tải hoặc thử lại.
+- Lỗi trang chỉ hiện tại footer: các bài đã tải vẫn được giữ và có thể thử lại.
+  Client khử trùng lặp theo ID, bỏ response trễ sau khi đổi nghệ sĩ/route và
+  không tạo thêm Browser History khi tải trang.
+- Quyền phát được kiểm tra fail-closed đồng thời ở mức hồ sơ, trang và từng bài.
+  Bài bị khóa vẫn hiện metadata nhưng không có Play, Queue hoặc Radio.
+- Request chỉ chứa artist ID, page và limit. Favorites, mood, lịch sử nghe và
+  analytics tiếp tục nằm hoàn toàn trên thiết bị, không được gửi lên proxy.
+
 ## Ảnh giao diện theo phiên bản
 
 Các ảnh dưới đây được render từ UI hiện tại bằng dữ liệu demo hoàn toàn cục bộ,
@@ -495,7 +511,7 @@ không chứa dữ liệu người dùng thật.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-release-catalog-desktop.png" alt="Mới Phát Hành với nghệ sĩ album thời lượng và bộ lọc khu vực"><br><sub><b>Mới Phát Hành</b> · từng bài hiện nghệ sĩ/album điều hướng nội bộ và thời lượng; kèm tab Album, lọc thị trường, thời điểm ra mắt và playback fail-closed</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Hồ sơ nghệ sĩ kiểu Zing OA với hero tím và workspace Mới Phát Hành cạnh Bài Hát Nổi Bật"><br><sub><b>Nghệ sĩ/OA</b> · hero full-width cùng Mới Phát Hành/Bài Hát Nổi Bật hai cột; TẤT CẢ mở tối đa 50 bài, Single & EP hoặc MV ngay trong app</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Hồ sơ nghệ sĩ kiểu Zing OA với hero tím và workspace Mới Phát Hành cạnh Bài Hát Nổi Bật"><br><sub><b>Nghệ sĩ/OA</b> · hero full-width cùng Mới Phát Hành/Bài Hát Nổi Bật hai cột; TẤT CẢ mở 50 bài đầu rồi phân trang toàn bộ catalog, Single & EP hoặc MV ngay trong app</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="Hồ sơ nghệ sĩ với trạng thái Đang quan tâm được lưu cục bộ"><br><sub><b>Quan tâm nghệ sĩ</b> · theo dõi OA không cần tài khoản, khôi phục qua backup v3 và mở lại từ Thư viện</sub></td>
@@ -555,6 +571,14 @@ không chứa dữ liệu người dùng thật.
   </tr>
 </table>
 
+### v1.3c — Artist Catalog Pagination
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3c-artist-pagination-desktop.png" alt="Catalog bài hát nghệ sĩ trên desktop hiển thị tiến độ phân trang 50 trên 73 bài"><br><sub><b>Artist Catalog Pagination</b> · mở tức thì với 50 bài đầu, tự tải gần cuối trên thiết bị cảm ứng/desktop, giữ XEM THÊM cho fallback và remote TV</sub></td>
+  </tr>
+</table>
+
 Fixture dùng để tái tạo gallery nằm tại
 [`tool/docs_screenshot_app.dart`](tool/docs_screenshot_app.dart). Entry point này
 không gọi proxy, audio thật hoặc media service của hệ điều hành.
@@ -595,6 +619,7 @@ Flutter clients
     ├── GET /v1/top-100
     ├── GET /v1/releases
     ├── GET /v1/artists/{alias}
+    ├── GET /v1/artists/{id}/songs?page={page}&limit={limit}
     ├── GET /v1/search?q={query}
     ├── GET /v1/collections/{id}
     ├── GET /v1/songs/{code}/lyrics
@@ -686,14 +711,19 @@ snapshot này để dựng cụm 12 bài theo bố cục ba cột của Zing; l�
 gộp các vùng ngoài Việt Nam và queue luôn loại bài bị khóa.
 
 `GET /v1/artists/{alias}` trả hồ sơ Nghệ sĩ/OA chính thức gồm metadata, người
-quan tâm, 6 bài nổi bật và tối đa 50 bài từ catalog nghệ sĩ đã ký, tối đa 50 MV
+quan tâm, 6 bài nổi bật, 50 bài đầu cùng metadata phân trang gọn, tối đa 50 MV
 công khai cho trang “Tất cả”, Single/EP, album, tuyển tập, nghệ sĩ liên quan và
 tiểu sử plain text. App nhận trực tiếp các URL nghệ sĩ chính thức
 `/{alias}/bai-hat`, `/{alias}/single` và `/{alias}/video`; trang tổng quan có
-nút “TẤT CẢ” cho từng nhóm. Nếu catalog đầy đủ lỗi, proxy giữ cụm bài nổi bật
-làm fallback. Proxy giới hạn kích thước từng nhóm, bỏ mục lỗi,
-chỉ bật bài có `streamingStatus = 1` và cache single-flight theo alias; client
-không gọi trực tiếp API Zing hoặc nhận credential ký request.
+nút “TẤT CẢ” cho từng nhóm. `GET /v1/artists/{id}/songs?page={page}&limit={limit}`
+đọc tiếp toàn bộ catalog bài hát được phép theo artist ID, cache/single-flight
+theo ID/trang/limit và trả tổng số cùng cờ `hasMore`. Client giữ 50 bài đầu nếu
+phân trang lỗi, cho thử lại, khử trùng lặp và bỏ response trễ. Nếu catalog đầy
+đủ lỗi, proxy vẫn giữ cụm bài nổi bật làm fallback. Proxy giới hạn kích thước
+từng nhóm, bỏ mục lỗi và chỉ bật bài khi các gate hồ sơ, trang và từng mục đều
+cho phép; bài khóa vẫn thấy metadata nhưng Play, Queue và Radio fail-closed.
+Hai endpoint không nhận favorites, mood, lịch sử hoặc analytics; client không
+gọi trực tiếp API Zing hay nhận credential ký request.
 
 `GET /v1/search/suggestions` trả tối đa bốn từ khóa và sáu bài xem trước từ
 adapter được ký tại proxy, hoặc fallback từ tìm kiếm legacy khi chưa cấu hình
@@ -795,6 +825,7 @@ curl http://localhost:8080/v1/hubs/IWZ9Z09B
 curl http://localhost:8080/v1/top-100
 curl http://localhost:8080/v1/releases
 curl http://localhost:8080/v1/artists/Son-Tung-M-TP
+curl 'http://localhost:8080/v1/artists/IWZ9Z017/songs?page=2&limit=50'
 curl --get http://localhost:8080/v1/search/suggestions --data-urlencode 'q=Sơn Tùng M-TP'
 curl --get http://localhost:8080/v1/search --data-urlencode 'q=Sơn Tùng M-TP'
 curl --get http://localhost:8080/v1/search --data-urlencode 'q=Sơn Tùng M-TP' \

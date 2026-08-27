@@ -385,6 +385,24 @@ data.
   `?view=for-you&mix=...` route. Opening and browsing a mix calls no external
   recommendation API and uploads no favorites, moods, or analytics.
 
+### Artist Catalog Pagination v1.3c
+
+- Artist/OA profiles remain fast with the first 50 songs and compact pagination
+  metadata. The `/{alias}/bai-hat` view can then browse the complete authorized
+  catalog through `GET /v1/artists/{id}/songs?page={page}&limit={limit}`.
+- Phone, tablet, and desktop auto-load near the end while retaining an
+  accessible **XEM THÊM** fallback. TV loads only when the remote activates that
+  button and restores footer focus after loading or retrying.
+- A page failure stays local to the footer: previously loaded songs remain
+  available with Retry. The client deduplicates by ID, drops stale responses
+  after an artist or route change, and does not add Browser History entries for
+  pagination.
+- Playback fails closed across the profile-, page-, and item-level gates.
+  Locked songs keep visible metadata but cannot be played, queued, or used for
+  Radio.
+- Requests contain only artist ID, page, and limit. Favorites, moods, listening
+  history, and analytics remain entirely on-device and are never uploaded.
+
 ## Screenshots by release
 
 These images are rendered from the current UI with deterministic, fully local
@@ -481,7 +499,7 @@ historical binaries and contain no real user data.
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-release-catalog-desktop.png" alt="New Releases with per-track artist album duration and market filters"><br><sub><b>New Releases</b> · each song exposes navigable artist/album and duration metadata, plus the Albums tab, market filters, release time, and fail-closed playback</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Zing OA-style artist profile with a purple hero and Latest Release beside Featured Songs"><br><sub><b>Artist/OA</b> · full-width hero plus two-column Latest Release/Featured Songs; ALL opens up to 50 songs, Single & EP, or MV inside the app</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Zing OA-style artist profile with a purple hero and Latest Release beside Featured Songs"><br><sub><b>Artist/OA</b> · full-width hero plus two-column Latest Release/Featured Songs; ALL opens the first 50 songs and paginates the complete catalog, Single & EP, or MV inside the app</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="Artist profile with an on-device Following state"><br><sub><b>Follow artists</b> · account-free OA following, restored by backup v3 and reopened from Library</sub></td>
@@ -541,6 +559,14 @@ historical binaries and contain no real user data.
   </tr>
 </table>
 
+### v1.3c — Artist Catalog Pagination
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3c-artist-pagination-desktop.png" alt="Desktop artist song catalog showing pagination progress at 50 of 73 tracks"><br><sub><b>Artist Catalog Pagination</b> · opens immediately with the first 50 tracks, auto-loads near the end on touch/desktop, and retains XEM THÊM for fallback and TV remotes</sub></td>
+  </tr>
+</table>
+
 The deterministic gallery fixture lives in
 [`tool/docs_screenshot_app.dart`](tool/docs_screenshot_app.dart). It never calls
 the proxy, real audio, or an operating-system media service.
@@ -580,6 +606,7 @@ Flutter UI + PlaybackService
                                       ├── authorized synced lyrics → Zing upstream
                                       ├── authorized Song Radio   → Zing upstream
                                       ├── authorized LIVE Radio   → Zing upstream
+                                      ├── GET /v1/artists/{id}/songs → authorized artist pages
                                       ├── encrypted HLS relay     → Zing CDN
                                       └── signed stream relay   → Zing upstream
 ```
@@ -644,6 +671,7 @@ curl http://localhost:8080/v1/hubs/IWZ9Z09B
 curl http://localhost:8080/v1/top-100
 curl http://localhost:8080/v1/releases
 curl http://localhost:8080/v1/artists/Son-Tung-M-TP
+curl 'http://localhost:8080/v1/artists/IWZ9Z017/songs?page=2&limit=50'
 curl --get http://localhost:8080/v1/search/suggestions --data-urlencode 'q=Sơn Tùng M-TP'
 curl --get http://localhost:8080/v1/search --data-urlencode 'q=Sơn Tùng M-TP'
 curl --get http://localhost:8080/v1/search --data-urlencode 'q=Sơn Tùng M-TP' \
@@ -732,15 +760,21 @@ Home reuses this snapshot for its 12-song Zing-style shelf; International
 combines non-Vietnam regions and every playback queue excludes locked tracks.
 
 `GET /v1/artists/{alias}` returns an authoritative Artist/OA profile with
-metadata, follower count, six featured songs, up to 50 songs from the signed
-artist catalog, up to 50 public MVs for the All view, singles, albums,
+metadata, follower count, six featured songs, the first 50 songs plus compact
+pagination metadata, up to 50 public MVs for the All view, singles, albums,
 compilations, related artists, and a plain-text biography. The app routes the
 official `/{alias}/bai-hat`, `/{alias}/single`, and `/{alias}/video` URLs to
 their internal sections, with an ALL action on each overview group. If the
 full catalog request fails, the proxy retains the featured-song section as a
-fallback. The proxy caps each group, drops
-malformed children, enables playback only for `streamingStatus = 1`, and
-single-flight caches each alias without exposing signing credentials.
+fallback. `GET /v1/artists/{id}/songs?page={page}&limit={limit}` continues
+through the complete authorized song catalog by artist ID, returns `total` and
+`hasMore`, and caches/single-flights by ID, page, and limit. A failed page keeps
+the first 50 or any previously loaded songs available for Retry; the client
+deduplicates IDs and drops stale responses. The proxy caps each response, drops
+malformed children, and enables playback only when the profile, page, and item
+gates all allow it. Locked metadata remains visible while Play, Queue, and Radio
+fail closed. Neither endpoint receives favorites, moods, listening history, or
+analytics, and signing credentials remain server-side.
 
 ## Verification
 
@@ -947,6 +981,7 @@ not sufficient; the build requires DevEco HarmonyOS API 18 metadata.
 - Backup v3 is capped at 5 MB, contains no audio or signed stream URL, and can
   still import schemas v1 and v2.
 - The proxy exposes `/health`, `/v1/chart`, `/v1/artists/{alias}`,
+  `/v1/artists/{id}/songs`,
   `/v1/search/suggestions`, `/v1/search`,
   `/v1/collections/{id}`, `/v1/songs/{code}/lyrics`,
   `/v1/songs/{code}/source`, and a signed

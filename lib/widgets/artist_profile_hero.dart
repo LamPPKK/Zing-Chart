@@ -35,7 +35,10 @@ class ArtistProfileHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final playableCount = songs.where((song) => song.playable).length;
+    final playbackEnabled = detail?.catalogPlaybackEnabled ?? onPlay != null;
+    final playableCount = playbackEnabled
+        ? songs.where((song) => song.playable).length
+        : 0;
     final effectiveArtist = detail?.artist ?? artist;
     final officialDesktop = !tvMode && MediaQuery.sizeOf(context).width >= 1180;
     return Container(
@@ -104,7 +107,7 @@ class ArtistProfileHero extends StatelessWidget {
               final details = _ArtistDetails(
                 artist: effectiveArtist,
                 detail: detail,
-                songCount: songs.length,
+                songCount: detail?.totalSongCount ?? songs.length,
                 playableCount: playableCount,
                 onPlay: onPlay,
                 onShare: onShare,

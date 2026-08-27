@@ -264,6 +264,19 @@ export interface ArtistCollectionSectionDto {
   collections: SearchCollectionDto[];
 }
 
+export interface ArtistSongPageMetadataDto {
+  page: number;
+  limit: number;
+  total: number | null;
+  hasMore: boolean;
+}
+
+export interface ArtistSongPageDto extends ArtistSongPageMetadataDto {
+  artistId: string;
+  items: SearchSongDto[];
+  catalogPlaybackEnabled: boolean;
+}
+
 export interface ArtistDetailDto {
   artist: SearchArtistDto;
   cover: string;
@@ -275,6 +288,7 @@ export interface ArtistDetailDto {
   awardCount: number;
   featuredSongs?: SearchSongDto[];
   songs: SearchSongDto[];
+  songPage?: ArtistSongPageMetadataDto;
   videos: SearchVideoDto[];
   collectionSections: ArtistCollectionSectionDto[];
   relatedArtists: SearchArtistDto[];
@@ -356,6 +370,7 @@ export interface SearchSuggestionSnapshotDto {
 
 export interface MusicUpstream {
   readonly supportsPaginatedSearch?: boolean;
+  readonly supportsPaginatedArtistSongs?: boolean;
   fetchChart(signal?: AbortSignal): Promise<ChartSnapshotDto>;
   fetchNewReleases?(signal?: AbortSignal): Promise<NewReleaseSnapshotDto>;
   fetchWeeklyChart?(
@@ -382,6 +397,12 @@ export interface MusicUpstream {
     alias: string,
     signal?: AbortSignal,
   ): Promise<ArtistDetailDto>;
+  fetchArtistSongs?(
+    artistId: string,
+    page: number,
+    limit: number,
+    signal?: AbortSignal,
+  ): Promise<ArtistSongPageDto>;
   fetchSearch(query: string, signal?: AbortSignal): Promise<SearchSnapshotDto>;
   fetchSearchPage?(
     query: string,

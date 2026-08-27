@@ -26,6 +26,7 @@ import {
 } from './stream-token.js';
 import type {
   ArtistDetailDto,
+  ArtistSongPageDto,
   ChartSnapshotDto,
   CollectionDetailDto,
   DiscoveryCategoriesDto,
@@ -121,6 +122,11 @@ interface ArtistDetailCacheEntry {
   detail: ArtistDetailDto;
 }
 
+interface ArtistSongPageCacheEntry {
+  expiresAt: number;
+  page: ArtistSongPageDto;
+}
+
 interface WeeklyChartCacheEntry {
   expiresAt: number;
   snapshot: WeeklyChartDto;
@@ -153,6 +159,9 @@ const SEARCH_PAGE_DEFAULT_LIMIT = 18;
 const SEARCH_PAGE_MAX = 100;
 const SEARCH_PAGE_LIMIT_MAX = 50;
 const SEARCH_CACHE_MAX_ENTRIES = 100;
+const ARTIST_SONG_PAGE_DEFAULT_LIMIT = 50;
+const ARTIST_SONG_PAGE_MAX = 100;
+const ARTIST_SONG_PAGE_LIMIT_MAX = 50;
 const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/;
 const SEARCH_RESULT_TYPES = new Set<SearchResultType>([
   'songs',
@@ -260,6 +269,11 @@ export async function buildApp(
   const pendingCollection = new Map<string, Promise<CollectionDetailDto>>();
   const artistDetailCache = new Map<string, ArtistDetailCacheEntry>();
   const pendingArtistDetail = new Map<string, Promise<ArtistDetailDto>>();
+  const artistSongPageCache = new Map<string, ArtistSongPageCacheEntry>();
+  const pendingArtistSongPages = new Map<
+    string,
+    Promise<ArtistSongPageDto>
+  >();
   const weeklyChartCache = new Map<string, WeeklyChartCacheEntry>();
   const pendingWeeklyChart = new Map<string, Promise<WeeklyChartDto>>();
   const lyricsCache = new Map<string, LyricsCacheEntry>();
@@ -800,6 +814,110 @@ export async function buildApp(
   app.get('/v1/top-100', async () => loadTop100());
 
   app.get('/v1/releases', async () => loadReleaseCatalog());
+
+  app.get<{
+    Params: { id: string };
+    Querystring: { page?: unknown; limit?: unknown };
+  }>('/v1/artists/:id/songs', async (request, reply) => {
+    const artistId = request.params.id.trim();
+    if (!CODE_PATTERN.test(artistId)) {
+      return reply.code(400).send({
+        error: {
+          code: 'INVALID_ARTIST_ID',
+          message: 'Mã nghệ sĩ không hợp lệ.',
+          requestId: request.id,
+        },
+      });
+    }
+    const page = boundedSearchInteger(
+      request.query.page,
+      1,
+      ARTIST_SONG_PAGE_MAX,
+    );
+    if (page === undefined) {
+      return reply.code(400).send({
+        error: {
+          code: 'INVALID_ARTIST_SONG_PAGE',
+          message: 'Trang bài hát nghệ sĩ phải là số nguyên từ 1 đến 100.',
+          requestId: request.id,
+        },
+      });
+    }
+    const limit = boundedSearchInteger(
+      request.query.limit,
+      ARTIST_SONG_PAGE_DEFAULT_LIMIT,
+      ARTIST_SONG_PAGE_LIMIT_MAX,
+    );
+    if (limit === undefined) {
+      return reply.code(400).send({
+        error: {
+          code: 'INVALID_ARTIST_SONG_LIMIT',
+          message: 'Số bài hát mỗi trang phải là số nguyên từ 1 đến 50.',
+          requestId: request.id,
+        },
+      });
+    }
+
+    const fetchArtistSongs = upstream.fetchArtistSongs;
+    if (
+      upstream.supportsPaginatedArtistSongs !== true
+      || !fetchArtistSongs
+    ) {
+      reply.header('cache-control', 'private, no-store, max-age=0');
+      return reply.code(501).send({
+        error: {
+          code: 'ARTIST_SONG_PAGINATION_UNAVAILABLE',
+          message: 'Danh sách bài hát nghệ sĩ phân trang chưa khả dụng.',
+          requestId: request.id,
+        },
+      });
+    }
+
+    const cacheKey = JSON.stringify([artistId, page, limit]);
+    const cached = artistSongPageCache.get(cacheKey);
+    let result: ArtistSongPageDto;
+    if (cached && cached.expiresAt > Date.now()) {
+      result = cached.page;
+    } else {
+      if (cached) artistSongPageCache.delete(cacheKey);
+      let pending = pendingArtistSongPages.get(cacheKey);
+      if (!pending) {
+        pending = withTimeout((signal) =>
+          fetchArtistSongs.call(upstream, artistId, page, limit, signal))
+          .then((songPage) => {
+            if (
+              songPage.artistId !== artistId
+              || songPage.page !== page
+              || songPage.limit !== limit
+              || !Array.isArray(songPage.items)
+              || songPage.items.length > limit
+              || typeof songPage.hasMore !== 'boolean'
+              || typeof songPage.catalogPlaybackEnabled !== 'boolean'
+              || (songPage.total !== null
+                && (!Number.isSafeInteger(songPage.total)
+                  || songPage.total < 0))
+              || (page === ARTIST_SONG_PAGE_MAX && songPage.hasMore)
+            ) {
+              throw new UpstreamError('Artist song page identity is invalid');
+            }
+            artistSongPageCache.set(cacheKey, {
+              page: songPage,
+              expiresAt: Date.now() + config.searchCacheTtlMs,
+            });
+            while (artistSongPageCache.size > SEARCH_CACHE_MAX_ENTRIES) {
+              const oldestKey = artistSongPageCache.keys().next().value;
+              if (oldestKey === undefined) break;
+              artistSongPageCache.delete(oldestKey);
+            }
+            return songPage;
+          })
+          .finally(() => pendingArtistSongPages.delete(cacheKey));
+        pendingArtistSongPages.set(cacheKey, pending);
+      }
+      result = await pending;
+    }
+    return result;
+  });
 
   app.get<{ Params: { alias: string } }>(
     '/v1/artists/:alias',

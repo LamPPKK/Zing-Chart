@@ -80,6 +80,12 @@ typedef CatalogCollectionLoader =
     Future<CatalogCollectionDetail> Function(String id);
 typedef CatalogArtistDetailLoader =
     Future<CatalogArtistDetail> Function(String alias);
+typedef CatalogArtistSongPageLoader =
+    Future<CatalogArtistSongPage> Function(
+      String artistId, {
+      required int page,
+      required int limit,
+    });
 typedef CatalogSongDetailLoader = Future<SongDetail> Function(String songId);
 typedef NewReleaseChartLoader = Future<NewReleaseChart> Function();
 typedef DiscoveryHomeLoader = Future<DiscoveryHome> Function();
@@ -221,6 +227,7 @@ class ZingChartScreen extends StatefulWidget {
     this.searchSuggestions = ZingMP3API.getSearchSuggestions,
     this.loadCollection = ZingMP3API.getCollection,
     this.loadArtistDetail = ZingMP3API.getArtistDetail,
+    this.loadArtistSongs = ZingMP3API.getArtistSongs,
     this.loadSongDetail = ZingMP3API.getSongDetail,
     this.lyricsLoader = ZingMP3API.getSongLyrics,
     this.loadNewReleases = ZingMP3API.getNewReleaseChart,
@@ -265,6 +272,7 @@ class ZingChartScreen extends StatefulWidget {
   final SearchSuggestionLoader searchSuggestions;
   final CatalogCollectionLoader loadCollection;
   final CatalogArtistDetailLoader loadArtistDetail;
+  final CatalogArtistSongPageLoader loadArtistSongs;
   final CatalogSongDetailLoader loadSongDetail;
   final SongLyricsLoader lyricsLoader;
   final NewReleaseChartLoader loadNewReleases;
@@ -333,6 +341,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _contentScrollController = ScrollController();
   final FocusNode _searchFocusNode = FocusNode();
+  final FocusNode _artistSongLoadMoreFocusNode = FocusNode(
+    debugLabel: 'artist-song-load-more',
+  );
   final OverlayPortalController _searchOverlayController =
       OverlayPortalController();
   final LayerLink _searchLayerLink = LayerLink();
@@ -389,6 +400,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   OfficialArtistSection _artistSection = OfficialArtistSection.profile;
   String? _artistErrorMessage;
   bool _isArtistLoading = false;
+  bool _isArtistSongPageLoading = false;
+  String? _artistSongPageErrorMessage;
+  bool _artistSongPaginationUnavailable = false;
+  int _artistSongPageRequestId = 0;
   CatalogCollection? _selectedCollection;
   CatalogCollectionDetail? _collectionDetail;
   String? _collectionErrorMessage;
@@ -1141,6 +1156,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     _searchSuggestionDebounce?.cancel();
     _searchRequestId++;
     _searchPageRequestId++;
+    _artistSongPageRequestId++;
     _searchSuggestionRequestId++;
     _searchSuggestionDetailRequestId++;
     _hubRequestId++;
@@ -1164,6 +1180,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     _searchSuggestionDebounce?.cancel();
     _searchRequestId++;
     _searchPageRequestId++;
+    _artistSongPageRequestId++;
     _searchSuggestionRequestId++;
     _searchSuggestionDetailRequestId++;
     _hubRequestId++;
@@ -1207,6 +1224,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _artistSection = target.artistSection;
       _artistErrorMessage = null;
       _isArtistLoading = false;
+      _artistSongPageErrorMessage = null;
+      _artistSongPaginationUnavailable = false;
+      _isArtistSongPageLoading = false;
       _selectedCollection = target.selectedCollection;
       _collectionDetail = target.collectionDetail;
       _collectionErrorMessage = null;
@@ -1259,8 +1279,16 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       unawaited(_openCollection(_selectedCollection!, preserveDetail: true));
       return;
     }
-    if (_selectedArtist != null && _artistDetail == null) {
-      unawaited(_openArtist(_selectedArtist!, preserveResult: true));
+    if (_selectedArtist != null) {
+      if (_artistDetail == null) {
+        unawaited(_openArtist(_selectedArtist!, preserveResult: true));
+      } else if (_artistSection == OfficialArtistSection.songs &&
+          _artistDetail!.songPage == null &&
+          !_artistSongPaginationUnavailable &&
+          !_isArtistSongPageLoading &&
+          _artistSongPageErrorMessage == null) {
+        unawaited(_loadArtistSongPage(loadMore: false));
+      }
       return;
     }
     final searchQuery = _searchController.text.trim();
@@ -1506,6 +1534,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     _searchController.dispose();
     _contentScrollController.dispose();
     _searchFocusNode.dispose();
+    _artistSongLoadMoreFocusNode.dispose();
     super.dispose();
   }
 
@@ -2276,6 +2305,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     final looksLikeUrl = OfficialZingLink.looksLikeAbsoluteUrl(query);
     _searchRequestId++;
     _searchPageRequestId++;
+    _artistSongPageRequestId++;
     _searchSuggestionDetailRequestId++;
     _hubRequestId++;
     _weeklyRequestId++;
@@ -2292,6 +2322,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _artistSection = OfficialArtistSection.profile;
       _artistErrorMessage = null;
       _isArtistLoading = false;
+      _artistSongPageErrorMessage = null;
+      _artistSongPaginationUnavailable = false;
+      _isArtistSongPageLoading = false;
       _selectedCollection = null;
       _collectionDetail = null;
       _collectionErrorMessage = null;
@@ -2362,6 +2395,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       );
       return;
     }
+    _artistSongPageRequestId++;
     if (mounted) {
       setState(() {
         _selectedArtist = null;
@@ -2370,6 +2404,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _artistSection = OfficialArtistSection.profile;
         _artistErrorMessage = null;
         _isArtistLoading = false;
+        _artistSongPageErrorMessage = null;
+        _artistSongPaginationUnavailable = false;
+        _isArtistSongPageLoading = false;
         _selectedCollection = null;
         _collectionDetail = null;
         _collectionErrorMessage = null;
@@ -2427,6 +2464,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   void _prepareOfficialRouteTransition() {
     _searchRequestId++;
     _searchPageRequestId++;
+    _artistSongPageRequestId++;
     _searchSuggestionRequestId++;
     _searchSuggestionDetailRequestId++;
     _hubRequestId++;
@@ -2439,6 +2477,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _artistSection = OfficialArtistSection.profile;
       _artistErrorMessage = null;
       _isArtistLoading = false;
+      _artistSongPageErrorMessage = null;
+      _artistSongPaginationUnavailable = false;
+      _isArtistSongPageLoading = false;
       _selectedCollection = null;
       _collectionDetail = null;
       _collectionErrorMessage = null;
@@ -2649,6 +2690,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     if (!preserveResult) _recordNavigationOrigin();
     _searchDebounce?.cancel();
     final requestId = ++_searchRequestId;
+    _artistSongPageRequestId++;
     final switchingArtist =
         _selectedArtist != null && _selectedArtist!.id != artist.id;
     final targetSection =
@@ -2663,6 +2705,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       }
       _artistErrorMessage = null;
       _isArtistLoading = true;
+      _artistSongPageErrorMessage = null;
+      _artistSongPaginationUnavailable = false;
+      _isArtistSongPageLoading = false;
     });
     if (!preserveResult) _scrollContentToStart();
     try {
@@ -2671,7 +2716,16 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       setState(() {
         _artistDetail = detail;
         _selectedArtist = detail.artist;
+        _artistSongPageErrorMessage = null;
       });
+      if (targetSection == OfficialArtistSection.songs &&
+          detail.songPage == null) {
+        unawaited(_loadArtistSongPage(loadMore: false));
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _handleContentScroll();
+        });
+      }
     } catch (error) {
       if (!mounted || requestId != _searchRequestId) return;
       setState(() => _artistErrorMessage = error.toString());
@@ -2685,8 +2739,108 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   void _showArtistSection(OfficialArtistSection section) {
     if (_selectedArtist == null || _artistSection == section) return;
     _recordNavigationOrigin();
-    setState(() => _artistSection = section);
+    setState(() {
+      _artistSection = section;
+      _artistSongPageErrorMessage = null;
+    });
     _scrollContentToStart();
+    final detail = _artistDetail;
+    if (section == OfficialArtistSection.songs &&
+        detail != null &&
+        detail.songPage == null &&
+        !_artistSongPaginationUnavailable) {
+      unawaited(_loadArtistSongPage(loadMore: false));
+    }
+  }
+
+  Future<void> _loadArtistSongPage({required bool loadMore}) async {
+    final artist = _selectedArtist;
+    final detail = _artistDetail;
+    if (artist == null || detail == null || _isArtistSongPageLoading) return;
+    final currentPage = detail.songPage;
+    if (loadMore && (currentPage == null || !currentPage.hasMore)) return;
+    final requestedPage = loadMore ? currentPage!.page + 1 : 1;
+    final requestedLimit = loadMore ? currentPage!.limit : 50;
+    final requestId = ++_artistSongPageRequestId;
+    final restoreFooterFocus =
+        widget.tvMode && _artistSongLoadMoreFocusNode.hasFocus;
+    setState(() {
+      _isArtistSongPageLoading = true;
+      _artistSongPageErrorMessage = null;
+    });
+    try {
+      final page = await widget.loadArtistSongs(
+        artist.id,
+        page: requestedPage,
+        limit: requestedLimit,
+      );
+      if (!mounted ||
+          requestId != _artistSongPageRequestId ||
+          _selectedArtist?.id != artist.id) {
+        return;
+      }
+      final latestDetail = _artistDetail;
+      if (latestDetail == null || latestDetail.artist.id != artist.id) return;
+      final initialPage =
+          !loadMore && page.items.isEmpty && latestDetail.songs.isNotEmpty
+          ? CatalogArtistSongPage(
+              artistId: page.artistId,
+              page: page.page,
+              limit: page.limit,
+              total: page.total,
+              hasMore: page.hasMore,
+              items: latestDetail.songs,
+              catalogPlaybackEnabled: page.catalogPlaybackEnabled,
+            )
+          : page;
+      final previousItemCount = loadMore
+          ? latestDetail.songPage!.items.length
+          : 0;
+      final mergedPage = loadMore
+          ? latestDetail.songPage!.append(initialPage)
+          : initialPage;
+      final madeProgress = loadMore
+          ? mergedPage.items.length > previousItemCount
+          : page.items.isNotEmpty;
+      setState(() {
+        _artistDetail = latestDetail.withSongPage(mergedPage);
+        _artistSongPageErrorMessage = null;
+      });
+      if (madeProgress) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _handleContentScroll();
+        });
+      }
+    } catch (error) {
+      if (!mounted ||
+          requestId != _artistSongPageRequestId ||
+          _selectedArtist?.id != artist.id) {
+        return;
+      }
+      final capabilityUnavailable =
+          error is MusicRepositoryException &&
+          (error.code == 'ARTIST_SONG_PAGINATION_UNAVAILABLE' ||
+              !loadMore && error.code == 'NOT_FOUND');
+      if (capabilityUnavailable) {
+        setState(() {
+          _artistSongPaginationUnavailable = true;
+          _artistSongPageErrorMessage = null;
+        });
+      } else {
+        setState(() => _artistSongPageErrorMessage = error.toString());
+      }
+    } finally {
+      if (mounted && requestId == _artistSongPageRequestId) {
+        setState(() => _isArtistSongPageLoading = false);
+        if (restoreFooterFocus) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _artistSongLoadMoreFocusNode.canRequestFocus) {
+              _artistSongLoadMoreFocusNode.requestFocus();
+            }
+          });
+        }
+      }
+    }
   }
 
   void _scrollContentToStart() {
@@ -2697,9 +2851,23 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   }
 
   void _handleContentScroll() {
-    if (widget.tvMode ||
-        !_contentScrollController.hasClients ||
-        !_isOfficialSearchSurface ||
+    if (widget.tvMode || !_contentScrollController.hasClients) return;
+    if (_selectedTab == _discoveryTab &&
+        _selectedArtist != null &&
+        _artistSection == OfficialArtistSection.songs) {
+      final page = _artistDetail?.songPage;
+      if (_artistSongPaginationUnavailable ||
+          page == null ||
+          !page.hasMore ||
+          _isArtistSongPageLoading ||
+          _artistSongPageErrorMessage != null ||
+          _contentScrollController.position.extentAfter > 520) {
+        return;
+      }
+      unawaited(_loadArtistSongPage(loadMore: true));
+      return;
+    }
+    if (!_isOfficialSearchSurface ||
         _searchSection == CatalogSearchSection.all ||
         _isSearchPageLoading ||
         _searchPageErrorMessage != null ||
@@ -2714,6 +2882,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
 
   void _closeArtist() {
     _searchRequestId++;
+    _artistSongPageRequestId++;
     setState(() {
       _selectedArtist = null;
       _artistResult = null;
@@ -2721,6 +2890,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _artistSection = OfficialArtistSection.profile;
       _artistErrorMessage = null;
       _isArtistLoading = false;
+      _artistSongPageErrorMessage = null;
+      _artistSongPaginationUnavailable = false;
+      _isArtistSongPageLoading = false;
     });
   }
 
@@ -2731,6 +2903,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     if (!preserveDetail) _recordNavigationOrigin();
     _searchDebounce?.cancel();
     final requestId = ++_searchRequestId;
+    _artistSongPageRequestId++;
     setState(() {
       if (!preserveDetail) {
         _collectionOriginArtist = _selectedArtist;
@@ -2744,6 +2917,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _artistSection = OfficialArtistSection.profile;
       _artistErrorMessage = null;
       _isArtistLoading = false;
+      _artistSongPageErrorMessage = null;
+      _artistSongPaginationUnavailable = false;
+      _isArtistSongPageLoading = false;
       _selectedCollection = collection;
       if (!preserveDetail) _collectionDetail = null;
       _collectionErrorMessage = null;
@@ -2826,6 +3002,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
 
   void _closeCollection() {
     _searchRequestId++;
+    _artistSongPageRequestId++;
     final originArtist = _collectionOriginArtist;
     final originDetail = _collectionOriginArtistDetail;
     final originResult = _collectionOriginArtistResult;
@@ -2839,6 +3016,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _artistResult = originResult;
       _artistSection = originSection;
       _artistErrorMessage = null;
+      _artistSongPageErrorMessage = null;
+      _artistSongPaginationUnavailable = false;
+      _isArtistSongPageLoading = false;
       _collectionOriginArtist = null;
       _collectionOriginArtistDetail = null;
       _collectionOriginArtistResult = null;
@@ -2850,6 +3030,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   void _openHighlightedSong(CatalogSong item) {
     if (!item.playable ||
         (_isOfficialSearchSurface && !_activeSearchPlaybackEnabled) ||
+        (_selectedArtist != null &&
+            _artistDetail?.catalogPlaybackEnabled != true) ||
         (_selectedCollection != null &&
             _collectionDetail?.catalogPlaybackEnabled != true)) {
       _showUnavailable(item.song);
@@ -2870,6 +3052,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
           (song) =>
               song.playable &&
               (!_isOfficialSearchSurface || _activeSearchPlaybackEnabled) &&
+              (_selectedArtist == null ||
+                  _artistDetail?.catalogPlaybackEnabled == true) &&
               (_selectedCollection == null ||
                   _collectionDetail?.catalogPlaybackEnabled == true),
         )
@@ -4152,7 +4336,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                     onShare: effectiveArtist.officialExternalUrl.isEmpty
                         ? null
                         : () => unawaited(_shareArtist(effectiveArtist)),
-                    onPlay: fullArtistSongs.any((song) => song.playable)
+                    onPlay:
+                        _artistDetail?.catalogPlaybackEnabled == true &&
+                            fullArtistSongs.any((song) => song.playable)
                         ? () {
                             final playable = fullArtistSongs
                                 .where((song) => song.playable)
@@ -4698,7 +4884,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                     latestRelease: artistLatestRelease.collection,
                     releaseLabel: artistLatestRelease.sectionLabel,
                     featuredSongs: desktopArtistSongs,
-                    totalSongCount: artistDetail.songs.length,
+                    totalSongCount: artistDetail.totalSongCount,
                     songBuilder: (context, index) => _buildSongTile(
                       controller,
                       desktopArtistSongs,
@@ -4741,7 +4927,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                 SliverToBoxAdapter(
                   child: _buildArtistSongSectionHeader(
                     visibleSongs.length,
-                    totalSongCount: fullArtistSongs.length,
+                    totalSongCount:
+                        artistDetail?.totalSongCount ?? fullArtistSongs.length,
                   ),
                 )
               else if (_selectedTab == _discoveryTab &&
@@ -4874,6 +5061,11 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                           ),
                         ),
                 ),
+              if (_selectedTab == _discoveryTab &&
+                  selectedArtist != null &&
+                  _artistDetail != null &&
+                  _artistSection == OfficialArtistSection.songs)
+                SliverToBoxAdapter(child: _buildArtistSongPaginationFooter()),
               if (_selectedTab == _discoveryTab &&
                   selectedCollection != null &&
                   !desktopCollectionWorkspace &&
@@ -5270,8 +5462,12 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     final collectionPlaybackEnabled = _selectedCollection == null
         ? true
         : _collectionDetail?.catalogPlaybackEnabled == true;
+    final artistPlaybackEnabled = _selectedArtist == null
+        ? true
+        : _artistDetail?.catalogPlaybackEnabled == true;
     final surfacePlaybackEnabled =
         collectionPlaybackEnabled &&
+        artistPlaybackEnabled &&
         (!officialSearchRow || _activeSearchPlaybackEnabled);
     final collectionKind =
         _collectionDetail?.collection.kind ?? _selectedCollection?.kind;
@@ -5778,6 +5974,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     _recordNavigationOrigin();
     _hubRequestId++;
     _weeklyRequestId++;
+    _artistSongPageRequestId++;
     if (index != _discoveryTab) {
       _searchDebounce?.cancel();
       _searchSuggestionDebounce?.cancel();
@@ -5794,6 +5991,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _artistSection = OfficialArtistSection.profile;
       _artistErrorMessage = null;
       _isArtistLoading = false;
+      _artistSongPageErrorMessage = null;
+      _artistSongPaginationUnavailable = false;
+      _isArtistSongPageLoading = false;
       _selectedCollection = null;
       _collectionDetail = null;
       _collectionErrorMessage = null;
@@ -7254,6 +7454,139 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     ),
   );
 
+  Widget _buildArtistSongPaginationFooter() {
+    if (_artistSongPaginationUnavailable) return const SizedBox.shrink();
+    final page = _artistDetail?.songPage;
+    if (page == null &&
+        !_isArtistSongPageLoading &&
+        _artistSongPageErrorMessage == null) {
+      return const SizedBox.shrink();
+    }
+    final total = page?.hasMore == true ? page?.total : null;
+    final loaded = page?.items.length ?? _artistDetail?.songs.length ?? 0;
+    final countLabel = total == null || total <= loaded
+        ? '$loaded bài hát'
+        : '$loaded / $total bài hát';
+    Widget control;
+    if (_isArtistSongPageLoading) {
+      control = Semantics(
+        key: const ValueKey('artist-song-page-loading'),
+        liveRegion: true,
+        label: page == null
+            ? 'Đang chuẩn bị danh sách bài hát nghệ sĩ'
+            : 'Đang tải thêm bài hát nghệ sĩ',
+        child: const SizedBox.square(
+          dimension: 32,
+          child: CircularProgressIndicator(strokeWidth: 2.5),
+        ),
+      );
+    } else if (_artistSongPageErrorMessage != null) {
+      control = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              'Chưa tải được trang tiếp theo. $countLabel hiện tại vẫn được giữ.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: widget.tvMode ? 15 : 12,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            key: const ValueKey('artist-song-page-retry'),
+            focusNode: _artistSongLoadMoreFocusNode,
+            onPressed: () =>
+                unawaited(_loadArtistSongPage(loadMore: page != null)),
+            style: OutlinedButton.styleFrom(
+              minimumSize: Size(
+                widget.tvMode ? 220 : 164,
+                widget.tvMode ? 56 : 48,
+              ),
+            ),
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('THỬ LẠI'),
+          ),
+        ],
+      );
+    } else if (page == null) {
+      return const SizedBox.shrink();
+    } else if (!page.hasMore) {
+      final completionText = Text(
+        countLabel,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: widget.tvMode ? 15 : 12,
+          fontWeight: FontWeight.w700,
+        ),
+      );
+      control = widget.tvMode
+          ? Focus(
+              key: const ValueKey('artist-song-page-complete'),
+              focusNode: _artistSongLoadMoreFocusNode,
+              child: Builder(
+                builder: (context) {
+                  final focused = Focus.of(context).hasFocus;
+                  return Semantics(
+                    liveRegion: true,
+                    focusable: true,
+                    label: 'Đã tải toàn bộ $countLabel',
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      constraints: const BoxConstraints(
+                        minWidth: 220,
+                        minHeight: 56,
+                      ),
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: focused
+                              ? ZingColors.purpleBright
+                              : Theme.of(context).colorScheme.outlineVariant,
+                          width: focused ? 2 : 1,
+                        ),
+                      ),
+                      child: completionText,
+                    ),
+                  );
+                },
+              ),
+            )
+          : Semantics(
+              key: const ValueKey('artist-song-page-complete'),
+              liveRegion: true,
+              label: 'Đã tải toàn bộ $countLabel',
+              child: completionText,
+            );
+    } else {
+      control = OutlinedButton.icon(
+        key: const ValueKey('artist-song-page-load-more'),
+        focusNode: _artistSongLoadMoreFocusNode,
+        onPressed: () => unawaited(_loadArtistSongPage(loadMore: true)),
+        style: OutlinedButton.styleFrom(
+          minimumSize: Size(widget.tvMode ? 220 : 164, widget.tvMode ? 56 : 48),
+          padding: EdgeInsets.symmetric(horizontal: widget.tvMode ? 28 : 20),
+        ),
+        icon: const Icon(Icons.expand_more_rounded),
+        label: Text('XEM THÊM · $countLabel'),
+      );
+    }
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        widget.tvMode ? 32 : 20,
+        4,
+        widget.tvMode ? 32 : 20,
+        widget.tvMode ? 52 : 34,
+      ),
+      child: Center(child: control),
+    );
+  }
+
   Widget _buildSearchPaginationFooter() {
     final section = _searchSection;
     final page = _searchPages[section];
@@ -7617,7 +7950,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
           const SizedBox(width: 4),
         ],
         Text(
-          '$songCount bài hát',
+          _artistSection == OfficialArtistSection.songs &&
+                  totalSongCount > songCount
+              ? '$songCount / $totalSongCount bài hát'
+              : '$songCount bài hát',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
             fontSize: 12,

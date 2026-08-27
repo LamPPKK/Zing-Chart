@@ -244,6 +244,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               page: page,
               limit: limit,
             ),
+        loadArtistSongs: ZingMP3API.getArtistSongs,
         loadChartSuggestion: ZingMP3API.getDiscoveryRecommendations,
       );
 

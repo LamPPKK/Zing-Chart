@@ -1171,6 +1171,7 @@ describe('ZingUpstream', () => {
     }), { status: 200 })).mockResolvedValueOnce(new Response(JSON.stringify({
       err: 0,
       data: {
+        total: '137',
         items: [
           {
             encodeId: 'SONG1',
@@ -1248,6 +1249,12 @@ describe('ZingUpstream', () => {
       ['FULLSONG', true],
       ['LOCKED', false],
     ]);
+    expect(result.songPage).toEqual({
+      page: 1,
+      limit: 50,
+      total: 137,
+      hasMore: true,
+    });
     expect(result.songs[0]).toMatchObject({
       artists: [{
         id: 'ARTIST1',
@@ -1290,6 +1297,192 @@ describe('ZingUpstream', () => {
     expect(fetcher.mock.calls[1]?.[1]?.redirect).toBe('error');
   });
 
+  it('returns signed, normalized artist song pages beyond the profile ceiling', async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      err: 0,
+      data: {
+        total: '137',
+        items: [
+          {
+            encodeId: 'PAGE2SONG',
+            title: 'Bài trang hai',
+            artistsNames: 'Sơn Tùng M-TP',
+            artists: [{
+              id: 'ARTIST1',
+              name: 'Sơn Tùng M-TP',
+              alias: 'Son-Tung-M-TP',
+              link: '/nghe-si/Son-Tung-M-TP',
+            }],
+            album: {
+              encodeId: 'ALBUM2',
+              title: 'Album trang hai',
+              artistsNames: 'Sơn Tùng M-TP',
+              thumbnail: '//image.example.test/album-2.jpg',
+              link: '/album/album-trang-hai/ALBUM2.html',
+              isAlbum: true,
+            },
+            thumbnailM: '//image.example.test/page-2.jpg',
+            duration: 222,
+            link: '/bai-hat/bai-trang-hai/PAGE2SONG.html',
+            streamingStatus: 1,
+          },
+          {
+            encodeId: 'PAGE2SONG',
+            title: 'Bản trùng bị khóa',
+            streamingStatus: 2,
+          },
+          {
+            encodeId: 'PAGE2LOCKED',
+            title: 'Bài giới hạn trang hai',
+            streamingStatus: 2,
+          },
+          {
+            encodeId: 'PRIVATEPAGE2',
+            title: 'Bài riêng tư',
+            isPrivate: true,
+            streamingStatus: 1,
+          },
+          {
+            encodeId: 'PRIVATECONFLICT',
+            title: 'Bản public xuất hiện trước',
+            streamingStatus: 1,
+          },
+          {
+            encodeId: 'PRIVATECONFLICT',
+            title: 'Bản private xuất hiện sau',
+            isPrivate: true,
+            streamingStatus: 1,
+          },
+          {
+            encodeId: 'PRERELEASECONFLICT',
+            title: 'Bản phát hành sớm xuất hiện trước',
+            preRelease: true,
+            streamingStatus: 1,
+          },
+          {
+            encodeId: 'PRERELEASECONFLICT',
+            title: 'Bản public xuất hiện sau',
+            streamingStatus: 1,
+          },
+          { encodeId: 'BAD ID', title: 'Sai mã', streamingStatus: 1 },
+        ],
+      },
+    }), { status: 200 }));
+    const upstream = new ZingUpstream({
+      ...config,
+      currentApiKey: 'authorized-test-api-key',
+      currentApiSigningKey: 'authorized-test-signing-key',
+    }, fetcher, () => 1_787_267_700_000);
+
+    expect(upstream.supportsPaginatedArtistSongs).toBe(true);
+    const result = await upstream.fetchArtistSongs('ARTIST1', 2, 5);
+
+    expect(result).toMatchObject({
+      artistId: 'ARTIST1',
+      page: 2,
+      limit: 5,
+      total: 137,
+      hasMore: true,
+      catalogPlaybackEnabled: true,
+    });
+    expect(result.items.map((song) => [song.id, song.playable])).toEqual([
+      ['PAGE2SONG', false],
+      ['PAGE2LOCKED', false],
+    ]);
+    expect(
+      result.items.some((song) =>
+        song.id === 'PRIVATECONFLICT'
+        || song.id === 'PRERELEASECONFLICT'),
+    ).toBe(false);
+    expect(result.items[0]).toMatchObject({
+      artists: [{ id: 'ARTIST1', aliasName: 'Son-Tung-M-TP' }],
+      album: { id: 'ALBUM2', kind: 'album' },
+    });
+    const signedUrl = new URL(String(fetcher.mock.calls[0]?.[0]));
+    expect(signedUrl.pathname).toBe('/api/v2/song/get/list');
+    expect(signedUrl.searchParams.get('id')).toBe('ARTIST1');
+    expect(signedUrl.searchParams.get('type')).toBe('artist');
+    expect(signedUrl.searchParams.get('page')).toBe('2');
+    expect(signedUrl.searchParams.get('count')).toBe('5');
+    expect(signedUrl.searchParams.has('sectionId')).toBe(false);
+    expect(signedUrl.searchParams.get('apiKey')).toBe(
+      'authorized-test-api-key',
+    );
+    expect(signedUrl.searchParams.get('sig')).toMatch(/^[a-f0-9]{128}$/);
+    expect(fetcher.mock.calls[0]?.[1]?.redirect).toBe('error');
+  });
+
+  it('uses raw artist page size for unknown totals and caps the final page', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        err: 0,
+        data: {
+          items: [
+            { encodeId: 'PRIVATE1', title: 'Riêng tư', isPrivate: true },
+            { encodeId: 'BAD ID', title: 'Sai mã' },
+          ],
+        },
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        err: 0,
+        data: { items: [], total: 10_000 },
+      }), { status: 200 }));
+    const upstream = new ZingUpstream({
+      ...config,
+      currentApiKey: 'authorized-test-api-key',
+      currentApiSigningKey: 'authorized-test-signing-key',
+    }, fetcher);
+
+    await expect(upstream.fetchArtistSongs('ARTIST1', 2, 2)).resolves
+      .toMatchObject({ total: null, hasMore: true, items: [] });
+    await expect(upstream.fetchArtistSongs('ARTIST1', 100, 50)).resolves
+      .toMatchObject({ total: 10_000, hasMore: false, items: [] });
+  });
+
+  it('rejects invalid or unauthorized artist pagination before fetching', async () => {
+    const unauthorizedFetcher = vi.fn();
+    const unauthorized = new ZingUpstream(config, unauthorizedFetcher);
+    expect(unauthorized.supportsPaginatedArtistSongs).toBe(false);
+    await expect(unauthorized.fetchArtistSongs('ARTIST1', 1, 50)).rejects
+      .toThrow('not configured');
+    expect(unauthorizedFetcher).not.toHaveBeenCalled();
+
+    const fetcher = vi.fn();
+    const configured = new ZingUpstream({
+      ...config,
+      currentApiKey: 'authorized-test-api-key',
+      currentApiSigningKey: 'authorized-test-signing-key',
+    }, fetcher);
+    const invalidRequests: Array<[string, number, number]> = [
+      ['BAD ID', 1, 50],
+      ['ARTIST1', 0, 50],
+      ['ARTIST1', 101, 50],
+      ['ARTIST1', 1.5, 50],
+      ['ARTIST1', 1, 0],
+      ['ARTIST1', 1, 51],
+    ];
+    for (const [artistId, page, limit] of invalidRequests) {
+      await expect(configured.fetchArtistSongs(artistId, page, limit)).rejects
+        .toThrow('invalid');
+    }
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('rejects an oversized artist song page response', async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      err: 0,
+      data: { items: [], padding: 'x'.repeat(2_000_001) },
+    }), { status: 200 }));
+    const upstream = new ZingUpstream({
+      ...config,
+      currentApiKey: 'authorized-test-api-key',
+      currentApiSigningKey: 'authorized-test-signing-key',
+    }, fetcher);
+
+    await expect(upstream.fetchArtistSongs('ARTIST1', 1, 50)).rejects
+      .toThrow('too large');
+  });
+
   it('keeps highlighted artist songs when the complete catalog fails', async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
@@ -1324,6 +1517,7 @@ describe('ZingUpstream', () => {
     expect(result.featuredSongs?.map((song) => song.id)).toEqual([
       'HIGHLIGHT1',
     ]);
+    expect(result.songPage).toBeUndefined();
     expect(result.songs[0]?.playable).toBe(true);
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(new URL(String(fetcher.mock.calls[1]?.[0])).pathname).toBe(

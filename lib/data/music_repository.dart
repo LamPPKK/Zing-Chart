@@ -48,6 +48,12 @@ abstract interface class MusicRepository {
 
   Future<CatalogArtistDetail> getArtistDetail(String alias);
 
+  Future<CatalogArtistSongPage> getArtistSongs(
+    String artistId, {
+    int page = 1,
+    int limit = 50,
+  });
+
   Future<CatalogSearchResult> searchCatalog(String query);
 
   Future<CatalogSearchPage> searchCatalogPage(
@@ -145,6 +151,24 @@ bool _isSafeHttpsResource(String value, {bool allowEmpty = true}) {
       uri.host.isNotEmpty &&
       uri.port == 443;
 }
+
+CatalogSong _lockCatalogSongPlayback(CatalogSong item) => CatalogSong(
+  song: Song(
+    id: item.song.id,
+    name: item.song.name,
+    title: item.song.title,
+    thumbnail: item.song.thumbnail,
+    artistsNames: item.song.artistsNames,
+    code: item.song.code,
+    playable: false,
+  ),
+  duration: item.duration,
+  externalUrl: item.externalUrl,
+  playable: false,
+  hasLyrics: item.hasLyrics,
+  artists: item.artists,
+  album: item.album,
+);
 
 class ProxyMusicRepository implements MusicRepository {
   ProxyMusicRepository({required String baseUrl, Dio? dio})
@@ -1125,6 +1149,86 @@ class ProxyMusicRepository implements MusicRepository {
     }
   }
 
+  CatalogArtistSongPage _artistSongPageFromJson(
+    Map<String, dynamic> data, {
+    required String expectedArtistId,
+    int? expectedPage,
+    int? expectedLimit,
+  }) {
+    final artistId = data['artistId']?.toString().trim() ?? '';
+    final rawPage = data['page'];
+    final rawLimit = data['limit'];
+    final rawTotal = data['total'];
+    final hasMore = data['hasMore'];
+    final playbackEnabled = data['catalogPlaybackEnabled'];
+    final rawItems = data['items'];
+    final page = rawPage is num && rawPage == rawPage.toInt()
+        ? rawPage.toInt()
+        : null;
+    final limit = rawLimit is num && rawLimit == rawLimit.toInt()
+        ? rawLimit.toInt()
+        : null;
+    final total = rawTotal == null
+        ? null
+        : rawTotal is num && rawTotal == rawTotal.toInt()
+        ? rawTotal.toInt()
+        : -1;
+    if (artistId != expectedArtistId ||
+        page == null ||
+        page < 1 ||
+        page > 100 ||
+        limit == null ||
+        limit < 1 ||
+        limit > 50 ||
+        expectedPage != null && page != expectedPage ||
+        expectedLimit != null && limit != expectedLimit ||
+        total != null && total < 0 ||
+        hasMore is! bool ||
+        page == 100 && hasMore == true ||
+        playbackEnabled is! bool ||
+        rawItems is! List ||
+        rawItems.length > limit) {
+      throw const FormatException('Invalid artist song page');
+    }
+
+    final byId = <String, CatalogSong>{};
+    for (final rawItem in rawItems) {
+      if (rawItem is! Map<String, dynamic>) {
+        throw const FormatException('Invalid artist song item');
+      }
+      final item = _catalogSongFromJson(rawItem);
+      if (!RegExp(r'^[A-Za-z0-9_-]{1,128}$').hasMatch(item.song.id) ||
+          item.song.displayTitle.isEmpty ||
+          item.song.displayTitle.length > 300 ||
+          item.song.artistsNames.length > 300 ||
+          item.playable &&
+              (!RegExp(r'^[A-Za-z0-9_-]{1,128}$').hasMatch(item.song.code) ||
+                  item.song.code != item.song.id) ||
+          !_isSafeHttpsResource(item.song.thumbnail) ||
+          !_isTrustedCatalogPage(Uri.tryParse(item.externalUrl))) {
+        throw const FormatException('Invalid artist song item');
+      }
+      final existing = byId[item.song.id];
+      if (existing == null) {
+        byId[item.song.id] = item;
+      } else if (!existing.playable ||
+          !existing.song.playable ||
+          !item.playable ||
+          !item.song.playable) {
+        byId[item.song.id] = _lockCatalogSongPlayback(existing);
+      }
+    }
+    return CatalogArtistSongPage(
+      artistId: artistId,
+      page: page,
+      limit: limit,
+      total: total,
+      hasMore: hasMore,
+      items: byId.values.toList(growable: false),
+      catalogPlaybackEnabled: playbackEnabled,
+    );
+  }
+
   @override
   Future<CatalogArtistDetail> getArtistDetail(String alias) async {
     final normalizedAlias = alias.trim();
@@ -1142,11 +1246,13 @@ class ProxyMusicRepository implements MusicRepository {
       final rawArtist = data['artist'];
       final rawFeaturedSongs = data['featuredSongs'];
       final rawSongs = data['songs'];
+      final rawSongPage = data['songPage'];
       final rawVideos = data['videos'];
       final rawSections = data['collectionSections'];
       final rawRelated = data['relatedArtists'];
       if (rawArtist is! Map<String, dynamic> ||
           rawSongs is! List ||
+          (rawSongPage != null && rawSongPage is! Map<String, dynamic>) ||
           (rawFeaturedSongs != null && rawFeaturedSongs is! List) ||
           (rawVideos != null && rawVideos is! List) ||
           rawSections is! List ||
@@ -1160,7 +1266,7 @@ class ProxyMusicRepository implements MusicRepository {
           !_isTrustedArtistPage(Uri.tryParse(artist.officialExternalUrl))) {
         throw const FormatException('Invalid artist metadata');
       }
-      final songs = rawSongs
+      final parsedSongs = rawSongs
           .whereType<Map<String, dynamic>>()
           .map(_catalogSongFromJson)
           .where(
@@ -1168,6 +1274,29 @@ class ProxyMusicRepository implements MusicRepository {
                 item.song.id.isNotEmpty && item.song.displayTitle.isNotEmpty,
           )
           .toList(growable: false);
+      final songPage = rawSongPage is Map<String, dynamic>
+          ? _artistSongPageFromJson(
+              <String, dynamic>{
+                ...rawSongPage,
+                'artistId': artist.id,
+                'items': rawSongs,
+                'catalogPlaybackEnabled':
+                    data['catalogPlaybackEnabled'] == true,
+              },
+              expectedArtistId: artist.id,
+              expectedPage: 1,
+              expectedLimit: 50,
+            )
+          : null;
+      if (songPage != null &&
+          (songPage.items.length != parsedSongs.length ||
+              !songPage.items
+                  .map((item) => item.song.id)
+                  .toSet()
+                  .containsAll(parsedSongs.map((item) => item.song.id)))) {
+        throw const FormatException('Mismatched artist song page');
+      }
+      final songs = songPage?.items ?? parsedSongs;
       final parsedFeaturedSongs = (rawFeaturedSongs as List? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(_catalogSongFromJson)
@@ -1244,6 +1373,7 @@ class ProxyMusicRepository implements MusicRepository {
           2147483647,
         ),
         songs: songs,
+        songPage: songPage,
         featuredSongs: featuredSongs,
         videos: videos,
         collectionSections: sections,
@@ -1257,6 +1387,47 @@ class ProxyMusicRepository implements MusicRepository {
     } catch (_) {
       throw const MusicRepositoryException(
         'Phản hồi hồ sơ nghệ sĩ không hợp lệ.',
+      );
+    }
+  }
+
+  @override
+  Future<CatalogArtistSongPage> getArtistSongs(
+    String artistId, {
+    int page = 1,
+    int limit = 50,
+  }) async {
+    final normalizedArtistId = artistId.trim();
+    if (!RegExp(r'^[A-Za-z0-9_-]{1,128}$').hasMatch(normalizedArtistId)) {
+      throw const MusicRepositoryException('Mã nghệ sĩ không hợp lệ.');
+    }
+    if (page < 1 || page > 100 || limit < 1 || limit > 50) {
+      throw const MusicRepositoryException(
+        'Trang bài hát nghệ sĩ hoặc giới hạn kết quả không hợp lệ.',
+      );
+    }
+    try {
+      final response = await _dio.get<dynamic>(
+        '/v1/artists/${Uri.encodeComponent(normalizedArtistId)}/songs',
+        queryParameters: {'page': page, 'limit': limit},
+      );
+      final data = response.data;
+      if (data is! Map<String, dynamic>) {
+        throw const FormatException('Missing artist song page');
+      }
+      return _artistSongPageFromJson(
+        data,
+        expectedArtistId: normalizedArtistId,
+        expectedPage: page,
+        expectedLimit: limit,
+      );
+    } on DioException catch (error) {
+      throw _networkException(error);
+    } on MusicRepositoryException {
+      rethrow;
+    } catch (_) {
+      throw const MusicRepositoryException(
+        'Phản hồi trang bài hát nghệ sĩ không hợp lệ.',
       );
     }
   }
@@ -2225,6 +2396,13 @@ class CachingMusicRepository implements MusicRepository {
   @override
   Future<CatalogArtistDetail> getArtistDetail(String alias) =>
       _remote.getArtistDetail(alias);
+
+  @override
+  Future<CatalogArtistSongPage> getArtistSongs(
+    String artistId, {
+    int page = 1,
+    int limit = 50,
+  }) => _remote.getArtistSongs(artistId, page: page, limit: limit);
 
   @override
   Future<CatalogSearchResult> searchCatalog(String query) =>
