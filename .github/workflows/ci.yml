@@ -37,8 +37,8 @@ jobs:
       - run: flutter test
       - name: Validate companion and platform packaging
         run: |
-          bash -n packaging/fireos/build_fireos.sh packaging/harmonyos/build_harmonyos.sh
-          node --test packaging/apple/*.test.mjs packaging/fireos/*.test.mjs packaging/harmonyos/*.test.mjs packaging/wearos/*.test.mjs
+          bash -n packaging/fireos/build_fireos.sh packaging/harmonyos/build_harmonyos.sh packaging/tv/build_tv_web.sh packaging/tv/package_tizen.sh
+          node --test packaging/android/*.test.mjs packaging/apple/*.test.mjs packaging/fireos/*.test.mjs packaging/harmonyos/*.test.mjs packaging/tv/*.test.mjs packaging/wearos/*.test.mjs
 
   web-smoke:
     name: Web release smoke build
