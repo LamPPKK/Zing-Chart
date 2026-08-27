@@ -2022,6 +2022,16 @@ void main() {
       ),
       findsOneWidget,
     );
+    final contentScroll = tester.state<ScrollableState>(
+      find
+          .descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    expect(contentScroll.position.axis, Axis.vertical);
+    expect(contentScroll.position.pixels, 0);
     await expectLater(
       find.byType(Scaffold),
       matchesGoldenFile('goldens/artist_profile_desktop_1440.png'),

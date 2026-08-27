@@ -314,6 +314,46 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('selected tab reveal never scrolls outer artist content', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(360, 844));
+    final outerController = ScrollController();
+    addTearDown(outerController.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: buildZingDarkTheme(tvMode: false),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            controller: outerController,
+            child: Column(
+              children: [
+                const SizedBox(height: 720),
+                ArtistProfileSectionTabs(
+                  detail: _detail,
+                  selected: OfficialArtistSection.videos,
+                  onSelected: (_) {},
+                ),
+                const SizedBox(height: 800),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final videos = find.byKey(
+      const ValueKey('artist-profile-section-tab-videos'),
+    );
+    expect(outerController.offset, 0);
+    expect(tester.getRect(videos).left, greaterThanOrEqualTo(0));
+    expect(tester.getRect(videos).right, lessThanOrEqualTo(360));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('explicit empty route remains visible and explains the state', (
     tester,
   ) async {

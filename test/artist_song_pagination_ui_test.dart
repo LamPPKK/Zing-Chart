@@ -137,6 +137,17 @@ void main() {
 
     expect(requestedPages, [2]);
     expect(find.byKey(const ValueKey('song-row-retained')), findsOneWidget);
+    final contentScroll = find.descendant(
+      of: find.byType(CustomScrollView),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('artist-song-page-load-more')),
+      180,
+      scrollable: contentScroll.first,
+    );
+    await tester.pumpAndSettle();
+    expect(requestedPages, [2]);
     expect(
       find.byKey(const ValueKey('artist-song-page-load-more')),
       findsOneWidget,
@@ -174,6 +185,17 @@ void main() {
       find.byKey(const ValueKey('song-row-profile-highlight')),
       findsOneWidget,
     );
+    final contentScroll = find.descendant(
+      of: find.byType(CustomScrollView),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('artist-song-page-load-more')),
+      180,
+      scrollable: contentScroll.first,
+    );
+    await tester.pumpAndSettle();
+    expect(requestedPages, [1]);
     expect(
       find.byKey(const ValueKey('artist-song-page-load-more')),
       findsOneWidget,

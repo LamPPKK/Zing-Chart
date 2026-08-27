@@ -403,6 +403,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   bool _isArtistSongPageLoading = false;
   String? _artistSongPageErrorMessage;
   bool _artistSongPaginationUnavailable = false;
+  bool _artistSongAutoLoadPaused = false;
   int _artistSongPageRequestId = 0;
   CatalogCollection? _selectedCollection;
   CatalogCollectionDetail? _collectionDetail;
@@ -1228,6 +1229,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _isArtistLoading = false;
       _artistSongPageErrorMessage = null;
       _artistSongPaginationUnavailable = false;
+      _artistSongAutoLoadPaused = false;
       _isArtistSongPageLoading = false;
       _selectedCollection = target.selectedCollection;
       _collectionDetail = target.collectionDetail;
@@ -2326,6 +2328,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _isArtistLoading = false;
       _artistSongPageErrorMessage = null;
       _artistSongPaginationUnavailable = false;
+      _artistSongAutoLoadPaused = false;
       _isArtistSongPageLoading = false;
       _selectedCollection = null;
       _collectionDetail = null;
@@ -2408,6 +2411,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _isArtistLoading = false;
         _artistSongPageErrorMessage = null;
         _artistSongPaginationUnavailable = false;
+        _artistSongAutoLoadPaused = false;
         _isArtistSongPageLoading = false;
         _selectedCollection = null;
         _collectionDetail = null;
@@ -2481,6 +2485,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _isArtistLoading = false;
       _artistSongPageErrorMessage = null;
       _artistSongPaginationUnavailable = false;
+      _artistSongAutoLoadPaused = false;
       _isArtistSongPageLoading = false;
       _selectedCollection = null;
       _collectionDetail = null;
@@ -2709,6 +2714,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _isArtistLoading = true;
       _artistSongPageErrorMessage = null;
       _artistSongPaginationUnavailable = false;
+      _artistSongAutoLoadPaused = false;
       _isArtistSongPageLoading = false;
     });
     if (!preserveResult) _scrollContentToStart();
@@ -2807,6 +2813,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       setState(() {
         _artistDetail = latestDetail.withSongPage(mergedPage);
         _artistSongPageErrorMessage = null;
+        _artistSongAutoLoadPaused = !madeProgress;
       });
       if (madeProgress) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -2859,6 +2866,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _artistSection == OfficialArtistSection.songs) {
       final page = _artistDetail?.songPage;
       if (_artistSongPaginationUnavailable ||
+          _artistSongAutoLoadPaused ||
           page == null ||
           !page.hasMore ||
           _isArtistSongPageLoading ||
@@ -2894,6 +2902,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _isArtistLoading = false;
       _artistSongPageErrorMessage = null;
       _artistSongPaginationUnavailable = false;
+      _artistSongAutoLoadPaused = false;
       _isArtistSongPageLoading = false;
     });
   }
@@ -2921,6 +2930,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _isArtistLoading = false;
       _artistSongPageErrorMessage = null;
       _artistSongPaginationUnavailable = false;
+      _artistSongAutoLoadPaused = false;
       _isArtistSongPageLoading = false;
       _selectedCollection = collection;
       if (!preserveDetail) _collectionDetail = null;
@@ -3020,6 +3030,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _artistErrorMessage = null;
       _artistSongPageErrorMessage = null;
       _artistSongPaginationUnavailable = false;
+      _artistSongAutoLoadPaused = false;
       _isArtistSongPageLoading = false;
       _collectionOriginArtist = null;
       _collectionOriginArtistDetail = null;
@@ -6010,6 +6021,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _isArtistLoading = false;
       _artistSongPageErrorMessage = null;
       _artistSongPaginationUnavailable = false;
+      _artistSongAutoLoadPaused = false;
       _isArtistSongPageLoading = false;
       _selectedCollection = null;
       _collectionDetail = null;

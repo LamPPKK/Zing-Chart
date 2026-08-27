@@ -121,8 +121,11 @@ class _ArtistProfileSectionTabState extends State<_ArtistProfileSectionTab> {
   void _revealAfterLayout() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Scrollable.ensureVisible(
-        context,
+      final scrollable = Scrollable.maybeOf(context, axis: Axis.horizontal);
+      final renderObject = context.findRenderObject();
+      if (scrollable == null || renderObject == null) return;
+      scrollable.position.ensureVisible(
+        renderObject,
         alignment: 0.5,
         duration: MediaQuery.disableAnimationsOf(context)
             ? Duration.zero
