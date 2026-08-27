@@ -409,7 +409,10 @@ adapter share/save không khả dụng.
   bằng remote và khôi phục focus sau mỗi lần tải hoặc thử lại.
 - Lỗi trang chỉ hiện tại footer: các bài đã tải vẫn được giữ và có thể thử lại.
   Client khử trùng lặp theo ID, bỏ response trễ sau khi đổi nghệ sĩ/route và
-  không tạo thêm Browser History khi tải trang.
+  không tạo thêm Browser History khi tải trang. Nếu một trang không bổ sung
+  bài hợp lệ, tự tải sẽ dừng để tránh lặp request nhưng nút **XEM THÊM** vẫn
+  cho phép người dùng tiếp tục thủ công; trạng thái dừng hoặc adapter không hỗ
+  trợ được giữ nguyên qua Back/Forward và khi mở rồi quay lại từ album.
 - Quyền phát được kiểm tra fail-closed đồng thời ở mức hồ sơ, trang và từng bài.
   Bài bị khóa vẫn hiện metadata nhưng không có Play, Queue hoặc Radio.
 - Request chỉ chứa artist ID, page và limit. Favorites, mood, lịch sử nghe và

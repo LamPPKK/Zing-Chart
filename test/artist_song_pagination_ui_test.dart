@@ -129,7 +129,14 @@ void main() {
         detail: _detail(items: [_song('retained')], total: 150, hasMore: true),
         loadArtistSongs: (artistId, {required page, required limit}) async {
           requestedPages.add(page);
-          return _page(page: page, total: 150, hasMore: true, items: const []);
+          return page == 2
+              ? _page(page: page, total: 150, hasMore: true, items: const [])
+              : _page(
+                  page: page,
+                  total: 2,
+                  hasMore: false,
+                  items: [_song('manual-recovery')],
+                );
         },
       ),
     );
@@ -147,6 +154,154 @@ void main() {
       scrollable: contentScroll.first,
     );
     await tester.pumpAndSettle();
+    expect(requestedPages, [2]);
+    expect(
+      find.byKey(const ValueKey('artist-song-page-load-more')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('artist-song-page-load-more')));
+    await tester.pumpAndSettle();
+
+    expect(requestedPages, [2, 3]);
+    expect(
+      find.byKey(const ValueKey('song-row-manual-recovery')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('artist-song-page-complete')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('paused auto-load survives local Back and Forward navigation', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(1440, 900));
+    final controller = await _controller();
+    addTearDown(controller.dispose);
+    final requestedPages = <int>[];
+
+    await tester.pumpWidget(
+      _app(
+        controller,
+        detail: _detail(
+          items: [_song('history-retained')],
+          total: 150,
+          hasMore: true,
+        ),
+        loadArtistSongs: (artistId, {required page, required limit}) async {
+          requestedPages.add(page);
+          return _page(page: page, total: 150, hasMore: true, items: const []);
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(requestedPages, [2]);
+    await tester.tap(find.byKey(const ValueKey('desktop-nav-chart')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('artist-profile-hero')), findsNothing);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('artist-profile-hero')), findsOneWidget);
+    expect(requestedPages, [2]);
+
+    await tester.tap(find.byKey(const ValueKey('catalog-history-forward')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('artist-profile-hero')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('catalog-history-back')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('artist-profile-hero')), findsOneWidget);
+    expect(requestedPages, [2]);
+    final contentScroll = find.descendant(
+      of: find.byType(CustomScrollView),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('artist-song-page-load-more')),
+      180,
+      scrollable: contentScroll.first,
+    );
+    await tester.pumpAndSettle();
+    expect(requestedPages, [2]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('paused auto-load survives an artist collection round-trip', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(360, 844));
+    final controller = await _controller();
+    addTearDown(controller.dispose);
+    final requestedPages = <int>[];
+
+    await tester.pumpWidget(
+      _app(
+        controller,
+        detail: _detail(
+          items: [_song('collection-retained')],
+          total: 150,
+          hasMore: true,
+          collectionSections: const [
+            CatalogArtistCollectionSection(
+              id: 'single-section',
+              title: 'Single & EP',
+              collections: [_artistCollection],
+            ),
+          ],
+        ),
+        loadArtistSongs: (artistId, {required page, required limit}) async {
+          requestedPages.add(page);
+          return _page(page: page, total: 150, hasMore: true, items: const []);
+        },
+        loadCollection: (_) async => _artistCollectionDetail,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(requestedPages, [2]);
+    await tester.tap(
+      find.byKey(const ValueKey('artist-profile-section-tab-profile')),
+    );
+    await tester.pumpAndSettle();
+    final contentScroll = find.descendant(
+      of: find.byType(CustomScrollView),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('artist-collection-artist-single')),
+      240,
+      scrollable: contentScroll.first,
+    );
+    await tester.drag(contentScroll.first, const Offset(0, -220));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('artist-collection-artist-single')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('collection-detail-hero')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('collection-back-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('artist-profile-section-tab-songs')),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('artist-song-page-load-more')),
+      180,
+      scrollable: contentScroll.first,
+    );
+    await tester.pumpAndSettle();
+
     expect(requestedPages, [2]);
     expect(
       find.byKey(const ValueKey('artist-song-page-load-more')),
@@ -238,6 +393,18 @@ void main() {
       findsNothing,
     );
     expect(find.byKey(const ValueKey('artist-song-page-retry')), findsNothing);
+
+    await tester.tap(find.text('#zingchart').first);
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('artist-profile-hero')), findsOneWidget);
+    expect(calls, 1);
+    expect(
+      find.byKey(const ValueKey('artist-song-page-load-more')),
+      findsNothing,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -414,6 +581,7 @@ Widget _app(
   PlaybackService controller, {
   required CatalogArtistDetail detail,
   required CatalogArtistSongPageLoader loadArtistSongs,
+  CatalogCollectionLoader? loadCollection,
   bool tvMode = false,
 }) => MusicPlayerScope(
   controller: controller,
@@ -426,6 +594,9 @@ Widget _app(
       loadSongs: () async => const [],
       loadArtistDetail: (_) async => detail,
       loadArtistSongs: loadArtistSongs,
+      loadCollection:
+          loadCollection ??
+          (_) async => throw StateError('Collection loading is not expected.'),
       searchCatalog: (query) async => CatalogSearchResult.empty(query),
       searchSuggestions: (query) async => SearchSuggestionSnapshot.empty(query),
       loadDiscoveryCategories: () async => const DiscoveryCategories.empty(),
@@ -445,6 +616,7 @@ CatalogArtistDetail _detail({
   required bool hasMore,
   bool playbackEnabled = true,
   bool includePage = true,
+  List<CatalogArtistCollectionSection> collectionSections = const [],
 }) => CatalogArtistDetail(
   artist: artist,
   cover: '',
@@ -467,7 +639,7 @@ CatalogArtistDetail _detail({
         )
       : null,
   featuredSongs: items.take(3).toList(growable: false),
-  collectionSections: const [],
+  collectionSections: collectionSections,
   relatedArtists: const [],
   catalogPlaybackEnabled: playbackEnabled,
 );
@@ -516,6 +688,24 @@ const _secondArtist = CatalogArtist(
   aliasName: 'Artist-Two',
   avatar: '',
   externalUrl: 'https://zingmp3.vn/nghe-si/Artist-Two',
+);
+
+const _artistCollection = CatalogCollection(
+  id: 'artist-single',
+  title: 'Single Nghệ Sĩ',
+  artist: 'Nghệ sĩ',
+  thumbnail: '',
+  kind: CatalogCollectionKind.album,
+  externalUrl: 'https://zingmp3.vn/album/single-nghe-si/artist-single.html',
+);
+
+final _artistCollectionDetail = CatalogCollectionDetail(
+  collection: _artistCollection,
+  description: 'Single chính thức.',
+  year: '2026',
+  genres: const ['V-Pop'],
+  songs: [_song('collection-song')],
+  catalogPlaybackEnabled: true,
 );
 
 class _WarmArtistHarness extends StatelessWidget {

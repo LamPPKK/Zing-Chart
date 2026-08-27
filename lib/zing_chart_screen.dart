@@ -134,12 +134,16 @@ class _CatalogNavigationState {
     required this.artistResult,
     required this.artistDetail,
     required this.artistSection,
+    required this.artistSongPaginationUnavailable,
+    required this.artistSongAutoLoadPaused,
     required this.selectedCollection,
     required this.collectionDetail,
     required this.collectionOriginArtist,
     required this.collectionOriginArtistDetail,
     required this.collectionOriginArtistResult,
     required this.collectionOriginArtistSection,
+    required this.collectionOriginArtistSongPaginationUnavailable,
+    required this.collectionOriginArtistSongAutoLoadPaused,
     required this.selectedHub,
     required this.hubDetail,
     required this.selectedDiscoveryCategoryId,
@@ -164,12 +168,16 @@ class _CatalogNavigationState {
   final CatalogSearchResult? artistResult;
   final CatalogArtistDetail? artistDetail;
   final OfficialArtistSection artistSection;
+  final bool artistSongPaginationUnavailable;
+  final bool artistSongAutoLoadPaused;
   final CatalogCollection? selectedCollection;
   final CatalogCollectionDetail? collectionDetail;
   final CatalogArtist? collectionOriginArtist;
   final CatalogArtistDetail? collectionOriginArtistDetail;
   final CatalogSearchResult? collectionOriginArtistResult;
   final OfficialArtistSection collectionOriginArtistSection;
+  final bool collectionOriginArtistSongPaginationUnavailable;
+  final bool collectionOriginArtistSongAutoLoadPaused;
   final CatalogHub? selectedHub;
   final CatalogHubDetail? hubDetail;
   final String selectedDiscoveryCategoryId;
@@ -413,6 +421,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   CatalogSearchResult? _collectionOriginArtistResult;
   OfficialArtistSection _collectionOriginArtistSection =
       OfficialArtistSection.profile;
+  bool _collectionOriginArtistSongPaginationUnavailable = false;
+  bool _collectionOriginArtistSongAutoLoadPaused = false;
   bool _isCollectionLoading = false;
   int _quickPlayCollectionRequestId = 0;
   String? _quickPlayingCollectionId;
@@ -762,12 +772,18 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         artistResult: _artistResult,
         artistDetail: _artistDetail,
         artistSection: _artistSection,
+        artistSongPaginationUnavailable: _artistSongPaginationUnavailable,
+        artistSongAutoLoadPaused: _artistSongAutoLoadPaused,
         selectedCollection: _selectedCollection,
         collectionDetail: _collectionDetail,
         collectionOriginArtist: _collectionOriginArtist,
         collectionOriginArtistDetail: _collectionOriginArtistDetail,
         collectionOriginArtistResult: _collectionOriginArtistResult,
         collectionOriginArtistSection: _collectionOriginArtistSection,
+        collectionOriginArtistSongPaginationUnavailable:
+            _collectionOriginArtistSongPaginationUnavailable,
+        collectionOriginArtistSongAutoLoadPaused:
+            _collectionOriginArtistSongAutoLoadPaused,
         selectedHub: _selectedHub,
         hubDetail: _hubDetail,
         selectedDiscoveryCategoryId: _selectedDiscoveryCategoryId,
@@ -1228,8 +1244,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _artistErrorMessage = null;
       _isArtistLoading = false;
       _artistSongPageErrorMessage = null;
-      _artistSongPaginationUnavailable = false;
-      _artistSongAutoLoadPaused = false;
+      _artistSongPaginationUnavailable = target.artistSongPaginationUnavailable;
+      _artistSongAutoLoadPaused = target.artistSongAutoLoadPaused;
       _isArtistSongPageLoading = false;
       _selectedCollection = target.selectedCollection;
       _collectionDetail = target.collectionDetail;
@@ -1238,6 +1254,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _collectionOriginArtistDetail = target.collectionOriginArtistDetail;
       _collectionOriginArtistResult = target.collectionOriginArtistResult;
       _collectionOriginArtistSection = target.collectionOriginArtistSection;
+      _collectionOriginArtistSongPaginationUnavailable =
+          target.collectionOriginArtistSongPaginationUnavailable;
+      _collectionOriginArtistSongAutoLoadPaused =
+          target.collectionOriginArtistSongAutoLoadPaused;
       _isCollectionLoading = false;
       _selectedHub = target.selectedHub;
       _hubDetail = target.hubDetail;
@@ -2337,6 +2357,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _collectionOriginArtistDetail = null;
       _collectionOriginArtistResult = null;
       _collectionOriginArtistSection = OfficialArtistSection.profile;
+      _collectionOriginArtistSongPaginationUnavailable = false;
+      _collectionOriginArtistSongAutoLoadPaused = false;
       _isCollectionLoading = false;
       _searchErrorMessage = null;
       _searchResult = null;
@@ -2420,6 +2442,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _collectionOriginArtistDetail = null;
         _collectionOriginArtistResult = null;
         _collectionOriginArtistSection = OfficialArtistSection.profile;
+        _collectionOriginArtistSongPaginationUnavailable = false;
+        _collectionOriginArtistSongAutoLoadPaused = false;
         _isCollectionLoading = false;
       });
     }
@@ -2494,6 +2518,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _collectionOriginArtistDetail = null;
       _collectionOriginArtistResult = null;
       _collectionOriginArtistSection = OfficialArtistSection.profile;
+      _collectionOriginArtistSongPaginationUnavailable = false;
+      _collectionOriginArtistSongAutoLoadPaused = false;
       _isCollectionLoading = false;
       _selectedHub = null;
       _hubDetail = null;
@@ -2921,6 +2947,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _collectionOriginArtistDetail = _artistDetail;
         _collectionOriginArtistResult = _artistResult;
         _collectionOriginArtistSection = _artistSection;
+        _collectionOriginArtistSongPaginationUnavailable =
+            _artistSongPaginationUnavailable;
+        _collectionOriginArtistSongAutoLoadPaused = _artistSongAutoLoadPaused;
       }
       _selectedArtist = null;
       _artistResult = null;
@@ -3019,6 +3048,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     final originDetail = _collectionOriginArtistDetail;
     final originResult = _collectionOriginArtistResult;
     final originSection = _collectionOriginArtistSection;
+    final originPaginationUnavailable =
+        _collectionOriginArtistSongPaginationUnavailable;
+    final originAutoLoadPaused = _collectionOriginArtistSongAutoLoadPaused;
     setState(() {
       _selectedCollection = null;
       _collectionDetail = null;
@@ -3029,13 +3061,15 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _artistSection = originSection;
       _artistErrorMessage = null;
       _artistSongPageErrorMessage = null;
-      _artistSongPaginationUnavailable = false;
-      _artistSongAutoLoadPaused = false;
+      _artistSongPaginationUnavailable = originPaginationUnavailable;
+      _artistSongAutoLoadPaused = originAutoLoadPaused;
       _isArtistSongPageLoading = false;
       _collectionOriginArtist = null;
       _collectionOriginArtistDetail = null;
       _collectionOriginArtistResult = null;
       _collectionOriginArtistSection = OfficialArtistSection.profile;
+      _collectionOriginArtistSongPaginationUnavailable = false;
+      _collectionOriginArtistSongAutoLoadPaused = false;
       _isCollectionLoading = false;
     });
   }
@@ -3617,6 +3651,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _collectionOriginArtistDetail = null;
       _collectionOriginArtistResult = null;
       _collectionOriginArtistSection = OfficialArtistSection.profile;
+      _collectionOriginArtistSongPaginationUnavailable = false;
+      _collectionOriginArtistSongAutoLoadPaused = false;
       _isCollectionLoading = false;
     });
     unawaited(_openArtist(artist));
@@ -6030,6 +6066,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       _collectionOriginArtistDetail = null;
       _collectionOriginArtistResult = null;
       _collectionOriginArtistSection = OfficialArtistSection.profile;
+      _collectionOriginArtistSongPaginationUnavailable = false;
+      _collectionOriginArtistSongAutoLoadPaused = false;
       _isCollectionLoading = false;
       _catalogBrowseView = _CatalogBrowseView.discovery;
       _selectedHub = null;
