@@ -560,6 +560,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                   ? detail.featuredSongs
                   : detail.songs.take(6).toList(growable: false),
             OfficialArtistSection.songs => detail.songs,
+            OfficialArtistSection.albums ||
             OfficialArtistSection.singles ||
             OfficialArtistSection.videos => const <CatalogSong>[],
           };
@@ -821,6 +822,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       final suffix = switch (state.artistSection) {
         OfficialArtistSection.profile => '',
         OfficialArtistSection.songs => '/bai-hat',
+        OfficialArtistSection.albums => '/album',
         OfficialArtistSection.singles => '/single',
         OfficialArtistSection.videos => '/video',
       };
@@ -4878,6 +4880,17 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                         unawaited(_loadSongs(silent: _songs.isNotEmpty)),
                   ),
                 ),
+              if (_selectedTab == _discoveryTab &&
+                  selectedArtist != null &&
+                  artistDetail != null)
+                SliverToBoxAdapter(
+                  child: ArtistProfileSectionTabs(
+                    detail: artistDetail,
+                    selected: _artistSection,
+                    onSelected: _showArtistSection,
+                    tvMode: widget.tvMode,
+                  ),
+                ),
               if (desktopArtistOverview)
                 SliverToBoxAdapter(
                   child: ArtistDesktopOverview(
@@ -5190,6 +5203,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                     view: switch (_artistSection) {
                       OfficialArtistSection.singles =>
                         ArtistProfileCatalogView.singles,
+                      OfficialArtistSection.albums =>
+                        ArtistProfileCatalogView.albums,
                       OfficialArtistSection.videos =>
                         ArtistProfileCatalogView.videos,
                       OfficialArtistSection.profile ||
@@ -5198,6 +5213,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                     },
                     onShowAllSingles: () =>
                         _showArtistSection(OfficialArtistSection.singles),
+                    onShowAllAlbums: () =>
+                        _showArtistSection(OfficialArtistSection.albums),
                     onShowAllVideos: () =>
                         _showArtistSection(OfficialArtistSection.videos),
                     onCollectionTap: (collection) =>

@@ -559,8 +559,10 @@ void main() {
     await _setViewport(tester, const Size(1440, 900));
     final controller = await _controller();
     addTearDown(controller.dispose);
+    var artistDetailCalls = 0;
 
     Future<void> pumpArtist(String url, Key key) async {
+      final callsBeforePump = artistDetailCalls;
       await tester.pumpWidget(
         _app(
           controller,
@@ -568,7 +570,10 @@ void main() {
             key: key,
             initialOfficialUrl: url,
             loadSongs: () async => const [_song],
-            loadArtistDetail: (_) async => _artistSectionDetail,
+            loadArtistDetail: (_) async {
+              artistDetailCalls++;
+              return _artistSectionDetail;
+            },
             loadWeeklyChart: _loadWeeklyChart,
             loadDiscoveryHome: _emptyDiscovery,
             loadDiscoveryCategoryHome: (_) => _emptyDiscovery(),
@@ -579,6 +584,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      expect(artistDetailCalls, callsBeforePump + 1);
       expect(tester.takeException(), isNull);
     }
 
@@ -597,6 +603,10 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.byKey(const ValueKey('artist-section-show-all-artist-albums')),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(const ValueKey('artist-videos-show-all')),
       findsOneWidget,
     );
@@ -612,17 +622,34 @@ void main() {
       'https://zingmp3.vn/Taylor-Swift/single',
       const ValueKey('artist-single-route'),
     );
+    expect(find.byKey(const ValueKey('artist-singles-grid')), findsOneWidget);
     expect(
-      find.byKey(const ValueKey('artist-section-artist-singles')),
+      find.byKey(const ValueKey('artist-collection-artist-single-one')),
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('artist-video-artist-mv')), findsNothing);
     expect(find.text(_featuredArtistSong.displayTitle), findsNothing);
 
     await pumpArtist(
+      'https://zingmp3.vn/Taylor-Swift/album',
+      const ValueKey('artist-album-route'),
+    );
+    expect(find.byKey(const ValueKey('artist-albums-grid')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('artist-collection-artist-album-one')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('artist-profile-section-tab-albums')),
+      findsOneWidget,
+    );
+    expect(controller.currentSong, isNull);
+
+    await pumpArtist(
       'https://zingmp3.vn/Taylor-Swift/video',
       const ValueKey('artist-video-route'),
     );
+    expect(find.byKey(const ValueKey('artist-videos-grid')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('artist-video-artist-mv')),
       findsOneWidget,
@@ -640,6 +667,75 @@ void main() {
     expect(find.text('TẤT CẢ BÀI HÁT'), findsOneWidget);
     expect(find.text(_fullArtistSong.displayTitle), findsWidgets);
   });
+
+  testWidgets(
+    'artist discography tabs preserve cached detail through Back and Forward',
+    (tester) async {
+      await _setViewport(tester, const Size(1440, 900));
+      final controller = await _controller();
+      addTearDown(controller.dispose);
+      var artistDetailCalls = 0;
+
+      await tester.pumpWidget(
+        _app(
+          controller,
+          ZingChartScreen(
+            initialOfficialUrl: 'https://zingmp3.vn/Taylor-Swift',
+            loadSongs: () async => const [_song],
+            loadArtistDetail: (_) async {
+              artistDetailCalls++;
+              return _artistSectionDetail;
+            },
+            loadWeeklyChart: _loadWeeklyChart,
+            loadDiscoveryHome: _emptyDiscovery,
+            loadDiscoveryCategoryHome: (_) => _emptyDiscovery(),
+            loadDiscoveryCategories: _emptyCategories,
+            loadDiscoveryRecommendations: _emptyRecommendations,
+            loadReleaseCatalog: _emptyReleases,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(artistDetailCalls, 1);
+      expect(controller.currentSong, isNull);
+      expect(
+        find.byKey(const ValueKey('artist-profile-section-tab-profile')),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('artist-profile-section-tab-albums')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('artist-albums-grid')), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const ValueKey('artist-profile-section-tab-videos')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('artist-videos-grid')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('catalog-history-back')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('artist-albums-grid')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('catalog-history-back')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('artist-albums-grid')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('artist-section-artist-albums')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('catalog-history-forward')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('artist-albums-grid')), findsOneWidget);
+      expect(artistDetailCalls, 1);
+      expect(controller.currentSong, isNull);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('warm Top 100 discards a late collection response', (
     tester,
@@ -1257,6 +1353,21 @@ const _artistSectionDetail = CatalogArtistDetail(
           kind: CatalogCollectionKind.album,
           externalUrl:
               'https://zingmp3.vn/album/single-chinh-thuc/artist-single-one.html',
+        ),
+      ],
+    ),
+    CatalogArtistCollectionSection(
+      id: 'artist-albums',
+      title: 'Album',
+      collections: [
+        CatalogCollection(
+          id: 'artist-album-one',
+          title: 'Album Chính Thức',
+          artist: 'Taylor Swift',
+          thumbnail: '',
+          kind: CatalogCollectionKind.album,
+          externalUrl:
+              'https://zingmp3.vn/album/album-chinh-thuc/artist-album-one.html',
         ),
       ],
     ),

@@ -4,12 +4,209 @@ import 'package:flutter/services.dart';
 
 import '../models/catalog_artist_detail.dart';
 import '../models/catalog_search.dart';
+import '../models/official_zing_link.dart';
 import '../theme/app_theme.dart';
 import 'album_art.dart';
 import 'catalog_artist_rail.dart';
 import 'catalog_collection_action_deck.dart';
 
-enum ArtistProfileCatalogView { profile, singles, videos }
+enum ArtistProfileCatalogView { profile, singles, albums, videos }
+
+/// Compact navigation for the public sections of an official artist profile.
+///
+/// Unavailable sections stay out of the traversal order, except for the
+/// currently selected section. Keeping that selected route visible makes an
+/// empty deep link understandable instead of silently returning to Overview.
+class ArtistProfileSectionTabs extends StatelessWidget {
+  const ArtistProfileSectionTabs({
+    super.key,
+    required this.detail,
+    required this.selected,
+    required this.onSelected,
+    this.tvMode = false,
+  });
+
+  final CatalogArtistDetail detail;
+  final OfficialArtistSection selected;
+  final ValueChanged<OfficialArtistSection> onSelected;
+  final bool tvMode;
+
+  @override
+  Widget build(BuildContext context) {
+    final available = <OfficialArtistSection>{
+      OfficialArtistSection.profile,
+      if (detail.totalSongCount > 0 || detail.featuredSongs.isNotEmpty)
+        OfficialArtistSection.songs,
+      if (_collectionsForKind(
+        detail,
+        _ArtistCollectionSectionKind.singles,
+      ).isNotEmpty)
+        OfficialArtistSection.singles,
+      if (_collectionsForKind(
+        detail,
+        _ArtistCollectionSectionKind.albums,
+      ).isNotEmpty)
+        OfficialArtistSection.albums,
+      if (_uniqueVideos(detail.videos).isNotEmpty) OfficialArtistSection.videos,
+      selected,
+    };
+    final sections = OfficialArtistSection.values
+        .where(available.contains)
+        .toList(growable: false);
+    final horizontal = tvMode ? 32.0 : 20.0;
+
+    return Semantics(
+      key: const ValueKey('artist-profile-section-tabs'),
+      container: true,
+      label: 'Danh mục nghệ sĩ',
+      child: SizedBox(
+        height: tvMode ? 72 : 52,
+        child: ListView.separated(
+          key: const ValueKey('artist-profile-section-tab-list'),
+          primary: false,
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.symmetric(horizontal: horizontal, vertical: 4),
+          itemCount: sections.length,
+          separatorBuilder: (_, __) => SizedBox(width: tvMode ? 12 : 6),
+          itemBuilder: (context, index) {
+            final section = sections[index];
+            return _ArtistProfileSectionTab(
+              key: ValueKey('artist-profile-section-tab-${section.name}'),
+              section: section,
+              selected: section == selected,
+              onPressed: () => onSelected(section),
+              tvMode: tvMode,
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _ArtistProfileSectionTab extends StatefulWidget {
+  const _ArtistProfileSectionTab({
+    super.key,
+    required this.section,
+    required this.selected,
+    required this.onPressed,
+    required this.tvMode,
+  });
+
+  final OfficialArtistSection section;
+  final bool selected;
+  final VoidCallback onPressed;
+  final bool tvMode;
+
+  @override
+  State<_ArtistProfileSectionTab> createState() =>
+      _ArtistProfileSectionTabState();
+}
+
+class _ArtistProfileSectionTabState extends State<_ArtistProfileSectionTab> {
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.selected) _revealAfterLayout();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ArtistProfileSectionTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selected && !oldWidget.selected) _revealAfterLayout();
+  }
+
+  void _revealAfterLayout() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Scrollable.ensureVisible(
+        context,
+        alignment: 0.5,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Semantics(
+      selected: widget.selected,
+      button: true,
+      label: _artistSectionLabel(widget.section),
+      onTap: widget.onPressed,
+      child: TextButton(
+        focusNode: _focusNode,
+        onFocusChange: (focused) {
+          if (!focused) return;
+          _revealAfterLayout();
+        },
+        onPressed: widget.onPressed,
+        style: ButtonStyle(
+          minimumSize: WidgetStatePropertyAll(
+            Size(widget.tvMode ? 124 : 0, widget.tvMode ? 56 : 44),
+          ),
+          padding: WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: widget.tvMode ? 22 : 15),
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.focused)) return ZingColors.lime;
+            return widget.selected ? colors.onSurface : colors.onSurfaceVariant;
+          }),
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (widget.selected) {
+              return ZingColors.purple.withValues(alpha: 0.34);
+            }
+            if (states.contains(WidgetState.focused) ||
+                states.contains(WidgetState.hovered)) {
+              return colors.onSurface.withValues(alpha: 0.08);
+            }
+            return Colors.transparent;
+          }),
+          side: WidgetStateProperty.resolveWith((states) {
+            final focused = states.contains(WidgetState.focused);
+            return BorderSide(
+              color: focused
+                  ? ZingColors.lime
+                  : widget.selected
+                  ? ZingColors.purpleBright.withValues(alpha: 0.68)
+                  : colors.outlineVariant.withValues(alpha: 0.4),
+              width: focused ? 2.5 : 1,
+            );
+          }),
+          shape: const WidgetStatePropertyAll(StadiumBorder()),
+          textStyle: WidgetStatePropertyAll(
+            TextStyle(
+              fontSize: widget.tvMode ? 16 : 12,
+              fontWeight: FontWeight.w900,
+              letterSpacing: widget.tvMode ? 0.55 : 0.75,
+            ),
+          ),
+        ),
+        child: Text(_artistSectionLabel(widget.section)),
+      ),
+    );
+  }
+}
+
+String _artistSectionLabel(OfficialArtistSection section) => switch (section) {
+  OfficialArtistSection.profile => 'TỔNG QUAN',
+  OfficialArtistSection.songs => 'BÀI HÁT',
+  OfficialArtistSection.singles => 'SINGLE & EP',
+  OfficialArtistSection.albums => 'ALBUM',
+  OfficialArtistSection.videos => 'MV',
+};
 
 class ArtistProfileCatalog extends StatelessWidget {
   const ArtistProfileCatalog({
@@ -27,6 +224,7 @@ class ArtistProfileCatalog extends StatelessWidget {
     this.followedArtistIds = const <String>{},
     this.view = ArtistProfileCatalogView.profile,
     this.onShowAllSingles,
+    this.onShowAllAlbums,
     this.onShowAllVideos,
     this.tvMode = false,
   });
@@ -44,23 +242,23 @@ class ArtistProfileCatalog extends StatelessWidget {
   final Set<String> followedArtistIds;
   final ArtistProfileCatalogView view;
   final VoidCallback? onShowAllSingles;
+  final VoidCallback? onShowAllAlbums;
   final VoidCallback? onShowAllVideos;
   final bool tvMode;
 
   @override
   Widget build(BuildContext context) {
     final horizontal = tvMode ? 32.0 : 20.0;
-    final collectionSections = switch (view) {
-      ArtistProfileCatalogView.profile => detail.collectionSections,
-      ArtistProfileCatalogView.singles =>
-        detail.collectionSections
-            .where(_isSingleSection)
-            .toList(growable: false),
-      ArtistProfileCatalogView.videos =>
-        const <CatalogArtistCollectionSection>[],
-    };
-    final showVideos = view != ArtistProfileCatalogView.singles;
-    final showProfileExtras = view == ArtistProfileCatalogView.profile;
+    final profileSections = _uniqueProfileSections(detail.collectionSections);
+    final singles = _collectionsForKind(
+      detail,
+      _ArtistCollectionSectionKind.singles,
+    );
+    final albums = _collectionsForKind(
+      detail,
+      _ArtistCollectionSectionKind.albums,
+    );
+    final videos = _uniqueVideos(detail.videos);
     return Padding(
       key: const ValueKey('artist-profile-catalog'),
       padding: EdgeInsets.fromLTRB(
@@ -72,59 +270,502 @@ class ArtistProfileCatalog extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final section in collectionSections) ...[
-            _ArtistCollectionRail(
-              key: ValueKey('artist-section-${section.id}'),
-              section: section,
+          if (view == ArtistProfileCatalogView.profile) ...[
+            for (final section in profileSections) ...[
+              _ArtistCollectionRail(
+                key: ValueKey('artist-section-${section.id}'),
+                section: section,
+                onTap: onCollectionTap,
+                onPlay: onCollectionPlay,
+                onToggleSaved: onCollectionToggleSaved,
+                onShare: onCollectionShare,
+                savedCollectionIds: savedCollectionIds,
+                quickPlayingCollectionId: quickPlayingCollectionId,
+                onShowAll: switch (_collectionSectionKind(section)) {
+                  _ArtistCollectionSectionKind.singles =>
+                    singles.isEmpty ? null : onShowAllSingles,
+                  _ArtistCollectionSectionKind.albums =>
+                    albums.isEmpty ? null : onShowAllAlbums,
+                  _ArtistCollectionSectionKind.other => null,
+                },
+                tvMode: tvMode,
+              ),
+              SizedBox(height: tvMode ? 40 : 30),
+            ],
+            if (videos.isNotEmpty) ...[
+              _ArtistVideoRail(
+                videos: videos,
+                onTap: onVideoTap,
+                onShowAll: onShowAllVideos,
+                tvMode: tvMode,
+              ),
+              SizedBox(height: tvMode ? 40 : 30),
+            ],
+            if (detail.relatedArtists.isNotEmpty) ...[
+              CatalogArtistRail(
+                title: 'Bạn Có Thể Thích',
+                artists: detail.relatedArtists,
+                onArtistTap: onArtistTap,
+                onToggleFollow: onArtistToggleFollow,
+                followedArtistIds: followedArtistIds,
+                keyPrefix: 'related-artist',
+                tvMode: tvMode,
+              ),
+              SizedBox(height: tvMode ? 40 : 30),
+            ],
+            if (detail.biography.isNotEmpty)
+              _ArtistBiography(detail: detail, tvMode: tvMode),
+          ] else if (view == ArtistProfileCatalogView.singles)
+            _ArtistCollectionGrid(
+              key: const ValueKey('artist-singles-grid'),
+              sectionKey: 'singles',
+              title: 'Single & EP',
+              emptyMessage: 'Nghệ sĩ chưa có Single & EP công khai',
+              collections: singles,
               onTap: onCollectionTap,
               onPlay: onCollectionPlay,
               onToggleSaved: onCollectionToggleSaved,
               onShare: onCollectionShare,
               savedCollectionIds: savedCollectionIds,
               quickPlayingCollectionId: quickPlayingCollectionId,
-              onShowAll:
-                  view == ArtistProfileCatalogView.profile &&
-                      _isSingleSection(section)
-                  ? onShowAllSingles
-                  : null,
               tvMode: tvMode,
-            ),
-            SizedBox(height: tvMode ? 40 : 30),
-          ],
-          if (showVideos && detail.videos.isNotEmpty) ...[
-            _ArtistVideoRail(
-              videos: detail.videos,
-              onTap: onVideoTap,
-              onShowAll: view == ArtistProfileCatalogView.profile
-                  ? onShowAllVideos
-                  : null,
+            )
+          else if (view == ArtistProfileCatalogView.albums)
+            _ArtistCollectionGrid(
+              key: const ValueKey('artist-albums-grid'),
+              sectionKey: 'albums',
+              title: 'Album',
+              emptyMessage: 'Nghệ sĩ chưa có album công khai',
+              collections: albums,
+              onTap: onCollectionTap,
+              onPlay: onCollectionPlay,
+              onToggleSaved: onCollectionToggleSaved,
+              onShare: onCollectionShare,
+              savedCollectionIds: savedCollectionIds,
+              quickPlayingCollectionId: quickPlayingCollectionId,
               tvMode: tvMode,
-            ),
-            SizedBox(height: tvMode ? 40 : 30),
-          ],
-          if (showProfileExtras && detail.relatedArtists.isNotEmpty) ...[
-            CatalogArtistRail(
-              title: 'Bạn Có Thể Thích',
-              artists: detail.relatedArtists,
-              onArtistTap: onArtistTap,
-              onToggleFollow: onArtistToggleFollow,
-              followedArtistIds: followedArtistIds,
-              keyPrefix: 'related-artist',
-              tvMode: tvMode,
-            ),
-            SizedBox(height: tvMode ? 40 : 30),
-          ],
-          if (showProfileExtras && detail.biography.isNotEmpty)
-            _ArtistBiography(detail: detail, tvMode: tvMode),
+            )
+          else
+            _ArtistVideoGrid(videos: videos, onTap: onVideoTap, tvMode: tvMode),
         ],
       ),
     );
   }
 }
 
-bool _isSingleSection(CatalogArtistCollectionSection section) {
-  final identity = '${section.id} ${section.title}'.toLowerCase();
-  return identity.contains('single');
+enum _ArtistCollectionSectionKind { singles, albums, other }
+
+_ArtistCollectionSectionKind _collectionSectionKind(
+  CatalogArtistCollectionSection section,
+) {
+  final idTokens = _sectionTokens(section.id);
+  final titleTokens = _sectionTokens(section.title);
+  final tokens = <String>{...idTokens, ...titleTokens};
+  final normalizedTitle = titleTokens.join(' ');
+  final mentionsSingles =
+      tokens.contains('single') ||
+      tokens.contains('singles') ||
+      tokens.contains('ep') ||
+      normalizedTitle == 'dia don' ||
+      normalizedTitle.startsWith('dia don ');
+  final mentionsAlbums =
+      tokens.contains('album') ||
+      tokens.contains('albums') ||
+      tokens.contains('lp');
+
+  // Ambiguous metadata never gets guessed into a public deep-link section.
+  if (mentionsSingles == mentionsAlbums) {
+    return _ArtistCollectionSectionKind.other;
+  }
+  return mentionsSingles
+      ? _ArtistCollectionSectionKind.singles
+      : _ArtistCollectionSectionKind.albums;
+}
+
+List<String> _sectionTokens(String input) {
+  final camelSeparated = input.replaceAllMapped(
+    RegExp(r'([a-z0-9])([A-Z])'),
+    (match) => '${match.group(1)} ${match.group(2)}',
+  );
+  var normalized = camelSeparated.toLowerCase();
+  const replacements = <String, String>{
+    'à': 'a',
+    'á': 'a',
+    'ạ': 'a',
+    'ả': 'a',
+    'ã': 'a',
+    'â': 'a',
+    'ầ': 'a',
+    'ấ': 'a',
+    'ậ': 'a',
+    'ẩ': 'a',
+    'ẫ': 'a',
+    'ă': 'a',
+    'ằ': 'a',
+    'ắ': 'a',
+    'ặ': 'a',
+    'ẳ': 'a',
+    'ẵ': 'a',
+    'è': 'e',
+    'é': 'e',
+    'ẹ': 'e',
+    'ẻ': 'e',
+    'ẽ': 'e',
+    'ê': 'e',
+    'ề': 'e',
+    'ế': 'e',
+    'ệ': 'e',
+    'ể': 'e',
+    'ễ': 'e',
+    'ì': 'i',
+    'í': 'i',
+    'ị': 'i',
+    'ỉ': 'i',
+    'ĩ': 'i',
+    'ò': 'o',
+    'ó': 'o',
+    'ọ': 'o',
+    'ỏ': 'o',
+    'õ': 'o',
+    'ô': 'o',
+    'ồ': 'o',
+    'ố': 'o',
+    'ộ': 'o',
+    'ổ': 'o',
+    'ỗ': 'o',
+    'ơ': 'o',
+    'ờ': 'o',
+    'ớ': 'o',
+    'ợ': 'o',
+    'ở': 'o',
+    'ỡ': 'o',
+    'ù': 'u',
+    'ú': 'u',
+    'ụ': 'u',
+    'ủ': 'u',
+    'ũ': 'u',
+    'ư': 'u',
+    'ừ': 'u',
+    'ứ': 'u',
+    'ự': 'u',
+    'ử': 'u',
+    'ữ': 'u',
+    'ỳ': 'y',
+    'ý': 'y',
+    'ỵ': 'y',
+    'ỷ': 'y',
+    'ỹ': 'y',
+    'đ': 'd',
+  };
+  for (final replacement in replacements.entries) {
+    normalized = normalized.replaceAll(replacement.key, replacement.value);
+  }
+  return normalized
+      .split(RegExp(r'[^a-z0-9]+'))
+      .where((token) => token.isNotEmpty && !RegExp(r'^\d+$').hasMatch(token))
+      .toList(growable: false);
+}
+
+List<CatalogArtistCollectionSection> _uniqueProfileSections(
+  List<CatalogArtistCollectionSection> sections,
+) {
+  final seen = <String>{};
+  final result = <CatalogArtistCollectionSection>[];
+  for (final section in sections) {
+    final collections = _uniqueCollections(
+      section.collections,
+      seen: seen,
+      albumsOnly: false,
+    );
+    if (collections.isEmpty) continue;
+    result.add(
+      CatalogArtistCollectionSection(
+        id: section.id,
+        title: section.title,
+        collections: collections,
+      ),
+    );
+  }
+  return List<CatalogArtistCollectionSection>.unmodifiable(result);
+}
+
+List<CatalogCollection> _collectionsForKind(
+  CatalogArtistDetail detail,
+  _ArtistCollectionSectionKind kind,
+) {
+  final seen = <String>{};
+  final result = <CatalogCollection>[];
+  for (final section in detail.collectionSections) {
+    if (_collectionSectionKind(section) != kind) continue;
+    result.addAll(
+      _uniqueCollections(section.collections, seen: seen, albumsOnly: true),
+    );
+  }
+  return List<CatalogCollection>.unmodifiable(result);
+}
+
+List<CatalogCollection> _uniqueCollections(
+  Iterable<CatalogCollection> collections, {
+  required Set<String> seen,
+  required bool albumsOnly,
+}) {
+  final result = <CatalogCollection>[];
+  for (final collection in collections) {
+    final id = collection.id.trim();
+    if (!_publicCatalogId.hasMatch(id) ||
+        (albumsOnly && collection.kind != CatalogCollectionKind.album)) {
+      continue;
+    }
+    if (seen.add(id)) result.add(collection);
+  }
+  return result;
+}
+
+List<CatalogVideo> _uniqueVideos(Iterable<CatalogVideo> videos) {
+  final seen = <String>{};
+  final result = <CatalogVideo>[];
+  for (final video in videos) {
+    final id = video.id.trim();
+    if (_publicCatalogId.hasMatch(id) && seen.add(id)) result.add(video);
+  }
+  return List<CatalogVideo>.unmodifiable(result);
+}
+
+final RegExp _publicCatalogId = RegExp(r'^[A-Za-z0-9_-]{1,128}$');
+
+class _ArtistCollectionGrid extends StatelessWidget {
+  const _ArtistCollectionGrid({
+    super.key,
+    required this.sectionKey,
+    required this.title,
+    required this.emptyMessage,
+    required this.collections,
+    required this.onTap,
+    required this.onPlay,
+    required this.onToggleSaved,
+    required this.onShare,
+    required this.savedCollectionIds,
+    required this.quickPlayingCollectionId,
+    required this.tvMode,
+  });
+
+  final String sectionKey;
+  final String title;
+  final String emptyMessage;
+  final List<CatalogCollection> collections;
+  final ValueChanged<CatalogCollection> onTap;
+  final ValueChanged<CatalogCollection>? onPlay;
+  final ValueChanged<CatalogCollection>? onToggleSaved;
+  final ValueChanged<CatalogCollection>? onShare;
+  final Set<String> savedCollectionIds;
+  final String? quickPlayingCollectionId;
+  final bool tvMode;
+
+  @override
+  Widget build(BuildContext context) {
+    if (collections.isEmpty) {
+      return _ArtistCatalogEmptyState(
+        key: ValueKey('artist-$sectionKey-empty'),
+        message: emptyMessage,
+        icon: Icons.album_outlined,
+        tvMode: tvMode,
+      );
+    }
+    final touchPlatform = switch (Theme.of(context).platform) {
+      TargetPlatform.android ||
+      TargetPlatform.iOS ||
+      TargetPlatform.fuchsia => true,
+      _ => false,
+    };
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = _discographyColumnCount(
+          constraints.maxWidth,
+          tvMode: tvMode,
+        );
+        final gap = tvMode ? 22.0 : 16.0;
+        final itemWidth =
+            (constraints.maxWidth - (columns - 1) * gap) / columns;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionTitle(
+              title: title,
+              trailing: '${collections.length} nội dung đã tải',
+              tvMode: tvMode,
+            ),
+            SizedBox(height: tvMode ? 20 : 14),
+            GridView.builder(
+              key: ValueKey('artist-$sectionKey-grid-list'),
+              primary: false,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                crossAxisSpacing: gap,
+                mainAxisSpacing: tvMode ? 24 : 18,
+                mainAxisExtent: itemWidth + (tvMode ? 104 : 88),
+              ),
+              itemCount: collections.length,
+              itemBuilder: (context, index) {
+                final collection = collections[index];
+                return _ArtistCollectionCard(
+                  key: ValueKey('artist-collection-${collection.id}'),
+                  collection: collection,
+                  onOpen: () => onTap(collection),
+                  onPlay: onPlay == null ? null : () => onPlay!(collection),
+                  onToggleSaved: onToggleSaved == null
+                      ? null
+                      : () => onToggleSaved!(collection),
+                  onShare:
+                      onShare == null || collection.externalUrl.trim().isEmpty
+                      ? null
+                      : () => onShare!(collection),
+                  saved: savedCollectionIds.contains(collection.id),
+                  playing: quickPlayingCollectionId == collection.id,
+                  persistentActions: tvMode || touchPlatform,
+                  tvMode: tvMode,
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ArtistVideoGrid extends StatelessWidget {
+  const _ArtistVideoGrid({
+    required this.videos,
+    required this.onTap,
+    required this.tvMode,
+  });
+
+  final List<CatalogVideo> videos;
+  final ValueChanged<CatalogVideo> onTap;
+  final bool tvMode;
+
+  @override
+  Widget build(BuildContext context) {
+    if (videos.isEmpty) {
+      return _ArtistCatalogEmptyState(
+        key: const ValueKey('artist-videos-empty'),
+        message: 'Nghệ sĩ chưa có MV công khai',
+        icon: Icons.ondemand_video_outlined,
+        tvMode: tvMode,
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = _discographyColumnCount(
+          constraints.maxWidth,
+          tvMode: tvMode,
+        );
+        final gap = tvMode ? 22.0 : 16.0;
+        final itemWidth =
+            (constraints.maxWidth - (columns - 1) * gap) / columns;
+        return Column(
+          key: const ValueKey('artist-videos-grid'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionTitle(
+              title: 'MV',
+              trailing: '${videos.length} MV đã tải',
+              tvMode: tvMode,
+            ),
+            SizedBox(height: tvMode ? 20 : 14),
+            GridView.builder(
+              key: const ValueKey('artist-videos-grid-list'),
+              primary: false,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                crossAxisSpacing: gap,
+                mainAxisSpacing: tvMode ? 24 : 18,
+                mainAxisExtent: itemWidth * 9 / 16 + (tvMode ? 88 : 72),
+              ),
+              itemCount: videos.length,
+              itemBuilder: (context, index) {
+                final video = videos[index];
+                return _ArtistVideoCard(
+                  key: ValueKey('artist-video-${video.id}'),
+                  video: video,
+                  onTap: () => onTap(video),
+                  tvMode: tvMode,
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+int _discographyColumnCount(double width, {required bool tvMode}) {
+  if (tvMode) return width >= 1500 ? 5 : 4;
+  if (width < 600) return 2;
+  if (width < 1024) return 3;
+  return width >= 1420 ? 5 : 4;
+}
+
+class _ArtistCatalogEmptyState extends StatelessWidget {
+  const _ArtistCatalogEmptyState({
+    super.key,
+    required this.message,
+    required this.icon,
+    required this.tvMode,
+  });
+
+  final String message;
+  final IconData icon;
+  final bool tvMode;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    container: true,
+    liveRegion: true,
+    label: message,
+    child: Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: tvMode ? 260 : 190),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: ZingColors.purple.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: ZingColors.purpleBright.withValues(alpha: 0.32),
+                ),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(tvMode ? 22 : 17),
+                child: Icon(
+                  icon,
+                  size: tvMode ? 42 : 32,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            SizedBox(height: tvMode ? 18 : 14),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: tvMode ? 20 : 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _ArtistCollectionRail extends StatefulWidget {

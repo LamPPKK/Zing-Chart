@@ -415,6 +415,24 @@ adapter share/save không khả dụng.
 - Request chỉ chứa artist ID, page và limit. Favorites, mood, lịch sử nghe và
   analytics tiếp tục nằm hoàn toàn trên thiết bị, không được gửi lên proxy.
 
+### Artist Discography Tabs v1.3d
+
+- Hồ sơ Nghệ sĩ/OA có thanh điều hướng thống nhất **Tổng quan · Bài hát ·
+  Single & EP · Album · MV**. Route chính thức `/{alias}/album` được parse
+  fail-closed, canonicalize và khôi phục đúng qua Back/Forward.
+- Single/EP, Album và MV mở thành grid catalog đầy đủ thay vì rail ngang:
+  2 cột trên điện thoại, 3 cột trên tablet, 4–5 cột trên desktop và TV. Card
+  giữ nguyên Play/Lưu/Thêm/Chia sẻ, bàn phím và remote focus của catalog Zing.
+- Nội dung được khử trùng lặp theo public ID nhưng giữ nguyên thứ tự upstream.
+  Chỉ section có nhãn Single/EP hoặc Album rõ ràng mới được phân loại; section
+  mơ hồ tiếp tục nằm ở Tổng quan để không gắn nhãn sai.
+- Số lượng được ghi rõ là nội dung **đã tải**, không tuyên bố toàn bộ catalog
+  khi payload nghệ sĩ đang bị giới hạn. Deep link tới section trống vẫn giữ tab
+  và hiện empty state đúng loại, không âm thầm quay về Tổng quan.
+- Chuyển tab dùng lại artist detail đã cache, không tự phát nhạc và không tải
+  lại artist detail. Riêng Bài hát có thể tải trang catalog giới hạn khi cần;
+  favorites, lịch sử và analytics vẫn không được gửi lên mạng.
+
 ## Ảnh giao diện theo phiên bản
 
 Các ảnh dưới đây được render từ UI hiện tại bằng dữ liệu demo hoàn toàn cục bộ,
@@ -576,6 +594,14 @@ không chứa dữ liệu người dùng thật.
 <table>
   <tr>
     <td align="center"><img src="docs/screenshots/v1.3c-artist-pagination-desktop.png" alt="Catalog bài hát nghệ sĩ trên desktop hiển thị tiến độ phân trang 50 trên 73 bài"><br><sub><b>Artist Catalog Pagination</b> · mở tức thì với 50 bài đầu, tự tải gần cuối trên thiết bị cảm ứng/desktop, giữ XEM THÊM cho fallback và remote TV</sub></td>
+  </tr>
+</table>
+
+### v1.3d — Artist Discography Tabs
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3d-artist-discography-desktop.png" alt="Trang Album nghệ sĩ trên desktop với thanh tab Tổng quan Bài hát Single EP Album và MV cùng grid bốn cột"><br><sub><b>Artist Discography Tabs</b> · điều hướng media thống nhất, Album grid responsive, action kiểu Zing và Back/Forward dùng lại detail đã cache</sub></td>
   </tr>
 </table>
 

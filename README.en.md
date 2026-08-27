@@ -403,6 +403,25 @@ data.
 - Requests contain only artist ID, page, and limit. Favorites, moods, listening
   history, and analytics remain entirely on-device and are never uploaded.
 
+### Artist Discography Tabs v1.3d
+
+- Artist/OA profiles now share one **Overview · Songs · Single & EP · Album ·
+  MV** navigation strip. The official `/{alias}/album` route is parsed
+  fail-closed, canonicalized, and restored exactly through Back/Forward.
+- Single/EP, Album, and MV open as complete catalog grids instead of horizontal
+  rails: 2 columns on phones, 3 on tablets, and 4–5 on desktop and TV. Cards
+  retain the Zing-style Play/Save/More/Share actions plus keyboard and remote
+  focus behavior.
+- Content is deduplicated by public ID while preserving upstream order. Only
+  sections with unambiguous Single/EP or Album labels are classified; ambiguous
+  sections remain on Overview instead of receiving a guessed label.
+- Counts explicitly describe content **loaded** from the current bounded artist
+  payload. An empty direct section route remains selected and shows the correct
+  empty state instead of silently returning to Overview.
+- Switching sections reuses the cached artist detail, never autoplays, and
+  never reloads that detail. Songs may fetch its bounded catalog page when
+  needed; favorites, listening history, and analytics are never uploaded.
+
 ## Screenshots by release
 
 These images are rendered from the current UI with deterministic, fully local
@@ -564,6 +583,14 @@ historical binaries and contain no real user data.
 <table>
   <tr>
     <td align="center"><img src="docs/screenshots/v1.3c-artist-pagination-desktop.png" alt="Desktop artist song catalog showing pagination progress at 50 of 73 tracks"><br><sub><b>Artist Catalog Pagination</b> · opens immediately with the first 50 tracks, auto-loads near the end on touch/desktop, and retains XEM THÊM for fallback and TV remotes</sub></td>
+  </tr>
+</table>
+
+### v1.3d — Artist Discography Tabs
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3d-artist-discography-desktop.png" alt="Desktop artist Album view with Overview Songs Single EP Album and MV tabs above a four-column grid"><br><sub><b>Artist Discography Tabs</b> · unified media navigation, responsive Album grid, Zing-style actions, and Back/Forward backed by the cached artist detail</sub></td>
   </tr>
 </table>
 

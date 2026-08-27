@@ -282,6 +282,21 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 - 请求只包含 artist ID、page 与 limit。收藏、Mood、本地收听历史和 analytics 始终
   完全保留在设备上，不会上传。
 
+### Artist Discography Tabs v1.3d
+
+- 艺人/OA 主页现在共用 **总览 · 歌曲 · Single & EP · Album · MV** 导航条。
+  官方 `/{alias}/album` 路由会 fail-closed 解析、规范化，并通过 Back/Forward
+  精确恢复。
+- Single/EP、Album 与 MV 不再只显示横向 rail，而是打开完整 catalog 网格：手机
+  2 列、平板 3 列、桌面与电视 4–5 列。卡片继续复用 Zing 风格的播放、保存、更多、
+  分享操作以及键盘/遥控器焦点。
+- 内容按公开 ID 去重，同时保留 upstream 顺序。只有明确标记为 Single/EP 或 Album
+  的 section 才会分类；含义模糊的 section 继续保留在总览，不进行猜测。
+- 数量明确表示当前受限艺人 payload 中**已加载**的内容。直接打开空 section 时仍会
+  保持所选 tab 并显示对应空状态，不会静默退回总览。
+- 切换 section 会复用已缓存的 artist detail，不自动播放，也不会重新加载该详情。
+  “歌曲”在需要时可能获取受限 catalog 页面；收藏、收听历史或 analytics 绝不上传。
+
 ## 按版本展示界面
 
 以下图片由当前 UI 使用稳定、完全本地的演示数据渲染，再按功能里程碑分组。
@@ -442,6 +457,14 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 <table>
   <tr>
     <td align="center"><img src="docs/screenshots/v1.3c-artist-pagination-desktop.png" alt="桌面端艺人歌曲目录显示 50/73 的分页进度"><br><sub><b>Artist Catalog Pagination</b> · 以前 50 首歌曲即时打开，触控设备/桌面接近末尾时自动加载，并为回退与电视遥控保留“查看更多”</sub></td>
+  </tr>
+</table>
+
+### v1.3d — Artist Discography Tabs
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3d-artist-discography-desktop.png" alt="桌面端艺人 Album 页面，在总览 歌曲 Single EP Album MV 标签下显示四列网格"><br><sub><b>Artist Discography Tabs</b> · 统一媒体导航、响应式 Album 网格、Zing 风格操作，以及复用缓存 detail 的 Back/Forward</sub></td>
   </tr>
 </table>
 

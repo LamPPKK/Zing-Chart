@@ -68,6 +68,23 @@ void main() {
     expect(route?.officialLink?.canonicalUri.path, '/new-release/album');
   });
 
+  test('decodes and canonicalizes a direct artist albums Web route', () {
+    final route = extractInitialAppNavigationRoute(
+      baseUri: Uri.parse(
+        'https://client.example/Son-Tung-M-TP/album?utm_source=share',
+      ),
+      defaultRouteName: '/Son-Tung-M-TP/album?utm_source=share',
+    );
+
+    expect(route?.officialLink?.kind, OfficialZingLinkKind.artist);
+    expect(route?.officialLink?.alias, 'Son-Tung-M-TP');
+    expect(route?.officialLink?.artistSection, OfficialArtistSection.albums);
+    expect(
+      route?.officialLink?.canonicalUri,
+      Uri.parse('https://zingmp3.vn/Son-Tung-M-TP/album'),
+    );
+  });
+
   test('preserves an explicit Discovery route across a browser reload', () {
     final route = extractInitialAppNavigationRoute(
       baseUri: Uri.parse('https://client.example/?view=discovery'),

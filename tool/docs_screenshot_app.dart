@@ -45,7 +45,7 @@ import 'package:zmp3chart/widgets/streaming_quality_controls.dart';
 /// Deterministic documentation-only entry point used to capture README images.
 ///
 /// It never calls the proxy or a platform media service. Choose a surface with
-/// `?screen=home|queue|smart-shuffle|stream-quality|settings|desktop-lyrics|realtime-chart|discovery|discovery-recommendations|discovery-mv|discovery-recent|discovery-new-releases|discovery-new-release-chart|live-radio|artist|artist-songs|artist-follow|artist-mv|collection-save|collection-information|hubs|top-100|release-catalog|weekly-chart|search|search-all|search-songs|search-results|new-releases|player|car-mode|song-detail|lyrics|lyric-share|radio|library|playlist-workspace|history-workspace|for-you|mix-workspace|analytics|wrapped|tv`.
+/// `?screen=home|queue|smart-shuffle|stream-quality|settings|desktop-lyrics|realtime-chart|discovery|discovery-recommendations|discovery-mv|discovery-recent|discovery-new-releases|discovery-new-release-chart|live-radio|artist|artist-songs|artist-albums|artist-follow|artist-mv|collection-save|collection-information|hubs|top-100|release-catalog|weekly-chart|search|search-all|search-songs|search-results|new-releases|player|car-mode|song-detail|lyrics|lyric-share|radio|library|playlist-workspace|history-workspace|for-you|mix-workspace|analytics|wrapped|tv`.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final audioPlayer = _DocsAudioPlayer();
@@ -74,6 +74,7 @@ Future<void> main() async {
       ? _weeklyChart.playableSongs
       : screen == 'artist' ||
             screen == 'artist-songs' ||
+            screen == 'artist-albums' ||
             screen == 'artist-follow' ||
             screen == 'artist-mv'
       ? _artistDetail.songs
@@ -377,6 +378,11 @@ Future<void> main() async {
           loadArtistDetail: _loadArtistDetail,
           loadArtistSongs: _loadArtistSongs,
           initialOfficialUrl: 'https://zingmp3.vn/Son-Tung-M-TP/bai-hat',
+        ),
+        'artist-albums' => ZingChartScreen(
+          loadSongs: _loadSongs,
+          loadArtistDetail: _loadArtistDetail,
+          initialOfficialUrl: 'https://zingmp3.vn/Son-Tung-M-TP/album',
         ),
         'artist-follow' => ZingChartScreen(
           loadSongs: _loadSongs,
@@ -1958,6 +1964,45 @@ final _artistDetail = CatalogArtistDetail(
           thumbnail: '',
           kind: CatalogCollectionKind.playlist,
           externalUrl: '',
+        ),
+      ],
+    ),
+    CatalogArtistCollectionSection(
+      id: 'album',
+      title: 'Album',
+      collections: [
+        CatalogCollection(
+          id: 'sky-decade',
+          title: 'SKY DECADE',
+          artist: 'Sơn Tùng M-TP',
+          thumbnail: '',
+          kind: CatalogCollectionKind.album,
+          externalUrl: 'https://zingmp3.vn/album/sky-decade/sky-decade.html',
+        ),
+        CatalogCollection(
+          id: 'm-tp-mtp',
+          title: 'm-tp M-TP',
+          artist: 'Sơn Tùng M-TP',
+          thumbnail: '',
+          kind: CatalogCollectionKind.album,
+          externalUrl: 'https://zingmp3.vn/album/m-tp-mtp/m-tp-mtp.html',
+        ),
+        CatalogCollection(
+          id: 'chung-ta',
+          title: 'Chúng Ta',
+          artist: 'Sơn Tùng M-TP',
+          thumbnail: '',
+          kind: CatalogCollectionKind.album,
+          externalUrl: 'https://zingmp3.vn/album/chung-ta/chung-ta.html',
+        ),
+        CatalogCollection(
+          id: 'nhung-bai-hat-hay-nhat',
+          title: 'Những Bài Hát Hay Nhất',
+          artist: 'Sơn Tùng M-TP',
+          thumbnail: '',
+          kind: CatalogCollectionKind.album,
+          externalUrl:
+              'https://zingmp3.vn/album/nhung-bai-hat-hay-nhat/nhung-bai-hat-hay-nhat.html',
         ),
       ],
     ),

@@ -91,6 +91,17 @@ void main() {
     expect(artistSongs?.kind, OfficialZingLinkKind.artist);
     expect(artistSongs?.alias, 'Son-Tung-M-TP');
     expect(artistSongs?.artistSection, OfficialArtistSection.songs);
+    final artistAlbums = OfficialZingLink.tryParse(
+      'https://m.zingmp3.vn/Son-Tung-M-TP/album?utm_source=share#latest',
+    );
+    expect(artistAlbums?.kind, OfficialZingLinkKind.artist);
+    expect(artistAlbums?.alias, 'Son-Tung-M-TP');
+    expect(artistAlbums?.artistSection, OfficialArtistSection.albums);
+    expect(artistAlbums?.canonicalIdentity, 'artist:son-tung-m-tp:albums');
+    expect(
+      artistAlbums?.canonicalUri,
+      Uri.parse('https://zingmp3.vn/Son-Tung-M-TP/album'),
+    );
     expect(
       OfficialZingLink.tryParse(
         'https://zingmp3.vn/Son-Tung-M-TP/single',
@@ -193,6 +204,8 @@ void main() {
       'https://zingmp3.vn/zing-chart-tuan/Test/UNKNOWN.html',
       'https://zingmp3.vn/new-release/video',
       'https://zingmp3.vn/Son-Tung-M-TP/bai-hat/extra',
+      'https://zingmp3.vn/Son-Tung-M-TP/album/extra',
+      'https://zingmp3.vn/album/album',
       'https://zingmp3.vn/Son-Tung-M-TP/unknown',
     ]) {
       expect(OfficialZingLink.tryParse(value), isNull, reason: value);

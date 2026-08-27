@@ -17,7 +17,7 @@ enum OfficialZingLinkKind {
   liveRadio,
 }
 
-enum OfficialArtistSection { profile, songs, singles, videos }
+enum OfficialArtistSection { profile, songs, singles, albums, videos }
 
 /// A validated public page on Zing MP3 that can be opened inside #zingChart.
 ///
@@ -99,6 +99,7 @@ class OfficialZingLink {
       switch (artistSection) {
         OfficialArtistSection.profile => '/nghe-si/$alias',
         OfficialArtistSection.songs => '/$alias/bai-hat',
+        OfficialArtistSection.albums => '/$alias/album',
         OfficialArtistSection.singles => '/$alias/single',
         OfficialArtistSection.videos => '/$alias/video',
       },
@@ -226,6 +227,7 @@ class OfficialZingLink {
     if (segments.length == 2 && _isAlias(segments.first)) {
       final artistSection = switch (segments.last.toLowerCase()) {
         'bai-hat' => OfficialArtistSection.songs,
+        'album' => OfficialArtistSection.albums,
         'single' => OfficialArtistSection.singles,
         'video' => OfficialArtistSection.videos,
         _ => null,
