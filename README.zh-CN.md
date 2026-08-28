@@ -297,6 +297,22 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 - 切换 section 会复用已缓存的 artist detail，不自动播放，也不会重新加载该详情。
   “歌曲”在需要时可能获取受限 catalog 页面；收藏、收听历史或 analytics 绝不上传。
 
+### 艺人简介 v1.3e
+
+- “总览”末尾新增接近 Zing MP3 编辑风格的 **关于{艺人名}** 区块：宽屏将封面与
+  文字左右排列，较窄的手机或平板布局会自适应为紧凑的单列。
+- 简介预览会根据实际宽度、字体和文字缩放计算是否溢出。只有内容确实被截断时才显示
+  **查看更多**；弹窗内提供完整且可选择、可复制的简介文字。
+- 关注人数、成就数量，以及本名、国家和生日只在 artist detail 提供对应数据时显示；
+  缺失的元数据不会被推测或虚构。
+- 简介图片严格按 **封面 → 头像 → 本地占位图** 的顺序回退。网络图片加载失败时也会
+  使用带艺人姓名首字母的本地占位图，确保上游图片不可用时布局仍然稳定。
+- 手机、平板、桌面和电视共用相同内容，并分别适配间距、排版和焦点区域。弹窗可通过
+  Back/遥控器返回键或 `Escape` 关闭；关闭按钮与 **查看更多** 保持适合设备的触控和
+  焦点尺寸。
+- 该功能复用已缓存的 artist detail，**不新增代理 API、endpoint 或 catalog 请求**；
+  收藏、收听历史与 analytics 仍完全保留在设备本地。
+
 ## 按版本展示界面
 
 以下图片由当前 UI 使用稳定、完全本地的演示数据渲染，再按功能里程碑分组。
@@ -468,7 +484,17 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   </tr>
 </table>
 
-用于重建图片库的稳定 fixture 位于
+### v1.3e — 艺人简介
+
+<table>
+  <tr>
+    <td width="66%" align="center"><img src="docs/screenshots/v1.3e-artist-about-desktop.png" alt="桌面端艺人简介，左侧为封面，右侧为简介和元数据"><br><sub><b>桌面/电视</b> · 双栏编辑布局，并展示关注人数、成就与权威元数据</sub></td>
+    <td width="34%" align="center"><img src="docs/screenshots/v1.3e-artist-about-mobile.png" alt="360 像素手机上的单栏艺人简介"><br><sub><b>手机/平板</b> · 紧凑单栏、溢出感知预览，以及可选择全文的简介弹窗</sub></td>
+  </tr>
+</table>
+
+两张 v1.3e 图片由 web renderer 和 `artist-about` fixture 生成。完整图片库
+使用的稳定 fixture 位于
 [`tool/docs_screenshot_app.dart`](tool/docs_screenshot_app.dart)。该入口不会
 请求代理、真实音频或操作系统媒体服务。
 跨平台图标源文件为

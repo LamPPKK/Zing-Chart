@@ -27,6 +27,7 @@ import 'package:zmp3chart/theme/app_theme.dart';
 import 'package:zmp3chart/zing_chart_screen.dart';
 import 'package:zmp3chart/widgets/discovery_home_hub.dart';
 import 'package:zmp3chart/widgets/collection_detail_hero.dart';
+import 'package:zmp3chart/widgets/artist_biography_section.dart';
 import 'package:zmp3chart/widgets/lyric_share_composer.dart';
 import 'package:zmp3chart/widgets/realtime_chart.dart';
 import 'package:zmp3chart/widgets/search_discovery_summary.dart';
@@ -2044,6 +2045,74 @@ void main() {
     );
   });
 
+  testWidgets('desktop artist about keeps the official editorial split', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 760);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: buildZingDarkTheme(tvMode: false),
+        home: const Scaffold(
+          backgroundColor: ZingColors.ink,
+          body: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(80, 44, 80, 48),
+            child: ArtistBiographySection(detail: _artistAboutDetail),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const ValueKey('artist-biography-show-more')),
+      findsOneWidget,
+    );
+    await expectLater(
+      find.byType(Scaffold),
+      matchesGoldenFile('goldens/artist_about_desktop_1440.png'),
+    );
+  });
+
+  testWidgets('mobile artist about stays compact at 360px', (tester) async {
+    tester.view.physicalSize = const Size(360, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: buildZingDarkTheme(
+          tvMode: false,
+        ).copyWith(platform: TargetPlatform.android),
+        home: const Scaffold(
+          backgroundColor: ZingColors.ink,
+          body: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(16, 24, 16, 32),
+            child: ArtistBiographySection(detail: _artistAboutDetail),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const ValueKey('artist-biography-show-more')),
+      findsOneWidget,
+    );
+    await expectLater(
+      find.byType(Scaffold),
+      matchesGoldenFile('goldens/artist_about_mobile_360.png'),
+    );
+  });
+
   testWidgets('desktop collection detail links its official artist profile', (
     tester,
   ) async {
@@ -3208,6 +3277,27 @@ const _artistTrackAlbum = CatalogCollection(
   thumbnail: '',
   kind: CatalogCollectionKind.album,
   externalUrl: '',
+);
+
+const _artistAboutDetail = CatalogArtistDetail(
+  artist: _artist,
+  cover: '',
+  biography:
+      'Sơn Tùng M-TP là ca sĩ, nhạc sĩ và nhà sản xuất âm nhạc Việt Nam. '
+      'Anh bắt đầu hoạt động chuyên nghiệp từ những sản phẩm độc lập và tạo '
+      'dấu ấn bằng cách kể chuyện giàu hình ảnh. Nhiều ca khúc kết hợp pop, '
+      'R&B và chất liệu điện tử, đồng thời đạt lượng nghe lớn trên các nền '
+      'tảng âm nhạc. Bên cạnh biểu diễn, anh còn tham gia sáng tác, sản xuất '
+      'và xây dựng định hướng hình ảnh cho từng dự án âm nhạc.',
+  realName: 'Nguyễn Thanh Tùng',
+  national: 'Việt Nam',
+  birthday: '05/07/1994',
+  totalFollow: 2655838,
+  awardCount: 12,
+  songs: [],
+  collectionSections: [],
+  relatedArtists: [],
+  catalogPlaybackEnabled: true,
 );
 
 const _artistDetail = CatalogArtistDetail(

@@ -7,6 +7,7 @@ import '../models/catalog_search.dart';
 import '../models/official_zing_link.dart';
 import '../theme/app_theme.dart';
 import 'album_art.dart';
+import 'artist_biography_section.dart';
 import 'catalog_artist_rail.dart';
 import 'catalog_collection_action_deck.dart';
 
@@ -316,8 +317,8 @@ class ArtistProfileCatalog extends StatelessWidget {
               ),
               SizedBox(height: tvMode ? 40 : 30),
             ],
-            if (detail.biography.isNotEmpty)
-              _ArtistBiography(detail: detail, tvMode: tvMode),
+            if (ArtistBiographySection.hasContent(detail))
+              ArtistBiographySection(detail: detail, tvMode: tvMode),
           ] else if (view == ArtistProfileCatalogView.singles)
             _ArtistCollectionGrid(
               key: const ValueKey('artist-singles-grid'),
@@ -1624,97 +1625,6 @@ String _formatVideoDuration(Duration value) {
   final minutes = value.inMinutes.remainder(60).toString().padLeft(2, '0');
   final seconds = value.inSeconds.remainder(60).toString().padLeft(2, '0');
   return hours > 0 ? '$hours:$minutes:$seconds' : '${value.inMinutes}:$seconds';
-}
-
-class _ArtistBiography extends StatelessWidget {
-  const _ArtistBiography({required this.detail, required this.tvMode});
-
-  final CatalogArtistDetail detail;
-  final bool tvMode;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    key: const ValueKey('artist-biography'),
-    padding: EdgeInsets.all(tvMode ? 28 : 20),
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.62),
-      borderRadius: BorderRadius.circular(tvMode ? 24 : 18),
-      border: Border.all(
-        color: Theme.of(
-          context,
-        ).colorScheme.outlineVariant.withValues(alpha: 0.35),
-      ),
-    ),
-    child: LayoutBuilder(
-      builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 760;
-        final heading = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'VỀ ${detail.artist.name.toUpperCase()}',
-              style: TextStyle(
-                color: ZingColors.lime,
-                fontSize: tvMode ? 14 : 11,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _followText(detail.totalFollow),
-              style: TextStyle(
-                fontSize: tvMode ? 27 : 21,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            if (detail.awardCount > 0) ...[
-              const SizedBox(height: 5),
-              Text(
-                '${detail.awardCount} giải thưởng được ghi nhận',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: tvMode ? 14 : 12,
-                ),
-              ),
-            ],
-          ],
-        );
-        final biography = SelectableText(
-          detail.biography,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontSize: tvMode ? 17 : 14,
-            height: 1.65,
-          ),
-        );
-        if (!wide) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [heading, const SizedBox(height: 18), biography],
-          );
-        }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(width: 250, child: heading),
-            const SizedBox(width: 36),
-            Expanded(child: biography),
-          ],
-        );
-      },
-    ),
-  );
-
-  static String _followText(int value) {
-    final digits = value.toString().split('').reversed.toList();
-    final groups = <String>[];
-    for (var index = 0; index < digits.length; index += 3) {
-      groups.add(digits.skip(index).take(3).toList().reversed.join());
-    }
-    final formatted = groups.reversed.join('.');
-    return '$formatted người quan tâm';
-  }
 }
 
 class _SectionTitle extends StatelessWidget {

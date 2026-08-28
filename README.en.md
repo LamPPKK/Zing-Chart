@@ -422,6 +422,28 @@ data.
   never reloads that detail. Songs may fetch its bounded catalog page when
   needed; favorites, listening history, and analytics are never uploaded.
 
+### Artist About v1.3e
+
+- The end of Overview now carries an **About {artist name}** block modeled on
+  Zing MP3's editorial treatment: cover art and copy sit side by side on wide
+  screens, then collapse into a compact single column on narrow phone or tablet
+  layouts.
+- The preview measures overflow against the actual width, typography, and text
+  scale. **SHOW MORE** appears only when the biography is genuinely truncated;
+  its modal exposes the complete biography as selectable, copyable text.
+- Follower and achievement counts plus real name, country, and birthday appear
+  only when the artist detail supplies them. Missing metadata is never guessed
+  or fabricated.
+- Editorial artwork follows a strict **cover → avatar → local placeholder**
+  fallback. Network image failures also use the local initial-based placeholder,
+  keeping the section stable when an upstream image is unavailable.
+- Phone, tablet, desktop, and TV share the same content with adaptive spacing,
+  typography, and focus targets. Back/remote Back or `Escape` closes the modal;
+  Close and **SHOW MORE** retain device-appropriate touch and focus targets.
+- The feature reuses the cached artist detail and adds **no new proxy API,
+  endpoint, or catalog request**. Favorites, listening history, and analytics
+  remain entirely on-device.
+
 ## Screenshots by release
 
 These images are rendered from the current UI with deterministic, fully local
@@ -594,7 +616,17 @@ historical binaries and contain no real user data.
   </tr>
 </table>
 
-The deterministic gallery fixture lives in
+### v1.3e — Artist About
+
+<table>
+  <tr>
+    <td width="66%" align="center"><img src="docs/screenshots/v1.3e-artist-about-desktop.png" alt="Desktop Artist About block with cover art on the left and biography plus metadata on the right"><br><sub><b>Desktop/TV</b> · two-column editorial layout with follower/achievement stats and authoritative metadata</sub></td>
+    <td width="34%" align="center"><img src="docs/screenshots/v1.3e-artist-about-mobile.png" alt="Single-column Artist About block on a 360 px phone"><br><sub><b>Phone/tablet</b> · compact stack, overflow-aware preview, and a full selectable biography modal</sub></td>
+  </tr>
+</table>
+
+The two v1.3e images use the web renderer and the `artist-about` fixture. The
+deterministic fixture for the complete gallery lives in
 [`tool/docs_screenshot_app.dart`](tool/docs_screenshot_app.dart). It never calls
 the proxy, real audio, or an operating-system media service.
 Cross-platform icons come from

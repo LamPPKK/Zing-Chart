@@ -436,6 +436,28 @@ adapter share/save không khả dụng.
   lại artist detail. Riêng Bài hát có thể tải trang catalog giới hạn khi cần;
   favorites, lịch sử và analytics vẫn không được gửi lên mạng.
 
+### Về nghệ sĩ v1.3e
+
+- Cuối trang Tổng quan có khối **Về {tên nghệ sĩ}** theo bố cục biên tập của
+  Zing MP3: ảnh cover và nội dung đặt cạnh nhau trên màn hình rộng, tự chuyển
+  thành một cột gọn trên điện thoại hoặc tablet có chiều rộng hẹp.
+- Phần xem trước đo overflow theo đúng chiều rộng, cỡ chữ và text scale hiện
+  tại. Nút **XEM THÊM** chỉ xuất hiện khi tiểu sử thật sự bị rút gọn; modal sau
+  đó hiển thị toàn bộ nội dung dưới dạng văn bản có thể chọn/sao chép.
+- Số người quan tâm, số thành tích, tên thật, quốc gia và ngày sinh chỉ được
+  hiển thị khi artist detail có dữ liệu tương ứng; ứng dụng không suy đoán hoặc
+  tự tạo metadata còn thiếu.
+- Ảnh giới thiệu ưu tiên **cover → avatar → placeholder cục bộ** mang chữ cái
+  đầu tên nghệ sĩ. Lỗi tải ảnh cũng rơi về placeholder nên bố cục vẫn ổn định
+  khi mạng yếu hoặc ảnh upstream không còn khả dụng.
+- Mobile, tablet, desktop và TV dùng chung nội dung nhưng có spacing, typography
+  và vùng focus thích ứng. Modal đóng được bằng nút Back/remote Back hoặc
+  `Escape`; nút đóng và **XEM THÊM** giữ touch/focus target phù hợp từng thiết
+  bị.
+- Tính năng dùng lại artist detail đã cache và **không thêm API/endpoint proxy
+  hoặc request catalog mới**; favorites, lịch sử và analytics vẫn nằm trên
+  thiết bị.
+
 ## Ảnh giao diện theo phiên bản
 
 Các ảnh dưới đây được render từ UI hiện tại bằng dữ liệu demo hoàn toàn cục bộ,
@@ -608,7 +630,17 @@ không chứa dữ liệu người dùng thật.
   </tr>
 </table>
 
-Fixture dùng để tái tạo gallery nằm tại
+### v1.3e — Về nghệ sĩ
+
+<table>
+  <tr>
+    <td width="66%" align="center"><img src="docs/screenshots/v1.3e-artist-about-desktop.png" alt="Khối Về nghệ sĩ trên desktop với ảnh cover bên trái và tiểu sử cùng metadata bên phải"><br><sub><b>Desktop/TV</b> · bố cục biên tập hai cột, thống kê người quan tâm/thành tích và metadata chính thức</sub></td>
+    <td width="34%" align="center"><img src="docs/screenshots/v1.3e-artist-about-mobile.png" alt="Khối Về nghệ sĩ dạng một cột trên điện thoại 360 px"><br><sub><b>Mobile/tablet</b> · một cột gọn, preview nhận biết overflow và modal tiểu sử đầy đủ có thể chọn</sub></td>
+  </tr>
+</table>
+
+Hai ảnh v1.3e được render bằng web renderer từ fixture `artist-about`; fixture
+dùng để tái tạo toàn bộ gallery nằm tại
 [`tool/docs_screenshot_app.dart`](tool/docs_screenshot_app.dart). Entry point này
 không gọi proxy, audio thật hoặc media service của hệ điều hành.
 Icon đa nền tảng được sinh từ

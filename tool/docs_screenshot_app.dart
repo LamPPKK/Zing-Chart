@@ -32,6 +32,7 @@ import 'package:zmp3chart/theme/app_theme.dart';
 import 'package:zmp3chart/wrapped_screen.dart';
 import 'package:zmp3chart/zing_chart_screen.dart';
 import 'package:zmp3chart/widgets/discovery_home_hub.dart';
+import 'package:zmp3chart/widgets/artist_biography_section.dart';
 import 'package:zmp3chart/widgets/artist_profile_catalog.dart';
 import 'package:zmp3chart/widgets/app_settings_sheet.dart';
 import 'package:zmp3chart/widgets/collection_detail_catalog.dart';
@@ -45,7 +46,7 @@ import 'package:zmp3chart/widgets/streaming_quality_controls.dart';
 /// Deterministic documentation-only entry point used to capture README images.
 ///
 /// It never calls the proxy or a platform media service. Choose a surface with
-/// `?screen=home|queue|smart-shuffle|stream-quality|settings|desktop-lyrics|realtime-chart|discovery|discovery-recommendations|discovery-mv|discovery-recent|discovery-new-releases|discovery-new-release-chart|live-radio|artist|artist-songs|artist-albums|artist-follow|artist-mv|collection-save|collection-information|hubs|top-100|release-catalog|weekly-chart|search|search-all|search-songs|search-results|new-releases|player|car-mode|song-detail|lyrics|lyric-share|radio|library|playlist-workspace|history-workspace|for-you|mix-workspace|analytics|wrapped|tv`.
+/// `?screen=home|queue|smart-shuffle|stream-quality|settings|desktop-lyrics|realtime-chart|discovery|discovery-recommendations|discovery-mv|discovery-recent|discovery-new-releases|discovery-new-release-chart|live-radio|artist|artist-about|artist-songs|artist-albums|artist-follow|artist-mv|collection-save|collection-information|hubs|top-100|release-catalog|weekly-chart|search|search-all|search-songs|search-results|new-releases|player|car-mode|song-detail|lyrics|lyric-share|radio|library|playlist-workspace|history-workspace|for-you|mix-workspace|analytics|wrapped|tv`.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final audioPlayer = _DocsAudioPlayer();
@@ -372,6 +373,33 @@ Future<void> main() async {
           loadSongs: _loadSongs,
           loadArtistDetail: _loadArtistDetail,
           initialArtist: _artistDetail.artist,
+        ),
+        'artist-about' => Scaffold(
+          backgroundColor: ZingColors.ink,
+          body: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF21142F), ZingColors.ink],
+              ),
+            ),
+            child: SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    constraints.maxWidth >= 720 ? 80 : 16,
+                    constraints.maxWidth >= 720 ? 44 : 24,
+                    constraints.maxWidth >= 720 ? 80 : 16,
+                    48,
+                  ),
+                  child: const ArtistBiographySection(
+                    detail: _artistAboutDetail,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
         'artist-songs' => ZingChartScreen(
           loadSongs: _loadSongs,
@@ -1731,6 +1759,27 @@ const _artist = CatalogArtist(
   aliasName: 'Son-Tung-M-TP',
   avatar: '',
   totalFollow: 2655838,
+);
+
+const _artistAboutDetail = CatalogArtistDetail(
+  artist: _artist,
+  cover: '',
+  biography:
+      'Sơn Tùng M-TP là ca sĩ, nhạc sĩ và nhà sản xuất âm nhạc Việt Nam. '
+      'Anh bắt đầu hoạt động chuyên nghiệp từ những sản phẩm độc lập và nhanh '
+      'chóng tạo dấu ấn bằng cách kể chuyện giàu hình ảnh. Nhiều ca khúc kết '
+      'hợp pop, R&B và chất liệu điện tử, đồng thời đạt lượng nghe lớn trên '
+      'các nền tảng âm nhạc. Bên cạnh biểu diễn, anh còn tham gia sáng tác, '
+      'sản xuất và xây dựng định hướng hình ảnh cho từng dự án âm nhạc.',
+  realName: 'Nguyễn Thanh Tùng',
+  national: 'Việt Nam',
+  birthday: '05/07/1994',
+  totalFollow: 2655838,
+  awardCount: 12,
+  songs: [],
+  collectionSections: [],
+  relatedArtists: [],
+  catalogPlaybackEnabled: true,
 );
 
 const _docsCollectionArtists = [

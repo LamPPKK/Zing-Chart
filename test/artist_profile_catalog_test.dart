@@ -9,6 +9,156 @@ import 'package:zmp3chart/widgets/artist_profile_catalog.dart';
 
 void main() {
   testWidgets(
+    'long artist biography stays compact and opens selectable detail',
+    (tester) async {
+      _setViewport(tester, const Size(360, 844));
+      await tester.pumpWidget(
+        _app(
+          detail: _detailWithBiography(_longBiography),
+          platform: TargetPlatform.android,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final showMore = find.byKey(const ValueKey('artist-biography-show-more'));
+      expect(showMore, findsOneWidget);
+      await tester.ensureVisible(showMore);
+      await tester.pumpAndSettle();
+      final touchTarget = tester.getSize(showMore);
+      expect(touchTarget.height, greaterThanOrEqualTo(48));
+
+      await tester.tap(showMore);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('artist-biography-dialog')),
+        findsOneWidget,
+      );
+      final fullText = tester.widget<SelectableText>(
+        find.byKey(const ValueKey('artist-biography-full-text')),
+      );
+      expect(fullText.data, _longBiography);
+      expect(
+        tester
+            .getSize(
+              find.byKey(const ValueKey('artist-biography-dialog-close')),
+            )
+            .height,
+        greaterThanOrEqualTo(48),
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('artist-biography-dialog')),
+        findsNothing,
+      );
+
+      await tester.tap(showMore);
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('artist-biography-dialog')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('short artist biography does not show a false expand action', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(1440, 900));
+    await tester.pumpWidget(_app(platform: TargetPlatform.macOS));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Về Sơn Tùng M-TP'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('artist-biography-show-more')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('artist-biography-artwork-fallback')),
+      findsOneWidget,
+    );
+    expect(find.text('Tên thật · Nguyễn Thanh Tùng'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('768px light artist about stays readable and overflow-free', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(768, 1024));
+    await tester.pumpWidget(
+      _app(
+        detail: _detailWithBiography(_longBiography),
+        platform: TargetPlatform.android,
+        theme: buildZingLightTheme(tvMode: false),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final about = find.byKey(const ValueKey('artist-biography'));
+    expect(about, findsOneWidget);
+    await tester.ensureVisible(about);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('artist-biography-show-more')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('TV artist biography action keeps a remote-sized target', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(1920, 1080));
+    await tester.pumpWidget(
+      _app(detail: _detailWithBiography(_veryLongBiography), tvMode: true),
+    );
+    await tester.pumpAndSettle();
+
+    final showMore = find.byKey(const ValueKey('artist-biography-show-more'));
+    expect(showMore, findsOneWidget);
+    await tester.ensureVisible(showMore);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(showMore).height, greaterThanOrEqualTo(56));
+
+    final focusNode = Focus.of(
+      tester.element(
+        find.descendant(of: showMore, matching: find.text('XEM THÊM')),
+      ),
+    );
+    focusNode.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    final dialog = find.byKey(const ValueKey('artist-biography-dialog'));
+    expect(dialog, findsOneWidget);
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('artist-biography-dialog-close')))
+          .height,
+      greaterThanOrEqualTo(56),
+    );
+
+    final dialogScrollView = tester.widget<SingleChildScrollView>(
+      find.byKey(const ValueKey('artist-biography-dialog-scroll')),
+    );
+    final position = dialogScrollView.controller!.position;
+    expect(position.maxScrollExtent, greaterThan(0));
+    final initialPixels = position.pixels;
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(position.pixels, greaterThan(initialPixels));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
     'collection Play Save More Share actions never open the collection',
     (tester) async {
       _setViewport(tester, const Size(390, 844));
@@ -469,9 +619,12 @@ Widget _app({
   bool tvMode = false,
   double? catalogWidth,
   TargetPlatform platform = TargetPlatform.macOS,
+  ThemeData? theme,
 }) => MaterialApp(
   debugShowCheckedModeBanner: false,
-  theme: buildZingDarkTheme(tvMode: tvMode).copyWith(platform: platform),
+  theme: (theme ?? buildZingDarkTheme(tvMode: tvMode)).copyWith(
+    platform: platform,
+  ),
   home: Scaffold(
     body: _catalogViewport(
       detail: detail ?? _detail,
@@ -595,6 +748,38 @@ final _detail = CatalogArtistDetail(
   relatedArtists: _relatedArtists,
   catalogPlaybackEnabled: true,
 );
+
+const _longBiography =
+    'Sơn Tùng M-TP là ca sĩ, nhạc sĩ và nhà sản xuất âm nhạc Việt Nam. '
+    'Anh bắt đầu hoạt động chuyên nghiệp từ những sản phẩm độc lập và nhanh '
+    'chóng tạo dấu ấn bằng cách kể chuyện giàu hình ảnh. Nhiều ca khúc của '
+    'anh kết hợp pop, R&B và chất liệu điện tử, đồng thời đạt lượng nghe lớn '
+    'trên các nền tảng âm nhạc. Bên cạnh biểu diễn, anh còn tham gia sáng tác, '
+    'sản xuất và xây dựng định hướng hình ảnh cho từng dự án. Hồ sơ này tổng '
+    'hợp thông tin công khai từ trang nghệ sĩ chính thức trên Zing MP3.';
+
+const _veryLongBiography =
+    '$_longBiography $_longBiography $_longBiography $_longBiography '
+    '$_longBiography $_longBiography $_longBiography $_longBiography';
+
+CatalogArtistDetail _detailWithBiography(String biography) =>
+    CatalogArtistDetail(
+      artist: _detail.artist,
+      cover: _detail.cover,
+      biography: biography,
+      realName: _detail.realName,
+      national: _detail.national,
+      birthday: _detail.birthday,
+      totalFollow: _detail.totalFollow,
+      awardCount: _detail.awardCount,
+      songs: _detail.songs,
+      songPage: _detail.songPage,
+      featuredSongs: _detail.featuredSongs,
+      videos: _detail.videos,
+      collectionSections: _detail.collectionSections,
+      relatedArtists: _detail.relatedArtists,
+      catalogPlaybackEnabled: _detail.catalogPlaybackEnabled,
+    );
 
 final _videoDetail = CatalogArtistDetail(
   artist: _artist,

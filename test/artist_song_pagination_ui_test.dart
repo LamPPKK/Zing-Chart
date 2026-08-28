@@ -280,9 +280,12 @@ void main() {
     );
     await tester.drag(contentScroll.first, const Offset(0, -220));
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('artist-collection-artist-single')),
+    final collectionCard = find.byKey(
+      const ValueKey('artist-collection-artist-single'),
     );
+    await tester.ensureVisible(collectionCard);
+    await tester.pumpAndSettle();
+    await tester.tap(collectionCard);
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('collection-detail-hero')),
