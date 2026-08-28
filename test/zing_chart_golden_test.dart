@@ -296,6 +296,61 @@ void main() {
     );
   });
 
+  testWidgets('tablet playback shell keeps catalog queue and root dock', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(768, 1024);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = PlaybackService(
+      playbackAudioPlayer: FakePlaybackAudioPlayer(),
+      sourceResolver: (code) async => 'https://audio.example.com/$code.mp3',
+      libraryRepository: MemoryLibraryRepository(),
+      analyticsRepository: MemoryListeningAnalyticsRepository(),
+      systemMediaBridge: NoopSystemMediaBridge(),
+    );
+    await controller.initialize();
+    await controller.playSong(_songs.first, queue: _songs);
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MusicPlayerScope(
+        controller: controller,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: buildZingDarkTheme(tvMode: false),
+          home: ZingChartScreen(
+            loadChart: () async => ChartSnapshot(songs: _songs),
+            initialDesktopQueueVisible: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final dock = find.byKey(const ValueKey('desktop-playback-dock'));
+    expect(dock, findsOneWidget);
+    final dockRect = tester.getRect(dock);
+    expect(dockRect.left, 0);
+    expect(dockRect.right, 768);
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(
+      tester.getRect(find.byType(NavigationRail)).bottom,
+      lessThanOrEqualTo(dockRect.top),
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-playback-queue-panel')),
+      findsOneWidget,
+    );
+    expect(find.byType(MusicPlayerScreen), findsNothing);
+    expect(tester.takeException(), isNull);
+    await expectLater(
+      find.byType(Scaffold),
+      matchesGoldenFile('goldens/tablet_playback_shell_768.png'),
+    );
+  });
+
   testWidgets(
     'desktop catalog keeps synchronized lyrics in the player drawer',
     (tester) async {

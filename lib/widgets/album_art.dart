@@ -28,9 +28,13 @@ class AlbumArt extends StatelessWidget {
                 ? const _AlbumPlaceholder()
                 : Image.network(
                     imageUrl,
+                    // Keep a frame during a rendition refresh, but never show
+                    // the previous track's cover under a new semantic label.
+                    key: ValueKey(semanticLabel),
                     fit: BoxFit.cover,
                     cacheWidth: (size * MediaQuery.devicePixelRatioOf(context))
                         .round(),
+                    gaplessPlayback: true,
                     errorBuilder: (_, __, ___) => const _AlbumPlaceholder(),
                   ),
           ),

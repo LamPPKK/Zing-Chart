@@ -37,7 +37,9 @@ class MiniPlayer extends StatelessWidget {
       builder: (context, _) {
         final song = controller.currentSong;
         return AnimatedSize(
-          duration: const Duration(milliseconds: 220),
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 220),
           curve: Curves.easeOut,
           child: song == null
               ? const SizedBox.shrink()
@@ -188,7 +190,10 @@ class _DesktopPlaybackDock extends StatelessWidget {
         shadowColor: Colors.black.withValues(alpha: 0.42),
         child: Container(
           height: 106,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: EdgeInsets.symmetric(
+            horizontal: MediaQuery.sizeOf(context).width < 900 ? 10 : 16,
+            vertical: 8,
+          ),
           decoration: BoxDecoration(
             border: Border(
               top: BorderSide(
@@ -198,11 +203,28 @@ class _DesktopPlaybackDock extends StatelessWidget {
           ),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final compact = constraints.maxWidth < 1080;
+              final compact = constraints.maxWidth < 1200;
+              final narrow = constraints.maxWidth < 900;
+              final artworkSize = narrow ? 52.0 : 58.0;
+              final songPaneWidth = narrow
+                  ? 188.0
+                  : compact
+                  ? 220.0
+                  : 324.0;
+              final songTextWidth = narrow
+                  ? 112.0
+                  : compact
+                  ? 126.0
+                  : 154.0;
+              final actionPaneWidth = narrow
+                  ? 96.0
+                  : compact
+                  ? 216.0
+                  : 416.0;
               return Row(
                 children: [
                   SizedBox(
-                    width: compact ? 220 : 324,
+                    width: songPaneWidth,
                     child: Row(
                       children: [
                         InkWell(
@@ -217,13 +239,13 @@ class _DesktopPlaybackDock extends StatelessWidget {
                                   imageUrl: song.thumbnail,
                                   semanticLabel:
                                       'Bìa album ${song.displayTitle}',
-                                  size: 58,
+                                  size: artworkSize,
                                   borderRadius: 12,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              SizedBox(width: narrow ? 10 : 12),
                               SizedBox(
-                                width: compact ? 126 : 154,
+                                width: songTextWidth,
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,7 +347,7 @@ class _DesktopPlaybackDock extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: narrow ? 8 : 12),
                   Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -333,16 +355,20 @@ class _DesktopPlaybackDock extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            IconButton(
-                              tooltip: 'Ngẫu nhiên',
-                              onPressed: controller.isLiveRadio
-                                  ? null
-                                  : controller.toggleShuffle,
-                              color: controller.shuffleEnabled
-                                  ? ZingColors.lime
-                                  : null,
-                              icon: const Icon(Icons.shuffle_rounded, size: 20),
-                            ),
+                            if (!narrow)
+                              IconButton(
+                                tooltip: 'Ngẫu nhiên',
+                                onPressed: controller.isLiveRadio
+                                    ? null
+                                    : controller.toggleShuffle,
+                                color: controller.shuffleEnabled
+                                    ? ZingColors.lime
+                                    : null,
+                                icon: const Icon(
+                                  Icons.shuffle_rounded,
+                                  size: 20,
+                                ),
+                              ),
                             IconButton(
                               tooltip: 'Bài trước',
                               onPressed: controller.canGoPrevious
@@ -358,22 +384,24 @@ class _DesktopPlaybackDock extends StatelessWidget {
                                   : null,
                               icon: const Icon(Icons.skip_next_rounded),
                             ),
-                            IconButton(
-                              tooltip: _repeatTooltip(controller),
-                              onPressed: controller.isLiveRadio
-                                  ? null
-                                  : controller.cycleRepeatMode,
-                              color:
-                                  controller.repeatMode == PlayerRepeatMode.off
-                                  ? null
-                                  : ZingColors.lime,
-                              icon: Icon(
-                                controller.repeatMode == PlayerRepeatMode.one
-                                    ? Icons.repeat_one_rounded
-                                    : Icons.repeat_rounded,
-                                size: 20,
+                            if (!narrow)
+                              IconButton(
+                                tooltip: _repeatTooltip(controller),
+                                onPressed: controller.isLiveRadio
+                                    ? null
+                                    : controller.cycleRepeatMode,
+                                color:
+                                    controller.repeatMode ==
+                                        PlayerRepeatMode.off
+                                    ? null
+                                    : ZingColors.lime,
+                                icon: Icon(
+                                  controller.repeatMode == PlayerRepeatMode.one
+                                      ? Icons.repeat_one_rounded
+                                      : Icons.repeat_rounded,
+                                  size: 20,
+                                ),
                               ),
-                            ),
                           ],
                         ),
                         SizedBox(
@@ -447,9 +475,9 @@ class _DesktopPlaybackDock extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: narrow ? 8 : 16),
                   SizedBox(
-                    width: compact ? 216 : 416,
+                    width: actionPaneWidth,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -488,11 +516,12 @@ class _DesktopPlaybackDock extends StatelessWidget {
                             ),
                           ),
                         ],
-                        IconButton(
-                          tooltip: 'Dừng',
-                          onPressed: controller.stop,
-                          icon: const Icon(Icons.stop_rounded, size: 20),
-                        ),
+                        if (!narrow)
+                          IconButton(
+                            tooltip: 'Dừng',
+                            onPressed: controller.stop,
+                            icon: const Icon(Icons.stop_rounded, size: 20),
+                          ),
                         IconButton(
                           key: const ValueKey('desktop-dock-mute'),
                           tooltip: controller.isMuted
@@ -508,30 +537,31 @@ class _DesktopPlaybackDock extends StatelessWidget {
                             size: 20,
                           ),
                         ),
-                        SizedBox(
-                          width: compact ? 72 : 96,
-                          child: SliderTheme(
-                            data: SliderTheme.of(context).copyWith(
-                              trackHeight: 3,
-                              thumbShape: const RoundSliderThumbShape(
-                                enabledThumbRadius: 5,
+                        if (!narrow)
+                          SizedBox(
+                            width: compact ? 72 : 96,
+                            child: SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                trackHeight: 3,
+                                thumbShape: const RoundSliderThumbShape(
+                                  enabledThumbRadius: 5,
+                                ),
+                                overlayShape: const RoundSliderOverlayShape(
+                                  overlayRadius: 12,
+                                ),
                               ),
-                              overlayShape: const RoundSliderOverlayShape(
-                                overlayRadius: 12,
-                              ),
-                            ),
-                            child: Semantics(
-                              label:
-                                  'Âm lượng ${(controller.volume * 100).round()} phần trăm',
-                              child: Slider(
-                                key: const ValueKey('desktop-dock-volume'),
-                                value: controller.volume,
-                                onChanged: (value) =>
-                                    unawaited(controller.setVolume(value)),
+                              child: Semantics(
+                                label:
+                                    'Âm lượng ${(controller.volume * 100).round()} phần trăm',
+                                child: Slider(
+                                  key: const ValueKey('desktop-dock-volume'),
+                                  value: controller.volume,
+                                  onChanged: (value) =>
+                                      unawaited(controller.setVolume(value)),
+                                ),
                               ),
                             ),
                           ),
-                        ),
                         IconButton(
                           key: const ValueKey('desktop-dock-open-queue'),
                           tooltip: 'Đang phát · ${controller.queue.length} bài',

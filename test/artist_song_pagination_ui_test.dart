@@ -397,7 +397,7 @@ void main() {
     );
     expect(find.byKey(const ValueKey('artist-song-page-retry')), findsNothing);
 
-    await tester.tap(find.text('#zingchart').first);
+    await tester.tap(find.byIcon(Icons.insights_outlined).first);
     await tester.pumpAndSettle();
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();

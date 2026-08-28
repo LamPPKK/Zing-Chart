@@ -20,7 +20,9 @@ describe('ZingUpstream', () => {
         song: [
           {
             id: '1', code: 'A', title: 'Bài một', artists_names: 'Ca sĩ',
-            thumbnail: '//img.test/a.jpg', duration: 218, rank_num: '3',
+            thumbnail:
+              '//photo-resize-zmp3.zmdcdn.me/w94_r1x1_jpeg/cover/a.jpg?fs=volatile-song',
+            duration: 218, rank_num: '3',
             rank_status: 'up',
             artists: [{
               id: 'artist-1', name: 'Ca sĩ', alias: 'Ca-Si',
@@ -30,6 +32,8 @@ describe('ZingUpstream', () => {
               id: 'album-1', title: 'Bài một (Single)',
               link: '/album/bai-mot/album-1.html',
               thumbnail: '//img.test/album.jpg',
+              thumbnail_medium:
+                '//photo-resize-zmp3.zmdcdn.me/w240_r1x1_jpeg/cover/a.jpg',
             },
           },
           {
@@ -60,10 +64,12 @@ describe('ZingUpstream', () => {
           avatar: 'https://img.test/artist.jpg',
           externalUrl: 'https://current.example.test/nghe-si/Ca-Si',
         }],
-        albumCover: 'https://img.test/a.jpg', albumTitle: 'Bài một (Single)',
+        albumCover: 'https://photo-resize-zmp3.zmdcdn.me/w240_r1x1_jpeg/cover/a.jpg',
+        albumTitle: 'Bài một (Single)',
         album: {
           id: 'album-1', title: 'Bài một (Single)', artist: 'Ca sĩ',
-          thumbnail: 'https://img.test/album.jpg', kind: 'album',
+          thumbnail: 'https://photo-resize-zmp3.zmdcdn.me/w240_r1x1_jpeg/cover/a.jpg',
+          kind: 'album',
           externalUrl:
             'https://current.example.test/album/bai-mot/album-1.html',
         },
@@ -83,6 +89,68 @@ describe('ZingUpstream', () => {
       maxScore: 200,
       updatedAt: 2000,
     });
+  });
+
+  it('keeps chart artwork stable across refreshes using a supplied matching rendition', async () => {
+    let refresh = 0;
+    const fetcher = vi.fn().mockImplementation(async () => new Response(JSON.stringify({
+      data: { song: [{
+        id: 'one', code: 'one', title: 'One',
+        thumbnail: `https://photo-resize-zmp3.zmdcdn.me/w94_r1x1_jpeg/cover/a.jpg?fs=${++refresh}`,
+        album: {
+          thumbnail_medium: 'https://photo-resize-zmp3.zmdcdn.me/w240_r1x1_jpeg/cover/a.jpg',
+        },
+      }] },
+    })));
+    const upstream = new ZingUpstream(config, fetcher);
+    const first = await upstream.fetchChart();
+    const second = await upstream.fetchChart();
+    expect(first.songs[0]?.albumCover).toBe(
+      'https://photo-resize-zmp3.zmdcdn.me/w240_r1x1_jpeg/cover/a.jpg',
+    );
+    expect(second.songs[0]?.albumCover).toBe(first.songs[0]?.albumCover);
+  });
+
+  it.each([
+    {
+      name: 'unrelated album artwork',
+      thumbnail: 'https://photo-resize-zmp3.zmdcdn.me/w94_r1x1_jpeg/cover/song.jpg?fs=signed',
+      album: { thumbnail_medium: 'https://photo-resize-zmp3.zmdcdn.me/w240_r1x1_jpeg/cover/album.jpg' },
+      expected: 'https://photo-resize-zmp3.zmdcdn.me/w94_r1x1_jpeg/cover/song.jpg?fs=signed',
+    },
+    {
+      name: 'smaller album rendition',
+      thumbnail: 'https://photo-resize-zmp3.zmdcdn.me/w600_r1x1_jpeg/cover/a.jpg?fs=signed',
+      album: { thumbnail_medium: 'https://photo-resize-zmp3.zmdcdn.me/w240_r1x1_jpeg/cover/a.jpg' },
+      expected: 'https://photo-resize-zmp3.zmdcdn.me/w600_r1x1_jpeg/cover/a.jpg?fs=signed',
+    },
+    {
+      name: 'invalid medium URL falls back to valid song',
+      thumbnail: 'https://img.test/song.jpg?fs=keep&signature=abc%2Bdef',
+      album: { thumbnail_medium: 'javascript:invalid' },
+      expected: 'https://img.test/song.jpg?fs=keep&signature=abc%2Bdef',
+    },
+    {
+      name: 'missing song art uses the supplied album image',
+      thumbnail: '',
+      album: {
+        thumbnail_medium: 'https://user:pass@img.test/invalid.jpg',
+        thumbnail: '//img.test/album.jpg?fs=keep',
+      },
+      expected: 'https://img.test/album.jpg?fs=keep',
+    },
+    {
+      name: 'CDN lookalike cannot replace the song cover',
+      thumbnail: 'https://photo-resize-zmp3.zmdcdn.me/w94_r1x1_jpeg/cover/a.jpg?fs=signed',
+      album: { thumbnail_medium: 'https://photo-resize-zmp3.zmdcdn.me.evil.test/w240_r1x1_jpeg/cover/a.jpg' },
+      expected: 'https://photo-resize-zmp3.zmdcdn.me/w94_r1x1_jpeg/cover/a.jpg?fs=signed',
+    },
+  ])('preserves chart image semantics: $name', async ({ thumbnail, album, expected }) => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      data: { song: [{ id: 'one', code: 'one', title: 'One', thumbnail, album }] },
+    })));
+    const result = await new ZingUpstream(config, fetcher).fetchChart();
+    expect(result.songs[0]?.albumCover).toBe(expected);
   });
 
   it('normalizes and signs the new-release chart', async () => {

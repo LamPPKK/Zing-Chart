@@ -23,12 +23,14 @@ class DesktopPlaybackQueuePanel extends StatefulWidget {
   const DesktopPlaybackQueuePanel({
     super.key,
     required this.onClose,
+    this.width = 356,
     this.lyricsLoader,
     this.initialTab = DesktopPlaybackPanelTab.queue,
     this.onTabChanged,
   });
 
   final VoidCallback onClose;
+  final double width;
   final SongLyricsLoader? lyricsLoader;
   final DesktopPlaybackPanelTab initialTab;
   final ValueChanged<DesktopPlaybackPanelTab>? onTabChanged;
@@ -63,7 +65,7 @@ class _DesktopPlaybackQueuePanelState extends State<DesktopPlaybackQueuePanel> {
       key: const ValueKey('desktop-playback-queue-panel'),
       color: scheme.surface,
       child: Container(
-        width: 356,
+        width: widget.width,
         decoration: BoxDecoration(
           border: Border(
             left: BorderSide(

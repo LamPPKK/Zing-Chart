@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/artist.dart';
+import '../../widgets/album_art.dart';
 import '../search_artists_result_screen.dart';
 
 class SearchArtistsResult extends StatelessWidget {
@@ -72,27 +73,20 @@ class SearchArtistsResult extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: artists.sublist(0, _getLengthSingers()).length,
             itemBuilder: (context, index) {
+              final artist = artists[index];
               return ListTile(
-                leading: Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: DecorationImage(
-                      image: NetworkImage(
-                        'https://photo-resize-zmp3.zmdcdn.me/w165_r1x1_webp/' +
-                            artists[index].thumb,
-                      ),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                leading: AlbumArt(
+                  imageUrl: artist.thumb,
+                  semanticLabel: 'Ảnh nghệ sĩ ${artist.name}',
+                  size: 60,
+                  borderRadius: 30,
                 ),
                 title: Text(
-                  artists[index].name,
+                  artist.name,
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 subtitle: Text(
-                  artists[index].aliasName,
+                  artist.aliasName,
                   style: TextStyle(color: Colors.grey),
                 ),
                 onTap: () {

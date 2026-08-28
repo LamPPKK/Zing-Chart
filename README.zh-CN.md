@@ -134,16 +134,18 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   第一个准确项目。自然播放结束后切换到已准备的 deck；平台不支持或音源准备失败时，
   应用会安全回退到标准播放流程，不会卡住队列。待命 deck 只临时缓冲流，不保存离线
   音频文件或持久缓存，也不会把队列或收听历史发送到代理。
-- 桌面端选择歌曲后默认保留目录内容，并显示类似 Zing MP3 的横向播放坞，包含歌曲
-  信息、播放控制、进度、音量，以及官方 MV、歌词/卡拉 OK、Now Playing 和“播放队列”
+- 从 `720 px` 起，平板和桌面端选择歌曲后默认保留目录内容，并在 rail/sidebar 与内容
+  下方显示贯穿整个 root shell、类似 Zing MP3 的横向播放坞，包含歌曲信息、播放控制、
+  进度、音量，以及官方 MV、歌词/卡拉 OK、Now Playing 和“播放队列”
   快捷入口。收藏旁的“更多选项”可打开歌曲信息、Song Radio、加入歌单和分享 Zing
-  官方链接。MV 元数据仅在用户点击后加载，并继续使用经过校验的 Zing 交接流程；窄桌面
-  会隐藏扩展快捷键，为播放控制保留空间。右侧抽屉包含“播放队列”“最近播放”与
+  官方链接。MV 元数据仅在用户点击后加载，并继续使用经过校验的 Zing 交接流程；窄平板/
+  桌面会隐藏扩展快捷键、使用仅图标 rail，并按 viewport 调整抽屉宽度，为目录与播放控制
+  保留空间。右侧抽屉包含“播放队列”“最近播放”与
   “歌词”三个标签：队列可播放、拖动排序、逐首移除，也可在手机、桌面和电视上经确认后
   清空待播歌曲，同时保留当前歌曲、进度与播放来源。历史仅保存在本机；同步歌词自动跟随
   当前句、点击可跳转，并可展开全屏卡拉 OK。抽屉打开时底部播放坞仍保持可见。
-  抽屉可通过关闭按钮或 Esc 收起，同时保留全屏播放选项；手机继续使用紧凑迷你播放器，
-  电视保留遥控优先的 10-foot 控制面板。
+  抽屉可通过关闭按钮或 Esc 收起，同时保留全屏播放选项；低于 `720 px` 的手机继续使用
+  紧凑迷你播放器并打开全屏 Now Playing，电视保留遥控优先的 10-foot 控制面板。
 - 手机迷你播放器遵循 Zing 的层级：顶部细进度线、封面、歌曲/歌手信息、播放/暂停与
   下一首，统一放在五标签导航上方的 76 px 播放条中。停止操作保留在完整“正在播放”
   页面，避免在高频点击的迷你区域放置破坏性播放操作。
@@ -208,7 +210,8 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   确认，且不会删除收藏、歌单或 Mood 标签。
 - 全年可查看的六页 Mini Wrapped，并可导出 PNG 或 TV 本地二维码摘要。
 - JSON v3 备份，支持幂等合并与完全覆盖，也能读取 v1/v2。
-- 手机、平板、桌面和电视自适应 UI，保留 charcoal/coral/lime 视觉语言。
+- 手机、平板、桌面和电视自适应 UI，保留 charcoal/coral/lime 视觉语言：低于
+  `720 px` 使用迷你播放器/全屏 Now Playing，从 `720 px` 起保留目录与全宽 root dock。
 - 目录使用独立更新信号：播放进度、时长和音量变化只重建播放器，不再重建整个首页、
   发现页或排行榜；收藏、队列与媒体库变更仍会立即更新。
 
@@ -490,6 +493,14 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   <tr>
     <td width="66%" align="center"><img src="docs/screenshots/v1.3e-artist-about-desktop.png" alt="桌面端艺人简介，左侧为封面，右侧为简介和元数据"><br><sub><b>桌面/电视</b> · 双栏编辑布局，并展示关注人数、成就与权威元数据</sub></td>
     <td width="34%" align="center"><img src="docs/screenshots/v1.3e-artist-about-mobile.png" alt="360 像素手机上的单栏艺人简介"><br><sub><b>手机/平板</b> · 紧凑单栏、溢出感知预览，以及可选择全文的简介弹窗</sub></td>
+  </tr>
+</table>
+
+### v1.3f — 响应式播放 Shell
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3f-playback-shell-tablet.png" alt="768 像素平板播放 shell，包含仅图标 rail、目录、自适应队列和全宽播放坞"><br><sub><b>768 px 平板</b> · 播放时保留目录，队列与目录共享 workspace，播放坞像 Zing MP3 一样贯穿 rail 下方</sub></td>
   </tr>
 </table>
 

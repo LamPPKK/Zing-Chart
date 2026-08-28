@@ -215,21 +215,24 @@ proxy Node/TypeScript do người triển khai tự host.
   phát tiêu chuẩn và không làm kẹt hàng đợi. Deck chờ chỉ buffer stream tạm
   thời; tính năng không lưu file audio/cache offline và không gửi queue hay lịch
   sử nghe lên proxy.
-- Sau khi chọn bài, desktop mặc định giữ nguyên catalog và hiện playback dock
-  ngang kiểu Zing MP3 với thông tin bài hát, transport, progress, volume và
-  shortcut trực tiếp tới MV chính thức, Lời bài hát/Karaoke, Now Playing và
+- Từ `720 px` trở lên, tablet/desktop mặc định giữ nguyên catalog sau khi chọn
+  bài và hiện playback dock ngang kiểu Zing MP3 phủ toàn bộ root shell bên dưới
+  rail/sidebar lẫn nội dung. Dock có thông tin bài hát, transport, progress,
+  volume và shortcut trực tiếp tới MV chính thức, Lời bài hát/Karaoke, Now Playing và
   “Danh sách phát”. Nút “Tùy chọn khác” cạnh tim mở nhanh Thông tin bài hát,
   Song Radio, thêm vào playlist và chia sẻ liên kết Zing chính thức. MV chỉ được
   tải metadata khi người dùng bấm và vẫn dùng luồng handoff Zing đã kiểm tra;
-  desktop hẹp tự ẩn nhóm shortcut mở rộng để giữ transport dễ thao tác. Drawer
-  bên phải có ba tab Hàng đợi/Gần đây/Lời bài
-  hát: queue cho phát, đổi thứ tự, xóa từng bài hoặc xóa toàn bộ phần chờ nhưng
+  desktop/tablet hẹp tự ẩn nhóm shortcut mở rộng để giữ transport dễ thao tác.
+  Rail tablet dùng icon-only như Zing và drawer co giãn theo viewport để luôn
+  chừa đủ không gian cho catalog. Drawer bên phải có ba tab Hàng đợi/Gần đây/Lời
+  bài hát: queue cho phát, đổi thứ tự, xóa từng bài hoặc xóa toàn bộ phần chờ nhưng
   vẫn giữ bài hiện tại, progress và nguồn phát; thao tác xóa toàn bộ luôn có
   xác nhận an toàn trên mobile, desktop và TV. Lịch sử chỉ đọc dữ liệu local;
   lời tự bám câu đang hát, chạm để tua và có nút mở Karaoke toàn màn hình. Dock
   vẫn luôn hiện khi drawer mở. Drawer có nút đóng/Esc rõ ràng, còn tùy chọn
-  Now Playing toàn màn hình vẫn được giữ. Mobile dùng mini-player gọn, TV giữ
-  panel điều khiển 10-foot.
+  Now Playing toàn màn hình vẫn được giữ. Dưới `720 px`, mobile dùng
+  mini-player gọn và mở Now Playing toàn màn hình; TV giữ panel điều khiển
+  10-foot.
 - Mini-player mobile bám hierarchy của Zing: progress mảnh ở mép trên, artwork,
   tên bài/nghệ sĩ, Play/Pause và Next trong thanh 76 px ngay trên navigation 5
   tab. Stop vẫn nằm trong Now Playing đầy đủ để tránh nút phá hủy phát nhạc ở
@@ -300,7 +303,9 @@ proxy Node/TypeScript do người triển khai tự host.
 - Export/import backup JSON v3 theo hai chế độ Merge hoặc Overwrite; vẫn đọc
   được backup v1/v2.
 - Theme Sáng/Tối/Theo hệ thống, giữ nhận diện charcoal, coral và lime.
-- UI adaptive cho mobile, tablet, desktop và giao diện 10-foot cho TV.
+- UI adaptive cho mobile, tablet, desktop và giao diện 10-foot cho TV: dưới
+  `720 px` dùng mini-player/full Now Playing, từ `720 px` giữ catalog cùng dock
+  toàn chiều rộng.
 - Catalog dùng kênh cập nhật riêng: nhịp position/duration/volume chỉ dựng lại
   player, không dựng lại toàn bộ Home, Discovery hay danh sách BXH; favorites,
   queue và thư viện vẫn phản hồi ngay trên mọi kích thước màn hình.
@@ -636,6 +641,14 @@ không chứa dữ liệu người dùng thật.
   <tr>
     <td width="66%" align="center"><img src="docs/screenshots/v1.3e-artist-about-desktop.png" alt="Khối Về nghệ sĩ trên desktop với ảnh cover bên trái và tiểu sử cùng metadata bên phải"><br><sub><b>Desktop/TV</b> · bố cục biên tập hai cột, thống kê người quan tâm/thành tích và metadata chính thức</sub></td>
     <td width="34%" align="center"><img src="docs/screenshots/v1.3e-artist-about-mobile.png" alt="Khối Về nghệ sĩ dạng một cột trên điện thoại 360 px"><br><sub><b>Mobile/tablet</b> · một cột gọn, preview nhận biết overflow và modal tiểu sử đầy đủ có thể chọn</sub></td>
+  </tr>
+</table>
+
+### v1.3f — Responsive Playback Shell
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3f-playback-shell-tablet.png" alt="Playback shell tablet 768 px với rail icon-only, catalog, queue co giãn và dock toàn chiều rộng"><br><sub><b>Tablet 768 px</b> · giữ catalog khi phát, queue hiển thị cùng workspace và dock chạy xuyên suốt bên dưới rail như Zing MP3</sub></td>
   </tr>
 </table>
 

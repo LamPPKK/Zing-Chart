@@ -106,6 +106,41 @@ function optionalArtworkUrl(value: unknown) {
   }
 }
 
+function firstArtworkUrl(...values: unknown[]) {
+  for (const value of values) {
+    const candidate = optionalArtworkUrl(value);
+    if (candidate) return candidate;
+  }
+  return '';
+}
+
+function chartSongArtwork(item: JsonObject, album: JsonObject | undefined) {
+  const songArtwork = firstArtworkUrl(
+    item.thumbnailM, item.thumbnail_medium, item.thumbnail,
+  );
+  const albumArtwork = firstArtworkUrl(
+    album?.thumbnail_medium, album?.thumbnailM, album?.thumbnail,
+  );
+  if (!songArtwork) return albumArtwork;
+  if (!albumArtwork) return songArtwork;
+  const songUrl = new URL(songArtwork);
+  const albumUrl = new URL(albumArtwork);
+  // The legacy chart supplies w94 song art but exposes w240 of the SAME
+  // cover as album.thumbnail_medium. Use that upstream-provided rendition,
+  // not unrelated album art or a guessed URL with its query stripped.
+  const rendition = /^\/w(\d+)_r1x1_(?:jpeg|webp)\/(.+)$/;
+  const songMatch = rendition.exec(songUrl.pathname);
+  const albumMatch = rendition.exec(albumUrl.pathname);
+  if (songUrl.hostname === 'photo-resize-zmp3.zmdcdn.me'
+    && albumUrl.origin === songUrl.origin
+    && songMatch && albumMatch
+    && songMatch[2] === albumMatch[2]
+    && Number(albumMatch[1]) >= Number(songMatch[1])) {
+    return albumArtwork;
+  }
+  return songArtwork;
+}
+
 function plainBiography(value: unknown) {
   const source = text(value);
   if (!source) return '';
@@ -903,8 +938,11 @@ export class ZingUpstream implements MusicUpstream {
             id: albumId,
             title: albumTitle,
             artist: text(item.artists_names).slice(0, 300),
-            thumbnail: optionalArtworkUrl(
-              album?.thumbnailM || album?.thumbnail || item.thumbnail,
+            thumbnail: firstArtworkUrl(
+              album?.thumbnail_medium,
+              album?.thumbnailM,
+              album?.thumbnail,
+              item.thumbnail,
             ),
             kind: 'album',
             externalUrl: trustedCollectionUrl(
@@ -929,9 +967,7 @@ export class ZingUpstream implements MusicUpstream {
         title,
         artist: text(item.artists_names),
         artists,
-        albumCover: text(item.thumbnail)
-          ? normalizeUrl(text(item.thumbnail), this.config.chartUrl)
-          : '',
+        albumCover: chartSongArtwork(item, album),
         albumTitle,
         ...(normalizedAlbum ? { album: normalizedAlbum } : {}),
         durationSeconds: Math.min(

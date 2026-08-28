@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../../models/song.dart';
 import '../../music_player_screen.dart';
+import '../../widgets/album_art.dart';
 import '../search_songs_result_screen.dart';
 
 class SearchSongsResult extends StatelessWidget {
@@ -74,16 +76,11 @@ class SearchSongsResult extends StatelessWidget {
             itemBuilder: (context, index) {
               final song = songs[index];
               return ListTile(
-                leading: Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: DecorationImage(
-                      image: NetworkImage(song.thumbnail),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                leading: AlbumArt(
+                  imageUrl: song.thumbnail,
+                  semanticLabel: 'Ảnh bìa ${song.displayTitle}',
+                  size: 60,
+                  borderRadius: 30,
                 ),
                 title: Text(
                   song.name,

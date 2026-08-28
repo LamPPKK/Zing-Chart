@@ -201,21 +201,23 @@ clients never call Zing upstream directly.
   sources fall back to the standard playback path without stalling the queue.
   The standby deck buffers the stream transiently, but saves no offline audio
   file or persistent cache and sends no queue or listening history to the proxy.
-- After a song is selected, desktop keeps the catalog visible by default and
-  shows a Zing MP3-style horizontal playback dock with metadata, transport,
-  progress, volume, and direct official MV, Lyrics/Karaoke, Now Playing, and
+- At `720 px` and above, tablet/desktop keeps the catalog visible after a song
+  is selected and shows a Zing MP3-style horizontal playback dock across the
+  full root shell, beneath both the rail/sidebar and content. It includes
+  metadata, transport, progress, volume, and direct official MV, Lyrics/Karaoke, Now Playing, and
   Playback queue actions. The More button beside Like opens Song details, Song
   Radio, Add to playlist, and official Zing link sharing. MV metadata is loaded
   only after the user clicks and still uses the validated Zing handoff; narrow
-  desktop layouts hide the expanded shortcuts to protect transport space. The right drawer has Queue,
-  Recently played, and Lyrics tabs: the queue supports play, reorder, per-track
+  tablet/desktop layouts hide expanded shortcuts, use an icon-only rail, and
+  resize the drawer to protect catalog and transport space. The right drawer
+  has Queue, Recently played, and Lyrics tabs: the queue supports play, reorder, per-track
   removal, or a confirmed clear that preserves the active song, progress, and
-  playback origin across phone, desktop, and TV. History stays local, and synced lyrics follow the active line, seek
-  on tap, and expand to full-screen Karaoke. The dock remains visible while it
+  playback origin across phone, desktop, and TV. History stays local, and synced
+  lyrics follow the active line, seek on tap, and expand to full-screen Karaoke. The dock remains visible while it
   is open.
   The drawer has an explicit close/Escape path and the full-screen option
-  remains available. Mobile retains its compact mini-player and TV retains the
-  remote-first 10-foot panel.
+  remains available. Below `720 px`, mobile retains its compact mini-player and
+  opens full Now Playing; TV retains the remote-first 10-foot panel.
 - The mobile mini-player follows Zing's hierarchy: a thin top progress line,
   artwork, song/artist metadata, Play/Pause, and Next in a 76 px bar directly
   above the five-tab navigation. Stop remains in full Now Playing, avoiding a
@@ -307,7 +309,9 @@ clients never call Zing upstream directly.
 - Six-slide Mini Wrapped remains available year-round.
 - JSON backup v3 with idempotent Merge and full Overwrite modes; v1/v2 remain
   importable.
-- Responsive phone/tablet/desktop UI and remote-first 10-foot TV UI.
+- Responsive phone/tablet/desktop UI and remote-first 10-foot TV UI: below
+  `720 px` uses compact mini/full Now Playing, while `720 px` and above keeps
+  the catalog beside a full-width root playback dock.
 - Catalog updates use a dedicated signal: position, duration, and volume ticks
   rebuild the player only instead of the full Home, Discovery, or chart list;
   favorites, queue, and library changes still update immediately.
@@ -622,6 +626,14 @@ historical binaries and contain no real user data.
   <tr>
     <td width="66%" align="center"><img src="docs/screenshots/v1.3e-artist-about-desktop.png" alt="Desktop Artist About block with cover art on the left and biography plus metadata on the right"><br><sub><b>Desktop/TV</b> · two-column editorial layout with follower/achievement stats and authoritative metadata</sub></td>
     <td width="34%" align="center"><img src="docs/screenshots/v1.3e-artist-about-mobile.png" alt="Single-column Artist About block on a 360 px phone"><br><sub><b>Phone/tablet</b> · compact stack, overflow-aware preview, and a full selectable biography modal</sub></td>
+  </tr>
+</table>
+
+### v1.3f — Responsive Playback Shell
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/v1.3f-playback-shell-tablet.png" alt="768 px tablet playback shell with icon-only rail, catalog, adaptive queue, and full-width dock"><br><sub><b>768 px tablet</b> · catalog persists during playback, queue shares the workspace, and the dock spans beneath the rail like Zing MP3</sub></td>
   </tr>
 </table>
 

@@ -92,6 +92,10 @@ void main() {
   testWidgets('selects a song and controls playback from Now Playing', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(360, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final audio = FakePlaybackAudioPlayer();
     final controller = await _createController(audio);
     addTearDown(controller.dispose);
@@ -268,6 +272,27 @@ void main() {
     expect(find.byType(MusicPlayerScreen), findsOneWidget);
     expect(find.text('ĐANG PHÁT TỪ'), findsOneWidget);
     expect(find.byKey(const ValueKey('desktop-playback-dock')), findsNothing);
+  });
+
+  testWidgets('mobile keeps full Now Playing below the 720px breakpoint', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(719, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = await _createController();
+    addTearDown(controller.dispose);
+
+    await _pumpChart(tester, controller, loader: () async => songs);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Một Bài Hát').first);
+    await tester.pumpAndSettle();
+
+    expect(controller.currentSong, songs.first);
+    expect(find.byType(MusicPlayerScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('desktop-playback-dock')), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('desktop dock opens direct lyrics and the official MV', (
@@ -558,10 +583,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('desktop queue drawer and playback dock fit at 1100 pixels', (
+  testWidgets('tablet playback dock spans the shell and queue fits at 720px', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1100, 760);
+    tester.view.physicalSize = const Size(720, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -572,6 +597,22 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Một Bài Hát').first);
     await tester.pumpAndSettle();
+
+    expect(controller.currentSong, songs.first);
+    expect(find.byType(MusicPlayerScreen), findsNothing);
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byKey(const ValueKey('mobile-mini-player')), findsNothing);
+    final dock = find.byKey(const ValueKey('desktop-playback-dock'));
+    expect(dock, findsOneWidget);
+    final dockRect = tester.getRect(dock);
+    expect(dockRect.left, 0);
+    expect(dockRect.right, 720);
+    expect(
+      tester.getRect(find.byType(NavigationRail)).bottom,
+      lessThanOrEqualTo(dockRect.top),
+    );
+    expect(tester.takeException(), isNull);
+
     await tester.tap(find.byKey(const ValueKey('desktop-dock-open-queue')));
     await tester.pumpAndSettle();
 
@@ -582,6 +623,14 @@ void main() {
     expect(find.byKey(const ValueKey('desktop-playback-dock')), findsOneWidget);
     expect(find.text('TRÌNH PHÁT'), findsOneWidget);
     expect(tester.takeException(), isNull);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-playback-queue-panel')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('desktop-playback-dock')), findsOneWidget);
   });
 
   testWidgets('desktop catalog Back and Forward restore the exact collection', (

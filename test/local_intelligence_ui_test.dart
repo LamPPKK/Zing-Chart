@@ -87,6 +87,10 @@ void main() {
   testWidgets('tags a mood from Now Playing and updates its local mix', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(360, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final controller = await _controller();
     addTearDown(controller.dispose);
     await _pumpChart(tester, controller, songs);
@@ -406,9 +410,20 @@ void main() {
     addTearDown(controller.dispose);
     await _pumpChart(tester, controller, songs);
 
-    await tester.tap(find.text('Dành cho bạn').first);
+    await tester.tap(find.byIcon(Icons.auto_awesome_outlined).first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Xem thống kê'));
+    final openAnalytics = find.text('Xem thống kê');
+    final contentScroll = find.descendant(
+      of: find.byType(CustomScrollView),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      openAnalytics,
+      140,
+      scrollable: contentScroll.first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(openAnalytics);
     await tester.pumpAndSettle();
 
     expect(find.byType(AnalyticsDashboardScreen), findsOneWidget);

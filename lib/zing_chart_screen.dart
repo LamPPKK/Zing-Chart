@@ -330,6 +330,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   static const _forYouTab = 3;
   static const _libraryTab = 4;
   static const _liveRadioTab = 5;
+  static const _persistentPlaybackDockBreakpoint = 720.0;
   static const _navigationTabs = <int>[
     _chartTab,
     _discoveryTab,
@@ -3607,7 +3608,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       }
       return;
     }
-    if (MediaQuery.sizeOf(context).width >= 1100 &&
+    if (MediaQuery.sizeOf(context).width >= _persistentPlaybackDockBreakpoint &&
         !controller.alwaysOpenFullscreenPlayer) {
       return;
     }
@@ -3674,7 +3675,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       }
       return;
     }
-    if (MediaQuery.sizeOf(context).width >= 1100 &&
+    if (MediaQuery.sizeOf(context).width >= _persistentPlaybackDockBreakpoint &&
         !controller.alwaysOpenFullscreenPlayer) {
       return;
     }
@@ -3689,11 +3690,65 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     final controller = _playerController;
     final visibleSongs = _visibleSongs(controller);
     final width = MediaQuery.sizeOf(context).width;
-    final useRail = widget.tvMode || width >= 720;
+    final useRail = widget.tvMode || width >= _persistentPlaybackDockBreakpoint;
     final useDesktopCatalogSidebar = !widget.tvMode && width >= 1320;
     final extendRail = widget.tvMode || width >= 1180;
     final showDesktopQueue =
-        !widget.tvMode && width >= 1100 && _desktopPlayerVisible;
+        !widget.tvMode &&
+        width >= _persistentPlaybackDockBreakpoint &&
+        _desktopPlayerVisible;
+    final desktopQueueWidth = (width - 432).clamp(288.0, 356.0).toDouble();
+    final workspace = Row(
+      children: [
+        if (useRail)
+          if (useDesktopCatalogSidebar)
+            DesktopCatalogSidebar(
+              selected: _desktopCatalogDestination,
+              onDestinationSelected: _selectDesktopCatalogDestination,
+              likedSongs: controller.likedSongs.length,
+              playlists: controller.playlists.length,
+              listeningMinutes: controller
+                  .analyticsSummary(AnalyticsPeriod.thirtyDays)
+                  .listened
+                  .inMinutes,
+              onOpenLocalProfile: () => _selectDesktopCatalogDestination(
+                DesktopCatalogDestination.forYou,
+              ),
+              onCreatePlaylist: () => _showCreatePlaylist(controller),
+              onShowQueue: () =>
+                  _openDesktopPlayerPanel(DesktopPlaybackPanelTab.queue),
+            )
+          else
+            _buildNavigationRail(tvMode: widget.tvMode, extended: extendRail),
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) => _buildContent(
+                    controller,
+                    visibleSongs,
+                    contentWidth: constraints.maxWidth,
+                  ),
+                ),
+              ),
+              if (showDesktopQueue)
+                DesktopPlaybackQueuePanel(
+                  width: desktopQueueWidth,
+                  lyricsLoader: widget.lyricsLoader,
+                  initialTab: _desktopPlayerTab,
+                  onTabChanged: (tab) {
+                    if (_desktopPlayerTab == tab) return;
+                    setState(() => _desktopPlayerTab = tab);
+                  },
+                  onClose: () => setState(() => _desktopPlayerVisible = false),
+                ),
+            ],
+          ),
+        ),
+        if (widget.tvMode) const DesktopNowPlayingPanel(tvMode: true),
+      ],
+    );
 
     return CallbackShortcuts(
       bindings: _shortcutBindings(controller, width),
@@ -3718,8 +3773,23 @@ class _ZingChartScreenState extends State<ZingChartScreen>
               if (!didPop) _handleBack(width);
             },
             child: Scaffold(
-              bottomNavigationBar: useRail
+              bottomNavigationBar: widget.tvMode
                   ? null
+                  : useRail
+                  ? MiniPlayer(
+                      desktop: true,
+                      onOpenQueue: () => _openDesktopPlayerPanel(
+                        DesktopPlaybackPanelTab.queue,
+                      ),
+                      onOpenLyrics: () => _openDesktopPlayerPanel(
+                        DesktopPlaybackPanelTab.lyrics,
+                      ),
+                      onOpenMv: () => unawaited(_openCurrentSongMv(controller)),
+                      onSongAction: (action) => unawaited(
+                        _handleDesktopDockSongAction(controller, action),
+                      ),
+                      mvLoading: _isCurrentMvLoading,
+                    )
                   : Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -3727,97 +3797,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                         _buildMobileNavigation(width),
                       ],
                     ),
-              body: Row(
-                children: [
-                  if (useRail)
-                    if (useDesktopCatalogSidebar)
-                      DesktopCatalogSidebar(
-                        selected: _desktopCatalogDestination,
-                        onDestinationSelected: _selectDesktopCatalogDestination,
-                        likedSongs: controller.likedSongs.length,
-                        playlists: controller.playlists.length,
-                        listeningMinutes: controller
-                            .analyticsSummary(AnalyticsPeriod.thirtyDays)
-                            .listened
-                            .inMinutes,
-                        onOpenLocalProfile: () =>
-                            _selectDesktopCatalogDestination(
-                              DesktopCatalogDestination.forYou,
-                            ),
-                        onCreatePlaylist: () => _showCreatePlaylist(controller),
-                        onShowQueue: () => _openDesktopPlayerPanel(
-                          DesktopPlaybackPanelTab.queue,
-                        ),
-                      )
-                    else
-                      _buildNavigationRail(
-                        tvMode: widget.tvMode,
-                        extended: extendRail,
-                      ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: LayoutBuilder(
-                                  builder: (context, constraints) =>
-                                      _buildContent(
-                                        controller,
-                                        visibleSongs,
-                                        contentWidth: constraints.maxWidth,
-                                      ),
-                                ),
-                              ),
-                              if (showDesktopQueue)
-                                DesktopPlaybackQueuePanel(
-                                  lyricsLoader: widget.lyricsLoader,
-                                  initialTab: _desktopPlayerTab,
-                                  onTabChanged: (tab) {
-                                    if (_desktopPlayerTab == tab) return;
-                                    setState(() => _desktopPlayerTab = tab);
-                                  },
-                                  onClose: () => setState(
-                                    () => _desktopPlayerVisible = false,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        if (useRail && !widget.tvMode)
-                          MiniPlayer(
-                            desktop: !widget.tvMode && width >= 1100,
-                            onOpenQueue: !widget.tvMode && width >= 1100
-                                ? () => _openDesktopPlayerPanel(
-                                    DesktopPlaybackPanelTab.queue,
-                                  )
-                                : null,
-                            onOpenLyrics: !widget.tvMode && width >= 1100
-                                ? () => _openDesktopPlayerPanel(
-                                    DesktopPlaybackPanelTab.lyrics,
-                                  )
-                                : null,
-                            onOpenMv: !widget.tvMode && width >= 1100
-                                ? () =>
-                                      unawaited(_openCurrentSongMv(controller))
-                                : null,
-                            onSongAction: !widget.tvMode && width >= 1100
-                                ? (action) => unawaited(
-                                    _handleDesktopDockSongAction(
-                                      controller,
-                                      action,
-                                    ),
-                                  )
-                                : null,
-                            mvLoading: _isCurrentMvLoading,
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (widget.tvMode) const DesktopNowPlayingPanel(tvMode: true),
-                ],
-              ),
+              body: workspace,
             ),
           ),
         ),
@@ -3880,7 +3860,9 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   }
 
   void _handleBack(double width) {
-    if (!widget.tvMode && width >= 1100 && _desktopPlayerVisible) {
+    if (!widget.tvMode &&
+        width >= _persistentPlaybackDockBreakpoint &&
+        _desktopPlayerVisible) {
       setState(() => _desktopPlayerVisible = false);
       return;
     }
@@ -4181,7 +4163,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                   !localHistoryRequested &&
                   !localMixRequested)
                 SliverToBoxAdapter(
-                  child: _buildHeader(pinCatalogToolbar: pinCatalogToolbar),
+                  child: _buildHeader(
+                    pinCatalogToolbar: pinCatalogToolbar,
+                    contentWidth: contentWidth,
+                  ),
                 ),
               if (localMixRequested && selectedLocalMix != null)
                 LocalMixWorkspace(
@@ -5835,9 +5820,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     minWidth: tvMode ? 96 : 72,
     minExtendedWidth: tvMode ? 220 : 238,
     groupAlignment: -1,
-    labelType: extended
-        ? NavigationRailLabelType.none
-        : NavigationRailLabelType.all,
+    labelType: NavigationRailLabelType.none,
     backgroundColor: Theme.of(context).brightness == Brightness.dark
         ? ZingColors.sidebar
         : Theme.of(context).colorScheme.surface,
@@ -6939,10 +6922,14 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     return null;
   }
 
-  Widget _buildHeader({required bool pinCatalogToolbar}) {
+  Widget _buildHeader({
+    required bool pinCatalogToolbar,
+    required double contentWidth,
+  }) {
     final controller = _playerController;
     final selectedPlaylist = _selectedPlaylist(controller);
     final wide = MediaQuery.sizeOf(context).width >= 720;
+    final narrowCatalogHeader = wide && contentWidth < 420;
     final selectedCollection =
         _collectionDetail?.collection ?? _selectedCollection;
     if (selectedCollection != null) {
@@ -7075,6 +7062,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                         gradient: _selectedTab == _chartTab,
                         fontSize: widget.tvMode
                             ? 52
+                            : narrowCatalogHeader
+                            ? 36
                             : wide
                             ? 44
                             : 38,
@@ -7082,13 +7071,21 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                       const SizedBox(height: 8),
                       Text(
                         subtitles[_selectedTab],
+                        maxLines: narrowCatalogHeader ? 2 : null,
+                        overflow: narrowCatalogHeader
+                            ? TextOverflow.ellipsis
+                            : null,
                         style: TextStyle(
                           color: _selectedTab == _chartTab
                               ? Theme.of(context).colorScheme.onSurfaceVariant
                               : Theme.of(context).colorScheme.secondary,
-                          fontSize: widget.tvMode ? 14 : 11,
+                          fontSize: widget.tvMode
+                              ? 14
+                              : narrowCatalogHeader
+                              ? 9.5
+                              : 11,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 1.5,
+                          letterSpacing: narrowCatalogHeader ? 1.1 : 1.5,
                         ),
                       ),
                     ],
@@ -7098,7 +7095,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (_selectedTab == _chartTab) ...[
+                      if (_selectedTab == _chartTab &&
+                          (!wide || contentWidth >= 520)) ...[
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,

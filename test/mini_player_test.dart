@@ -160,10 +160,66 @@ void main() {
     expect(find.byType(MusicPlayerScreen), findsOneWidget);
   });
 
+  testWidgets('tablet dock keeps essential controls without overflow', (
+    tester,
+  ) async {
+    for (final size in const [Size(720, 900), Size(768, 1024)]) {
+      await _setViewport(tester, size, registerTearDown: false);
+      final fixture = await _fixture(queue: const [_song, _songTwo]);
+      var queueCalls = 0;
+
+      await tester.pumpWidget(
+        _app(
+          fixture.controller,
+          Scaffold(
+            body: const SizedBox(),
+            bottomNavigationBar: MiniPlayer(
+              desktop: true,
+              onOpenQueue: () => queueCalls++,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final dock = find.byKey(const ValueKey('desktop-playback-dock'));
+      expect(dock, findsOneWidget);
+      expect(tester.getRect(dock).width, size.width);
+      expect(
+        find.byKey(const ValueKey('desktop-dock-play-pause')),
+        findsOneWidget,
+      );
+      expect(find.byTooltip('Bài trước'), findsOneWidget);
+      expect(find.byTooltip('Bài tiếp theo'), findsOneWidget);
+      expect(find.byKey(const ValueKey('desktop-dock-mute')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('desktop-dock-open-queue')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('desktop-dock-volume')), findsNothing);
+      expect(find.byTooltip('Ngẫu nhiên'), findsNothing);
+      expect(find.byTooltip('Dừng'), findsNothing);
+      expect(tester.takeException(), isNull, reason: 'viewport $size');
+
+      await tester.tap(find.byKey(const ValueKey('desktop-dock-open-queue')));
+      await tester.pump();
+      expect(queueCalls, 1);
+
+      fixture.controller.dispose();
+      await tester.pumpWidget(const SizedBox.shrink());
+    }
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
+
   testWidgets(
     'desktop dock and player panel stay adaptive at wide breakpoints',
     (tester) async {
-      for (final size in const [Size(1100, 760), Size(1440, 900)]) {
+      for (final size in const [
+        Size(1024, 768),
+        Size(1100, 760),
+        Size(1440, 900),
+      ]) {
         await _setViewport(tester, size, registerTearDown: false);
         final fixture = await _fixture();
 
