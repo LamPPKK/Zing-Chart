@@ -411,9 +411,11 @@ class _ArtistAboutArtwork extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = detail.cover.trim().isNotEmpty
-        ? detail.cover.trim()
-        : detail.artist.avatar.trim();
+    final cover = detail.cover.trim();
+    final avatar = detail.artist.avatar.trim();
+    final imageUrl = cover.isNotEmpty ? cover : avatar;
+    // Try the supplied avatar once if a distinct cover fails to load.
+    final fallbackUrl = cover.isNotEmpty && avatar != cover ? avatar : '';
     final ratio = MediaQuery.devicePixelRatioOf(context);
     return Semantics(
       image: true,
@@ -442,10 +444,19 @@ class _ArtistAboutArtwork extends StatelessWidget {
               else
                 Image.network(
                   imageUrl,
+                  key: ValueKey((detail.artist.id, imageUrl)),
                   fit: BoxFit.cover,
                   cacheWidth: (size * ratio).round(),
-                  errorBuilder: (_, __, ___) =>
-                      _ArtistArtworkFallback(name: detail.artist.name),
+                  errorBuilder: (_, __, ___) => fallbackUrl.isEmpty
+                      ? _ArtistArtworkFallback(name: detail.artist.name)
+                      : Image.network(
+                          fallbackUrl,
+                          key: ValueKey((detail.artist.id, fallbackUrl)),
+                          fit: BoxFit.cover,
+                          cacheWidth: (size * ratio).round(),
+                          errorBuilder: (_, __, ___) =>
+                              _ArtistArtworkFallback(name: detail.artist.name),
+                        ),
                 ),
               const DecoratedBox(
                 decoration: BoxDecoration(

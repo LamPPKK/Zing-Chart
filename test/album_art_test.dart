@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zmp3chart/widgets/album_art.dart';
 
+import 'support/artwork_http_client.dart';
+
 void main() {
   testWidgets('album art configures a resized network image', (tester) async {
     const artworkUrl = 'https://photo-resize-zmp3.zmdcdn.me/w240/cover.jpg';
@@ -28,7 +30,7 @@ void main() {
   testWidgets(
     'loads artwork, retains refresh frames and resets on song change',
     (tester) async {
-      final client = _ArtworkClient();
+      final client = ArtworkHttpClient();
       debugNetworkImageHttpClientProvider = () => client;
       addTearDown(() {
         debugNetworkImageHttpClientProvider = null;
@@ -61,7 +63,7 @@ void main() {
           );
           stream.addListener(listener);
           try {
-            client.responses[url]!.complete(_ArtworkResponse(statusCode));
+            client.respond(url, statusCode: statusCode);
             await decoded.future.timeout(const Duration(seconds: 5));
           } finally {
             stream.removeListener(listener);
@@ -109,59 +111,4 @@ void main() {
     expect(find.byIcon(Icons.graphic_eq_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
-}
-
-class _ArtworkClient implements HttpClient {
-  final responses = <String, Completer<HttpClientResponse>>{};
-
-  @override
-  Future<HttpClientRequest> getUrl(Uri url) async => _ArtworkRequest(
-    responses.putIfAbsent(url.toString(), Completer<HttpClientResponse>.new),
-  );
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _ArtworkRequest implements HttpClientRequest {
-  _ArtworkRequest(this.response);
-  final Completer<HttpClientResponse> response;
-
-  @override
-  Future<HttpClientResponse> close() => response.future;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _ArtworkResponse extends Stream<List<int>> implements HttpClientResponse {
-  _ArtworkResponse(this.statusCode);
-
-  final _bytes = File('web/favicon.png').readAsBytesSync();
-
-  @override
-  final int statusCode;
-
-  @override
-  int get contentLength => _bytes.length;
-
-  @override
-  HttpClientResponseCompressionState get compressionState =>
-      HttpClientResponseCompressionState.notCompressed;
-
-  @override
-  StreamSubscription<List<int>> listen(
-    void Function(List<int>)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) => Stream<List<int>>.value(_bytes).listen(
-    onData,
-    onError: onError,
-    onDone: onDone,
-    cancelOnError: cancelOnError,
-  );
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
