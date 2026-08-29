@@ -377,6 +377,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   int _chartSuggestionRequestId = 0;
   late int _selectedTab;
   bool _desktopPlayerVisible = false;
+  bool _compactSidebarExpanded = false;
   late DesktopPlaybackPanelTab _desktopPlayerTab;
   bool _isCurrentMvLoading = false;
   int _currentMvRequestId = 0;
@@ -1572,6 +1573,19 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       return;
     }
     if (!wasActive) unawaited(_resumeChartRefresh());
+  }
+
+  @override
+  void didChangeMetrics() {
+    if (!_compactSidebarExpanded) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_compactSidebarExpanded) return;
+      final width = MediaQuery.sizeOf(context).width;
+      if (width < _persistentPlaybackDockBreakpoint ||
+          width >= DesktopCatalogSidebar.expandedBreakpoint) {
+        _closeCompactSidebar();
+      }
+    });
   }
 
   Future<void> _resumeChartRefresh() async {
@@ -3692,17 +3706,26 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     final width = MediaQuery.sizeOf(context).width;
     final useRail = widget.tvMode || width >= _persistentPlaybackDockBreakpoint;
     final useDesktopCatalogSidebar = !widget.tvMode;
+    final compactCatalogSidebar =
+        useRail &&
+        useDesktopCatalogSidebar &&
+        width < DesktopCatalogSidebar.expandedBreakpoint;
+    final showCompactSidebarOverlay =
+        compactCatalogSidebar && _compactSidebarExpanded;
     final showDesktopQueue =
         !widget.tvMode &&
         width >= _persistentPlaybackDockBreakpoint &&
         _desktopPlayerVisible;
     final desktopQueueWidth = (width - 432).clamp(288.0, 356.0).toDouble();
-    final workspace = Row(
+    final workspaceRow = Row(
       children: [
         if (useRail)
           if (useDesktopCatalogSidebar)
             DesktopCatalogSidebar(
-              compact: width < DesktopCatalogSidebar.expandedBreakpoint,
+              compact: compactCatalogSidebar,
+              onExpand: compactCatalogSidebar
+                  ? () => setState(() => _compactSidebarExpanded = true)
+                  : null,
               selected: _desktopCatalogDestination,
               onDestinationSelected: _selectDesktopCatalogDestination,
               likedSongs: controller.likedSongs.length,
@@ -3749,6 +3772,77 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         if (widget.tvMode) const DesktopNowPlayingPanel(tvMode: true),
       ],
     );
+    final workspace = Stack(
+      fit: StackFit.expand,
+      children: [
+        ExcludeFocus(
+          excluding: showCompactSidebarOverlay,
+          child: ExcludeSemantics(
+            excluding: showCompactSidebarOverlay,
+            child: workspaceRow,
+          ),
+        ),
+        if (showCompactSidebarOverlay) ...[
+          Positioned.fill(
+            child: Semantics(
+              button: true,
+              label: 'Đóng thanh bên',
+              child: GestureDetector(
+                key: const ValueKey('desktop-sidebar-overlay-barrier'),
+                behavior: HitTestBehavior.opaque,
+                onTap: _closeCompactSidebar,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: TweenAnimationBuilder<double>(
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              tween: Tween(begin: 0, end: 1),
+              builder: (context, value, child) => Transform.translate(
+                offset: Offset(
+                  -(DesktopCatalogSidebar.width -
+                          DesktopCatalogSidebar.compactWidth) *
+                      (1 - value),
+                  0,
+                ),
+                child: child,
+              ),
+              child: DesktopCatalogSidebar(
+                overlay: true,
+                selected: _desktopCatalogDestination,
+                onDestinationSelected:
+                    _selectDesktopCatalogDestinationFromOverlay,
+                likedSongs: controller.likedSongs.length,
+                playlists: controller.playlists.length,
+                listeningMinutes: controller
+                    .analyticsSummary(AnalyticsPeriod.thirtyDays)
+                    .listened
+                    .inMinutes,
+                onCollapse: _closeCompactSidebar,
+                onOpenLocalProfile: () =>
+                    _selectDesktopCatalogDestinationFromOverlay(
+                      DesktopCatalogDestination.forYou,
+                    ),
+                onCreatePlaylist: () {
+                  _closeCompactSidebar();
+                  _showCreatePlaylist(controller);
+                },
+                onShowQueue: () {
+                  _closeCompactSidebar();
+                  _openDesktopPlayerPanel(DesktopPlaybackPanelTab.queue);
+                },
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
 
     return CallbackShortcuts(
       bindings: _shortcutBindings(controller, width),
@@ -3758,6 +3852,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
           autofocus: !widget.tvMode,
           child: PopScope<void>(
             canPop:
+                !_compactSidebarExpanded &&
                 !_canNavigateBack &&
                 !(_selectedTab == _libraryTab &&
                     _librarySection == LibrarySection.recent) &&
@@ -3860,6 +3955,10 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   }
 
   void _handleBack(double width) {
+    if (_compactSidebarExpanded) {
+      _closeCompactSidebar();
+      return;
+    }
     if (!widget.tvMode &&
         width >= _persistentPlaybackDockBreakpoint &&
         _desktopPlayerVisible) {
@@ -3917,6 +4016,18 @@ class _ZingChartScreenState extends State<ZingChartScreen>
 
   Future<void> _seekBy(MusicPlayerController controller, int seconds) =>
       controller.seek(controller.position + Duration(seconds: seconds));
+
+  void _closeCompactSidebar() {
+    if (!_compactSidebarExpanded || !mounted) return;
+    setState(() => _compactSidebarExpanded = false);
+  }
+
+  void _selectDesktopCatalogDestinationFromOverlay(
+    DesktopCatalogDestination destination,
+  ) {
+    _closeCompactSidebar();
+    _selectDesktopCatalogDestination(destination);
+  }
 
   Future<void> _refreshContent() {
     final selectedCollection = _selectedCollection;

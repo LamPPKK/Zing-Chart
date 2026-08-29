@@ -1,6 +1,6 @@
 # #zingChart
 
-<p align="center"><img src="web/icons/Icon-192.png" width="112" height="112" alt="#zingChart 图标：珊瑚色井号与青柠色音频脉冲"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/web/icons/Icon-192.png" width="112" height="112" alt="#zingChart 图标：珊瑚色井号与青柠色音频脉冲"></p>
 
 [Tiếng Việt](README.md) · [English](README.en.md) · [简体中文](README.zh-CN.md)
 
@@ -326,13 +326,13 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 
 <table>
   <tr>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.0-home-mobile.png" alt="手机端实时 ZingChart 首页"><br><sub><b>首页</b> · 实时排行榜与 Daily Mix</sub></td>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.0-search-mobile.png" alt="手机端音乐搜索"><br><sub><b>搜索</b> · 歌曲、歌手与最近关键词</sub></td>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.0-now-playing-mobile.png" alt="手机端正在播放界面"><br><sub><b>正在播放</b> · 进度、队列、心情与睡眠定时</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-home-mobile.png" alt="手机端实时 ZingChart 首页"><br><sub><b>首页</b> · 实时排行榜与 Daily Mix</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-search-mobile.png" alt="手机端音乐搜索"><br><sub><b>搜索</b> · 歌曲、歌手与最近关键词</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-now-playing-mobile.png" alt="手机端正在播放界面"><br><sub><b>正在播放</b> · 进度、队列、心情与睡眠定时</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.0-library-mobile.png" alt="手机端 Local-First 音乐库"><br><sub><b>音乐库</b> · 收藏、歌单与本地备份</sub></td>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.0-desktop-player.png" alt="包含正在播放和队列面板的桌面自适应界面"><br><sub><b>桌面自适应</b> · 排行榜、正在播放与队列同屏</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-library-mobile.png" alt="手机端 Local-First 音乐库"><br><sub><b>音乐库</b> · 收藏、歌单与本地备份</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-desktop-player.png" alt="包含正在播放和队列面板的桌面自适应界面"><br><sub><b>桌面自适应</b> · 排行榜、正在播放与队列同屏</sub></td>
   </tr>
 </table>
 
@@ -340,12 +340,12 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 
 <table>
   <tr>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.1-for-you-mobile.png" alt="为你推荐中的 Daily Mix 和 Mood Mix"><br><sub><b>为你推荐</b> · 设备端 Daily Mix 与 Mood Mix</sub></td>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.1-analytics-mobile.png" alt="本地收听统计面板"><br><sub><b>统计</b> · 7 天、30 天与年度视图</sub></td>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.1-wrapped-mobile.png" alt="可导出图片的 Mini Wrapped"><br><sub><b>Mini Wrapped</b> · 六页总结与 PNG 导出</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.1-for-you-mobile.png" alt="为你推荐中的 Daily Mix 和 Mood Mix"><br><sub><b>为你推荐</b> · 设备端 Daily Mix 与 Mood Mix</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.1-analytics-mobile.png" alt="本地收听统计面板"><br><sub><b>统计</b> · 7 天、30 天与年度视图</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.1-wrapped-mobile.png" alt="可导出图片的 Mini Wrapped"><br><sub><b>Mini Wrapped</b> · 六页总结与 PNG 导出</sub></td>
   </tr>
   <tr>
-    <td colspan="3" align="center"><img src="docs/screenshots/v1.1-tv-for-you.png" alt="带遥控焦点与播放器面板的电视端为你推荐界面"><br><sub><b>电视 10-foot UI</b> · 遥控导航、本地 Mix 与播放器面板</sub></td>
+    <td colspan="3" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.1-tv-for-you.png" alt="带遥控焦点与播放器面板的电视端为你推荐界面"><br><sub><b>电视 10-foot UI</b> · 遥控导航、本地 Mix 与播放器面板</sub></td>
   </tr>
 </table>
 
@@ -353,106 +353,106 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 
 <table>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-desktop-sidebar.png" alt="带分组曲库侧栏、24 小时榜单、歌手专辑链接和底部播放坞的桌面端 #zingChart"><br><sub><b>桌面曲库工作区</b> · 同屏显示 24 小时曲线、支持应用内歌手/专辑导航的官方推荐、榜单元数据与播放坞</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-desktop-sidebar.png" alt="带分组曲库侧栏、24 小时榜单、歌手专辑链接和底部播放坞的桌面端 #zingChart"><br><sub><b>桌面曲库工作区</b> · 同屏显示 24 小时曲线、支持应用内歌手/专辑导航的官方推荐、榜单元数据与播放坞</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-desktop-playback-dock.png" alt="桌面端 #zingChart 播放坞包含 MV 歌词 Now Playing 歌曲菜单快捷键与队列抽屉"><br><sub><b>Zing MP3 风格播放坞与队列抽屉</b> · 直达 MV、歌词/卡拉 OK、Now Playing 与歌曲操作；队列可排序，历史仅在本机</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-desktop-playback-dock.png" alt="桌面端 #zingChart 播放坞包含 MV 歌词 Now Playing 歌曲菜单快捷键与队列抽屉"><br><sub><b>Zing MP3 风格播放坞与队列抽屉</b> · 直达 MV、歌词/卡拉 OK、Now Playing 与歌曲操作；队列可排序，历史仅在本机</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-desktop-lyrics-drawer.png" alt="桌面端 #zingChart 播放抽屉内的同步歌词标签"><br><sub><b>曲库旁的同步歌词</b> · 跟随当前句、点击跳转，或展开全屏卡拉 OK，无需离开正在浏览的页面</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-desktop-lyrics-drawer.png" alt="桌面端 #zingChart 播放抽屉内的同步歌词标签"><br><sub><b>曲库旁的同步歌词</b> · 跟随当前句、点击跳转，或展开全屏卡拉 OK，无需离开正在浏览的页面</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-library-workspace-desktop.png" alt="桌面音乐库包含总览歌曲最近播放歌单专辑与歌手分区"><br><sub><b>Zing 风格 Local-First 音乐库</b> · 六个自适应分区、个人歌单、收听历史与已保存官方内容，无需账号</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-library-workspace-desktop.png" alt="桌面音乐库包含总览歌曲最近播放歌单专辑与歌手分区"><br><sub><b>Zing 风格 Local-First 音乐库</b> · 六个自适应分区、个人歌单、收听历史与已保存官方内容，无需账号</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-local-playlist-workspace-desktop.png" alt="带拼贴封面播放随机播放操作与可排序歌曲的个人歌单工作区"><br><sub><b>Local-First 个人歌单</b> · 拼贴封面、播放/随机播放、重命名、删除、排序与撤销，不影响正在播放的队列</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-local-playlist-workspace-desktop.png" alt="带拼贴封面播放随机播放操作与可排序歌曲的个人歌单工作区"><br><sub><b>Local-First 个人歌单</b> · 拼贴封面、播放/随机播放、重命名、删除、排序与撤销，不影响正在播放的队列</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-local-history-workspace-desktop.png" alt="按日期分组并显示播放时间与已听时长的 Local-First 收听历史工作区"><br><sub><b>Local-First 收听历史</b> · 本地日期分组、播放/随机播放、播放时间、已听时长、完整歌曲操作与确认后清除</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-local-history-workspace-desktop.png" alt="按日期分组并显示播放时间与已听时长的 Local-First 收听历史工作区"><br><sub><b>Local-First 收听历史</b> · 本地日期分组、播放/随机播放、播放时间、已听时长、完整歌曲操作与确认后清除</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-realtime-chart-desktop.png" alt="带数据点与当前歌曲提示卡的 24 小时 ZingChart 交互曲线"><br><sub><b>24 小时榜单脉搏</b> · 通过悬停、触摸拖动或遥控器查看每小时占比并播放当前歌曲</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-realtime-chart-desktop.png" alt="带数据点与当前歌曲提示卡的 24 小时 ZingChart 交互曲线"><br><sub><b>24 小时榜单脉搏</b> · 通过悬停、触摸拖动或遥控器查看每小时占比并播放当前歌曲</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-chart-top-100-desktop.png" alt="#zingchart 第 1 至第 10 名及查看 Top 100 按钮"><br><sub><b>Top 10 → Top 100</b> · 默认紧凑、原地展开，并始终保留完整榜单队列</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-chart-top-100-desktop.png" alt="#zingchart 第 1 至第 10 名及查看 Top 100 按钮"><br><sub><b>Top 10 → Top 100</b> · 默认紧凑、原地展开，并始终保留完整榜单队列</sub></td>
   </tr>
   <tr>
-    <td width="50%" align="center"><img src="docs/screenshots/v1.2-discovery-home-desktop.png" alt="包含紧凑猜你喜欢卡片与全宽全景横幅的发现首页"><br><sub><b>发现</b> · Zing 风格左侧封面、无文字叠层全景图与无障碍轮播控制</sub></td>
-    <td width="50%" align="center"><img src="docs/screenshots/v1.2-new-releases-desktop.png" alt="桌面端新歌榜，显示排名、趋势、可跳转歌手与专辑以及时长"><br><sub><b>新歌榜</b> · 应用内歌手/专辑导航、排名趋势、时长，以及仅包含可播放歌曲的队列</sub></td>
+    <td width="50%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-home-desktop.png" alt="包含紧凑猜你喜欢卡片与全宽全景横幅的发现首页"><br><sub><b>发现</b> · Zing 风格左侧封面、无文字叠层全景图与无障碍轮播控制</sub></td>
+    <td width="50%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-new-releases-desktop.png" alt="桌面端新歌榜，显示排名、趋势、可跳转歌手与专辑以及时长"><br><sub><b>新歌榜</b> · 应用内歌手/专辑导航、排名趋势、时长，以及仅包含可播放歌曲的队列</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-discovery-mv-desktop.png" alt="发现首页中的官方热门 MV 横向列表"><br><sub><b>热门 MV</b> · 自适应 16:9 卡片、经过校验的 Zing 页面与电视二维码交接</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-mv-desktop.png" alt="发现首页中的官方热门 MV 横向列表"><br><sub><b>热门 MV</b> · 自适应 16:9 卡片、经过校验的 Zing 页面与电视二维码交接</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-discovery-new-releases-desktop.png" alt="发现首页中的三列最新发行歌曲区"><br><sub><b>首页最新发行</b> · 12 首歌曲、全部/越南/国际筛选，并自动排除锁定歌曲</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-new-releases-desktop.png" alt="发现首页中的三列最新发行歌曲区"><br><sub><b>首页最新发行</b> · 12 首歌曲、全部/越南/国际筛选，并自动排除锁定歌曲</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-discovery-recent-desktop.png" alt="发现首页中的本地优先最近播放横向列表"><br><sub><b>最近播放</b> · 设备内私密历史、去重队列，不上传代理</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-recent-desktop.png" alt="发现首页中的本地优先最近播放横向列表"><br><sub><b>最近播放</b> · 设备内私密历史、去重队列，不上传代理</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-discovery-new-release-chart-desktop.png" alt="发现首页中新歌榜前三名与排名趋势"><br><sub><b>新歌榜前三名</b> · 自适应焦点区、锁定状态与仅包含可播放歌曲的队列</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-new-release-chart-desktop.png" alt="发现首页中新歌榜前三名与排名趋势"><br><sub><b>新歌榜前三名</b> · 自适应焦点区、锁定状态与仅包含可播放歌曲的队列</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-suggestions-desktop.png" alt="包含关键词与歌曲建议的 Zing 风格搜索自动补全"><br><sub><b>搜索自动补全</b> · 歌曲预览先打开歌曲信息，再由用户主动播放；支持鼠标、键盘与电视遥控器</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-search-suggestions-desktop.png" alt="包含关键词与歌曲建议的 Zing 风格搜索自动补全"><br><sub><b>搜索自动补全</b> · 歌曲预览先打开歌曲信息，再由用户主动播放；支持鼠标、键盘与电视遥控器</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-all-desktop.png" alt="包含三张等高 Zing 风格精选卡片的全部搜索结果"><br><sub><b>全部 · 精选</b> · 一位艺人、两首歌曲、真实关注人数与 1/2/3 列自适应布局</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-search-all-desktop.png" alt="包含三张等高 Zing 风格精选卡片的全部搜索结果"><br><sub><b>全部 · 精选</b> · 一位艺人、两首歌曲、真实关注人数与 1/2/3 列自适应布局</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-songs-desktop.png" alt="Zing 风格歌曲结果，以桌面双栏显示官方 18 项分页"><br><sub><b>歌曲 · 官方分页</b> · 每页 18 项并采用桌面双栏；手机/平板/桌面接近末尾自动加载，同时保留“查看更多”作为回退和电视遥控入口</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-search-songs-desktop.png" alt="Zing 风格歌曲结果，以桌面双栏显示官方 18 项分页"><br><sub><b>歌曲 · 官方分页</b> · 每页 18 项并采用桌面双栏；手机/平板/桌面接近末尾自动加载，同时保留“查看更多”作为回退和电视遥控入口</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-mv-desktop.png" alt="桌面端 Zing 风格官方 MV 结果"><br><sub><b>官方 MV 搜索</b> · 16:9 封面、时长、艺人头像与 hover/focus 浮层；通过可信 Zing 链接或电视二维码打开</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-search-mv-desktop.png" alt="桌面端 Zing 风格官方 MV 结果"><br><sub><b>官方 MV 搜索</b> · 16:9 封面、时长、艺人头像与 hover/focus 浮层；通过可信 Zing 链接或电视二维码打开</sub></td>
   </tr>
   <tr>
-    <td width="50%" align="center"><img src="docs/screenshots/v1.2-hubs-desktop.png" alt="按国家、心情、活动和流派浏览主题"><br><sub><b>主题与流派</b> · 自适应 Hub 导航并打开歌单/专辑详情</sub></td>
-    <td width="50%" align="center"><img src="docs/screenshots/v1.2-top-100-desktop.png" alt="按音乐市场分组的 Top 100"><br><sub><b>Top 100</b> · 精选、越南、亚洲、欧美与纯音乐歌单</sub></td>
+    <td width="50%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-hubs-desktop.png" alt="按国家、心情、活动和流派浏览主题"><br><sub><b>主题与流派</b> · 自适应 Hub 导航并打开歌单/专辑详情</sub></td>
+    <td width="50%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-top-100-desktop.png" alt="按音乐市场分组的 Top 100"><br><sub><b>Top 100</b> · 精选、越南、亚洲、欧美与纯音乐歌单</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-release-catalog-desktop.png" alt="带每首歌曲歌手专辑及时长和地区筛选的最新发行页面"><br><sub><b>最新发行</b> · 每首歌曲显示可导航的歌手/专辑及时长，并提供专辑标签、市场筛选、发行时间与默认拒绝播放策略</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-release-catalog-desktop.png" alt="带每首歌曲歌手专辑及时长和地区筛选的最新发行页面"><br><sub><b>最新发行</b> · 每首歌曲显示可导航的歌手/专辑及时长，并提供专辑标签、市场筛选、发行时间与默认拒绝播放策略</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Zing OA 风格艺人主页，紫色 Hero 下方并排显示最新发行与热门歌曲"><br><sub><b>艺人/OA</b> · 全宽 Hero 与双栏最新发行/热门歌曲；“全部”先打开 50 首歌曲，再分页浏览完整曲库、Single & EP 或 MV</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-artist-profile-desktop.png" alt="Zing OA 风格艺人主页，紫色 Hero 下方并排显示最新发行与热门歌曲"><br><sub><b>艺人/OA</b> · 全宽 Hero 与双栏最新发行/热门歌曲；“全部”先打开 50 首歌曲，再分页浏览完整曲库、Single & EP 或 MV</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="显示本地已关注状态的艺人主页"><br><sub><b>关注艺人</b> · 无需账号，使用 backup v3 恢复，并可从音乐库重新打开</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-artist-follow-desktop.png" alt="显示本地已关注状态的艺人主页"><br><sub><b>关注艺人</b> · 无需账号，使用 backup v3 恢复，并可从音乐库重新打开</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-catalog-actions-desktop.png" alt="艺人 Single EP 栏提供播放收藏和更多操作，独立 MV 栏使用播放浮层"><br><sub><b>艺人目录</b> · 合集提供播放/收藏/更多/分享，MV 使用独立播放浮层；支持鼠标、滑动、键盘与电视遥控器</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-artist-catalog-actions-desktop.png" alt="艺人 Single EP 栏提供播放收藏和更多操作，独立 MV 栏使用播放浮层"><br><sub><b>艺人目录</b> · 合集提供播放/收藏/更多/分享，MV 使用独立播放浮层；支持鼠标、滑动、键盘与电视遥控器</sub></td>
   </tr>
   <tr>
-    <td width="34%" align="center"><img src="docs/screenshots/v1.2-collection-mobile.png" alt="手机官方专辑详情采用紧凑 Hero，包含播放收藏更多并在首屏显示第一首曲目"><br><sub><b>手机合集</b> · 适合触控的播放/收藏/更多、菜单内分享，以及每行唯一的尾部 overflow</sub></td>
-    <td width="66%" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="类似 Zing 的双栏官方专辑页面，左侧封面，右侧编号曲目"><br><sub><b>桌面专辑/歌单</b> · 按内容类型显示 CTA、专辑编号或歌单专辑列、受限歌曲 fail-closed，收藏状态继续保持本地优先</sub></td>
+    <td width="34%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-collection-mobile.png" alt="手机官方专辑详情采用紧凑 Hero，包含播放收藏更多并在首屏显示第一首曲目"><br><sub><b>手机合集</b> · 适合触控的播放/收藏/更多、菜单内分享，以及每行唯一的尾部 overflow</sub></td>
+    <td width="66%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-collection-save-desktop.png" alt="类似 Zing 的双栏官方专辑页面，左侧封面，右侧编号曲目"><br><sub><b>桌面专辑/歌单</b> · 按内容类型显示 CTA、专辑编号或歌单专辑列、受限歌曲 fail-closed，收藏状态继续保持本地优先</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="歌单专辑详情页中的发行信息、参与艺人与官方相关内容"><br><sub><b>歌单/专辑信息</b> · 紧凑 metadata、支持本地关注的参与艺人，以及带播放/收藏/分享操作的相关内容栏</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-collection-information-desktop.png" alt="歌单专辑详情页中的发行信息、参与艺人与官方相关内容"><br><sub><b>歌单/专辑信息</b> · 紧凑 metadata、支持本地关注的参与艺人，以及带播放/收藏/分享操作的相关内容栏</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-weekly-chart-desktop.png" alt="包含三个地区、周数选择器以及可跳转歌手与专辑的周榜"><br><sub><b>周榜</b> · 越南/欧美/K-Pop、应用内歌手/专辑导航、排名变化、时长与仅含可播放歌曲的队列</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-weekly-chart-desktop.png" alt="包含三个地区、周数选择器以及可跳转歌手与专辑的周榜"><br><sub><b>周榜</b> · 越南/欧美/K-Pop、应用内歌手/专辑导航、排名变化、时长与仅含可播放歌曲的队列</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-song-detail-desktop.png" alt="桌面端官方歌曲信息页"><br><sub><b>歌曲信息</b> · 元数据、互动数据、应用内歌手/专辑导航、官方链接分享与 MV 交接</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-song-detail-desktop.png" alt="桌面端官方歌曲信息页"><br><sub><b>歌曲信息</b> · 元数据、互动数据、应用内歌手/专辑导航、官方链接分享与 MV 交接</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-synced-lyrics-desktop.png" alt="逐词高亮的沉浸式 Karaoke 界面"><br><sub><b>Karaoke 与歌词</b> · 大封面、逐词同步、点击跳转，并适配手机/桌面/电视</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-synced-lyrics-desktop.png" alt="逐词高亮的沉浸式 Karaoke 界面"><br><sub><b>Karaoke 与歌词</b> · 大封面、逐词同步、点击跳转，并适配手机/桌面/电视</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-lyric-share-desktop.png" alt="支持多句选择与分享图片预览的 Lyric Card 编辑器"><br><sub><b>Lyric Card</b> · 最多选择四句、在设备端渲染 PNG，并在电视上使用本地二维码</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-lyric-share-desktop.png" alt="支持多句选择与分享图片预览的 Lyric Card 编辑器"><br><sub><b>Lyric Card</b> · 最多选择四句、在设备端渲染 PNG，并在电视上使用本地二维码</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-car-mode-desktop.png" alt="#zingChart 驾驶模式，提供大尺寸播放控件与精简界面"><br><sub><b>驾驶模式</b> · 易于快速查看的信息、清晰进度，以及大尺寸上一首/播放/下一首/停止控件</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-car-mode-desktop.png" alt="#zingChart 驾驶模式，提供大尺寸播放控件与精简界面"><br><sub><b>驾驶模式</b> · 易于快速查看的信息、清晰进度，以及大尺寸上一首/播放/下一首/停止控件</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-song-radio-desktop.png" alt="桌面播放器面板中的 Song Radio 与自动播放"><br><sub><b>Song Radio</b> · 获授权推荐、自动扩展队列，以及手机/桌面/电视控制</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-song-radio-desktop.png" alt="桌面播放器面板中的 Song Radio 与自动播放"><br><sub><b>Song Radio</b> · 获授权推荐、自动扩展队列，以及手机/桌面/电视控制</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="桌面队列中的真实下一首顺序、Smart Shuffle 与清晰标记的推荐歌曲"><br><sub><b>真实接下来播放、公平随机与 Smart Shuffle</b> · 当前歌曲独立显示、后续播放顺序可编辑、一个周期内不重复，并明确标记每首本地优先推荐</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="桌面队列中的真实下一首顺序、Smart Shuffle 与清晰标记的推荐歌曲"><br><sub><b>真实接下来播放、公平随机与 Smart Shuffle</b> · 当前歌曲独立显示、后续播放顺序可编辑、一个周期内不重复，并明确标记每首本地优先推荐</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-stream-quality-desktop.png" alt="Auto 128 与 320 kbps 在线音质选择器"><br><sub><b>真实在线音质</b> · Auto 优先 320 后回退 128；明确选择 128/320 时，签名中继会保持该码率</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-stream-quality-desktop.png" alt="Auto 128 与 320 kbps 在线音质选择器"><br><sub><b>真实在线音质</b> · Auto 优先 320 后回退 128；明确选择 128/320 时，签名中继会保持该码率</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-live-radio-desktop.png" alt="包含 V-Pop Bolero 欧美与 K-Pop 的 LIVE 电台"><br><sub><b>LIVE 电台</b> · 直播房间、当前节目、听众人数，以及手机/桌面/电视同源 HLS</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-live-radio-desktop.png" alt="包含 V-Pop Bolero 欧美与 K-Pop 的 LIVE 电台"><br><sub><b>LIVE 电台</b> · 直播房间、当前节目、听众人数，以及手机/桌面/电视同源 HLS</sub></td>
   </tr>
 </table>
 
@@ -460,7 +460,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3a-seamless-next-settings-desktop.png" alt="#zingChart 桌面设置中的 Seamless Next 自动或关闭选项"><br><sub><b>带回退的 Seamless Next</b> · 最后 30 秒只临时缓冲准确的第一首待播歌曲，不保存离线音频文件或持久缓存</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3a-seamless-next-settings-desktop.png" alt="#zingChart 桌面设置中的 Seamless Next 自动或关闭选项"><br><sub><b>带回退的 Seamless Next</b> · 最后 30 秒只临时缓冲准确的第一首待播歌曲，不保存离线音频文件或持久缓存</sub></td>
   </tr>
 </table>
 
@@ -468,7 +468,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3b-local-mix-workspace-desktop.png" alt="桌面端本地优先 Daily Mix 详情，包含封面拼贴和歌曲列表"><br><sub><b>Local Mix Workspace</b> · 播放前先浏览、独立 Play/Shuffle、完整单曲操作，以及不暴露收听数据的本地安全路由</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3b-local-mix-workspace-desktop.png" alt="桌面端本地优先 Daily Mix 详情，包含封面拼贴和歌曲列表"><br><sub><b>Local Mix Workspace</b> · 播放前先浏览、独立 Play/Shuffle、完整单曲操作，以及不暴露收听数据的本地安全路由</sub></td>
   </tr>
 </table>
 
@@ -476,7 +476,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3c-artist-pagination-desktop.png" alt="桌面端艺人歌曲目录显示 50/73 的分页进度"><br><sub><b>Artist Catalog Pagination</b> · 以前 50 首歌曲即时打开，触控设备/桌面接近末尾时自动加载，并为回退与电视遥控保留“查看更多”</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3c-artist-pagination-desktop.png" alt="桌面端艺人歌曲目录显示 50/73 的分页进度"><br><sub><b>Artist Catalog Pagination</b> · 以前 50 首歌曲即时打开，触控设备/桌面接近末尾时自动加载，并为回退与电视遥控保留“查看更多”</sub></td>
   </tr>
 </table>
 
@@ -484,7 +484,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3d-artist-discography-desktop.png" alt="桌面端艺人 Album 页面，在总览 歌曲 Single EP Album MV 标签下显示四列网格"><br><sub><b>Artist Discography Tabs</b> · 统一媒体导航、响应式 Album 网格、Zing 风格操作，以及复用缓存 detail 的 Back/Forward</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3d-artist-discography-desktop.png" alt="桌面端艺人 Album 页面，在总览 歌曲 Single EP Album MV 标签下显示四列网格"><br><sub><b>Artist Discography Tabs</b> · 统一媒体导航、响应式 Album 网格、Zing 风格操作，以及复用缓存 detail 的 Back/Forward</sub></td>
   </tr>
 </table>
 
@@ -492,8 +492,8 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 
 <table>
   <tr>
-    <td width="66%" align="center"><img src="docs/screenshots/v1.3e-artist-about-desktop.png" alt="桌面端艺人简介，左侧为封面，右侧为简介和元数据"><br><sub><b>桌面/电视</b> · 双栏编辑布局，并展示关注人数、成就与权威元数据</sub></td>
-    <td width="34%" align="center"><img src="docs/screenshots/v1.3e-artist-about-mobile.png" alt="360 像素手机上的单栏艺人简介"><br><sub><b>手机/平板</b> · 紧凑单栏、溢出感知预览，以及可选择全文的简介弹窗</sub></td>
+    <td width="66%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3e-artist-about-desktop.png" alt="桌面端艺人简介，左侧为封面，右侧为简介和元数据"><br><sub><b>桌面/电视</b> · 双栏编辑布局，并展示关注人数、成就与权威元数据</sub></td>
+    <td width="34%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3e-artist-about-mobile.png" alt="360 像素手机上的单栏艺人简介"><br><sub><b>手机/平板</b> · 紧凑单栏、溢出感知预览，以及可选择全文的简介弹窗</sub></td>
   </tr>
 </table>
 
@@ -501,7 +501,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3f-playback-shell-tablet.png" alt="768 像素平板播放 shell，包含保留全部入口的仅图标侧栏、目录、自适应队列和全宽播放坞"><br><sub><b>768 px 平板</b> · 70 px 侧栏仍可直接打开全部目录入口，队列共享 workspace，播放坞像 Zing MP3 一样贯穿下方</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3f-playback-shell-tablet.png" alt="768 像素平板播放 shell，包含保留全部入口的仅图标侧栏、目录、自适应队列和全宽播放坞"><br><sub><b>768 px 平板</b> · 70 px 侧栏仍可直接打开全部目录入口，队列共享 workspace，播放坞像 Zing MP3 一样贯穿下方</sub></td>
   </tr>
 </table>
 

@@ -5917,13 +5917,21 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('desktop-nav-hubs')));
+    await tester.tap(find.byKey(const ValueKey('desktop-expand-sidebar')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('desktop-overlay-nav-hubs')));
     await tester.pumpAndSettle();
     expect(hubCalls, 1);
     expect(find.byKey(const ValueKey('hub-home')), findsOneWidget);
     expect(find.text('Chill'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('desktop-catalog-sidebar-overlay')),
+      findsNothing,
+    );
 
-    await tester.tap(find.byKey(const ValueKey('desktop-nav-top100')));
+    await tester.tap(find.byKey(const ValueKey('desktop-expand-sidebar')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('desktop-overlay-nav-top100')));
     await tester.pumpAndSettle();
     expect(top100Calls, 1);
     expect(find.byKey(const ValueKey('top-100-catalog')), findsOneWidget);
@@ -5944,6 +5952,8 @@ void main() {
     );
     expect(find.byKey(const ValueKey('collection-detail-hero')), findsNothing);
 
+    await tester.tap(find.byKey(const ValueKey('desktop-expand-sidebar')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('desktop-create-playlist')));
     await tester.pumpAndSettle();
     await tester.enterText(

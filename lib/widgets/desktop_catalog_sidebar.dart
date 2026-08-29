@@ -25,6 +25,9 @@ class DesktopCatalogSidebar extends StatelessWidget {
     required this.onCreatePlaylist,
     required this.onShowQueue,
     this.compact = false,
+    this.overlay = false,
+    this.onExpand,
+    this.onCollapse,
   });
 
   final DesktopCatalogDestination selected;
@@ -36,6 +39,9 @@ class DesktopCatalogSidebar extends StatelessWidget {
   final VoidCallback onCreatePlaylist;
   final VoidCallback onShowQueue;
   final bool compact;
+  final bool overlay;
+  final VoidCallback? onExpand;
+  final VoidCallback? onCollapse;
 
   static const width = 238.0;
   static const compactWidth = 70.0;
@@ -47,15 +53,28 @@ class DesktopCatalogSidebar extends StatelessWidget {
         ? ZingColors.sidebar
         : Theme.of(context).colorScheme.surface;
     return SizedBox(
-      key: const ValueKey('desktop-catalog-sidebar'),
+      key: ValueKey(
+        overlay ? 'desktop-catalog-sidebar-overlay' : 'desktop-catalog-sidebar',
+      ),
       width: compact ? compactWidth : width,
-      child: ColoredBox(
-        color: surface,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: surface,
+          boxShadow: overlay
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.38),
+                    blurRadius: 22,
+                    offset: const Offset(8, 0),
+                  ),
+                ]
+              : null,
+        ),
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _SidebarBrand(compact: compact),
+              _SidebarBrand(compact: compact, onCollapse: onCollapse),
               Expanded(
                 child: ListView(
                   padding: EdgeInsets.fromLTRB(
@@ -67,6 +86,9 @@ class DesktopCatalogSidebar extends StatelessWidget {
                   children: [
                     _SidebarDestinationTile(
                       compact: compact,
+                      keyPrefix: overlay
+                          ? 'desktop-overlay-nav'
+                          : 'desktop-nav',
                       destination: DesktopCatalogDestination.library,
                       selected: selected,
                       icon: Icons.library_music_outlined,
@@ -76,6 +98,9 @@ class DesktopCatalogSidebar extends StatelessWidget {
                     ),
                     _SidebarDestinationTile(
                       compact: compact,
+                      keyPrefix: overlay
+                          ? 'desktop-overlay-nav'
+                          : 'desktop-nav',
                       destination: DesktopCatalogDestination.discovery,
                       selected: selected,
                       icon: Icons.explore_outlined,
@@ -85,6 +110,9 @@ class DesktopCatalogSidebar extends StatelessWidget {
                     ),
                     _SidebarDestinationTile(
                       compact: compact,
+                      keyPrefix: overlay
+                          ? 'desktop-overlay-nav'
+                          : 'desktop-nav',
                       destination: DesktopCatalogDestination.chart,
                       selected: selected,
                       icon: Icons.insights_outlined,
@@ -94,6 +122,9 @@ class DesktopCatalogSidebar extends StatelessWidget {
                     ),
                     _SidebarDestinationTile(
                       compact: compact,
+                      keyPrefix: overlay
+                          ? 'desktop-overlay-nav'
+                          : 'desktop-nav',
                       destination: DesktopCatalogDestination.liveRadio,
                       selected: selected,
                       icon: Icons.radio_outlined,
@@ -105,6 +136,9 @@ class DesktopCatalogSidebar extends StatelessWidget {
                     const _SidebarDivider(),
                     _SidebarDestinationTile(
                       compact: compact,
+                      keyPrefix: overlay
+                          ? 'desktop-overlay-nav'
+                          : 'desktop-nav',
                       destination: DesktopCatalogDestination.newReleaseChart,
                       selected: selected,
                       icon: Icons.new_releases_outlined,
@@ -114,6 +148,9 @@ class DesktopCatalogSidebar extends StatelessWidget {
                     ),
                     _SidebarDestinationTile(
                       compact: compact,
+                      keyPrefix: overlay
+                          ? 'desktop-overlay-nav'
+                          : 'desktop-nav',
                       destination: DesktopCatalogDestination.hubs,
                       selected: selected,
                       icon: Icons.category_outlined,
@@ -123,6 +160,9 @@ class DesktopCatalogSidebar extends StatelessWidget {
                     ),
                     _SidebarDestinationTile(
                       compact: compact,
+                      keyPrefix: overlay
+                          ? 'desktop-overlay-nav'
+                          : 'desktop-nav',
                       destination: DesktopCatalogDestination.top100,
                       selected: selected,
                       icon: Icons.star_outline_rounded,
@@ -133,6 +173,9 @@ class DesktopCatalogSidebar extends StatelessWidget {
                     const _SidebarDivider(),
                     _SidebarDestinationTile(
                       compact: compact,
+                      keyPrefix: overlay
+                          ? 'desktop-overlay-nav'
+                          : 'desktop-nav',
                       destination: DesktopCatalogDestination.forYou,
                       selected: selected,
                       icon: Icons.auto_awesome_outlined,
@@ -152,20 +195,24 @@ class DesktopCatalogSidebar extends StatelessWidget {
                   onPressed: onOpenLocalProfile,
                 ),
               const Divider(height: 1),
-              _SidebarFooterAction(
-                compact: compact,
-                key: const ValueKey('desktop-create-playlist'),
-                icon: Icons.add_rounded,
-                label: 'Tạo playlist mới',
-                onPressed: onCreatePlaylist,
-              ),
-              _SidebarFooterAction(
-                compact: compact,
-                key: const ValueKey('desktop-open-player-panel'),
-                icon: Icons.queue_music_rounded,
-                label: 'Danh sách phát',
-                onPressed: onShowQueue,
-              ),
+              if (compact && onExpand != null)
+                _SidebarExpandAction(onPressed: onExpand!)
+              else ...[
+                _SidebarFooterAction(
+                  compact: compact,
+                  key: const ValueKey('desktop-create-playlist'),
+                  icon: Icons.add_rounded,
+                  label: 'Tạo playlist mới',
+                  onPressed: onCreatePlaylist,
+                ),
+                _SidebarFooterAction(
+                  compact: compact,
+                  key: const ValueKey('desktop-open-player-panel'),
+                  icon: Icons.queue_music_rounded,
+                  label: 'Danh sách phát',
+                  onPressed: onShowQueue,
+                ),
+              ],
               const SizedBox(height: 10),
             ],
           ),
@@ -345,9 +392,10 @@ class _SidebarLocalProfileCardState extends State<_SidebarLocalProfileCard> {
 }
 
 class _SidebarBrand extends StatelessWidget {
-  const _SidebarBrand({required this.compact});
+  const _SidebarBrand({required this.compact, this.onCollapse});
 
   final bool compact;
+  final VoidCallback? onCollapse;
 
   @override
   Widget build(BuildContext context) => compact
@@ -367,31 +415,71 @@ class _SidebarBrand extends StatelessWidget {
         )
       : Padding(
           padding: const EdgeInsets.fromLTRB(22, 24, 16, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              const Text(
-                '#zingChart',
-                style: TextStyle(
-                  color: ZingColors.purpleBright,
-                  fontSize: 25,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1.5,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '#zingChart',
+                      style: TextStyle(
+                        color: ZingColors.purpleBright,
+                        fontSize: 25,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'MUSIC CLIENT',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 2.1,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                'MUSIC CLIENT',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 2.1,
+              if (onCollapse != null)
+                IconButton(
+                  key: const ValueKey('desktop-collapse-sidebar'),
+                  tooltip: 'Thu gọn thanh bên',
+                  onPressed: onCollapse,
+                  icon: const Icon(Icons.chevron_left_rounded, size: 22),
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size.square(44),
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                  ),
                 ),
-              ),
             ],
           ),
         );
+}
+
+class _SidebarExpandAction extends StatelessWidget {
+  const _SidebarExpandAction({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(11, 8, 11, 2),
+    child: IconButton(
+      key: const ValueKey('desktop-expand-sidebar'),
+      tooltip: 'Mở rộng thanh bên',
+      onPressed: onPressed,
+      icon: const Icon(Icons.chevron_right_rounded, size: 24),
+      style: IconButton.styleFrom(
+        minimumSize: const Size.square(48),
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      ),
+    ),
+  );
 }
 
 class _SidebarDivider extends StatelessWidget {
@@ -412,6 +500,7 @@ class _SidebarDivider extends StatelessWidget {
 class _SidebarDestinationTile extends StatefulWidget {
   const _SidebarDestinationTile({
     required this.compact,
+    required this.keyPrefix,
     required this.destination,
     required this.selected,
     required this.icon,
@@ -423,6 +512,7 @@ class _SidebarDestinationTile extends StatefulWidget {
 
   final DesktopCatalogDestination destination;
   final bool compact;
+  final String keyPrefix;
   final DesktopCatalogDestination selected;
   final IconData icon;
   final IconData selectedIcon;
@@ -472,7 +562,7 @@ class _SidebarDestinationTileState extends State<_SidebarDestinationTile> {
           color: Colors.transparent,
           borderRadius: radius,
           child: InkWell(
-            key: ValueKey('desktop-nav-${widget.destination.name}'),
+            key: ValueKey('${widget.keyPrefix}-${widget.destination.name}'),
             borderRadius: radius,
             mouseCursor: SystemMouseCursors.click,
             onTap: () => widget.onSelected(widget.destination),

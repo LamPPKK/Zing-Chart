@@ -1,6 +1,6 @@
 # #zingChart
 
-<p align="center"><img src="web/icons/Icon-192.png" width="112" height="112" alt="Biểu tượng #zingChart: dấu thăng coral và nhịp sóng lime"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/web/icons/Icon-192.png" width="112" height="112" alt="Biểu tượng #zingChart: dấu thăng coral và nhịp sóng lime"></p>
 
 [Tiếng Việt](README.md) · [English](README.en.md) · [简体中文](README.zh-CN.md)
 
@@ -475,13 +475,13 @@ không chứa dữ liệu người dùng thật.
 
 <table>
   <tr>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.0-home-mobile.png" alt="Trang chủ ZingChart realtime trên điện thoại"><br><sub><b>Trang chủ</b> · ZingChart realtime và Daily Mix</sub></td>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.0-search-mobile.png" alt="Tìm kiếm nhạc trên điện thoại"><br><sub><b>Tìm kiếm</b> · tên bài, nghệ sĩ và từ khóa gần đây</sub></td>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.0-now-playing-mobile.png" alt="Màn hình Now Playing trên điện thoại"><br><sub><b>Now Playing</b> · seek, queue, mood và sleep timer</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-home-mobile.png" alt="Trang chủ ZingChart realtime trên điện thoại"><br><sub><b>Trang chủ</b> · ZingChart realtime và Daily Mix</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-search-mobile.png" alt="Tìm kiếm nhạc trên điện thoại"><br><sub><b>Tìm kiếm</b> · tên bài, nghệ sĩ và từ khóa gần đây</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-now-playing-mobile.png" alt="Màn hình Now Playing trên điện thoại"><br><sub><b>Now Playing</b> · seek, queue, mood và sleep timer</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.0-library-mobile.png" alt="Thư viện Local-First trên điện thoại"><br><sub><b>Thư viện</b> · favorites, playlist và backup local</sub></td>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.0-desktop-player.png" alt="Giao diện desktop adaptive với bảng Now Playing và queue"><br><sub><b>Desktop adaptive</b> · chart, Now Playing và queue trong cùng workspace</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-library-mobile.png" alt="Thư viện Local-First trên điện thoại"><br><sub><b>Thư viện</b> · favorites, playlist và backup local</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-desktop-player.png" alt="Giao diện desktop adaptive với bảng Now Playing và queue"><br><sub><b>Desktop adaptive</b> · chart, Now Playing và queue trong cùng workspace</sub></td>
   </tr>
 </table>
 
@@ -489,12 +489,12 @@ không chứa dữ liệu người dùng thật.
 
 <table>
   <tr>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.1-for-you-mobile.png" alt="Daily Mix và Mood Mix trong tab Dành cho bạn"><br><sub><b>Dành cho bạn</b> · Daily Mix và Mood Mix tại máy</sub></td>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.1-analytics-mobile.png" alt="Dashboard thống kê nghe nhạc local"><br><sub><b>Thống kê</b> · 7 ngày, 30 ngày và theo năm</sub></td>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.1-wrapped-mobile.png" alt="Mini Wrapped có thể xuất ảnh"><br><sub><b>Mini Wrapped</b> · sáu slide và xuất PNG</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.1-for-you-mobile.png" alt="Daily Mix và Mood Mix trong tab Dành cho bạn"><br><sub><b>Dành cho bạn</b> · Daily Mix và Mood Mix tại máy</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.1-analytics-mobile.png" alt="Dashboard thống kê nghe nhạc local"><br><sub><b>Thống kê</b> · 7 ngày, 30 ngày và theo năm</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.1-wrapped-mobile.png" alt="Mini Wrapped có thể xuất ảnh"><br><sub><b>Mini Wrapped</b> · sáu slide và xuất PNG</sub></td>
   </tr>
   <tr>
-    <td colspan="3" align="center"><img src="docs/screenshots/v1.1-tv-for-you.png" alt="Giao diện Dành cho bạn trên TV với remote focus và player panel"><br><sub><b>TV 10-foot UI</b> · điều hướng remote, mix local và player panel</sub></td>
+    <td colspan="3" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.1-tv-for-you.png" alt="Giao diện Dành cho bạn trên TV với remote focus và player panel"><br><sub><b>TV 10-foot UI</b> · điều hướng remote, mix local và player panel</sub></td>
   </tr>
 </table>
 
@@ -502,106 +502,106 @@ không chứa dữ liệu người dùng thật.
 
 <table>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-desktop-sidebar.png" alt="Desktop #zingChart với sidebar catalog phân nhóm, biểu đồ realtime, hàng Gợi ý có nghệ sĩ album và playback dock"><br><sub><b>Desktop catalog workspace</b> · biểu đồ 24 giờ, Gợi ý chính thức với nghệ sĩ/album mở nội bộ, metadata BXH và playback dock cùng màn hình</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-desktop-sidebar.png" alt="Desktop #zingChart với sidebar catalog phân nhóm, biểu đồ realtime, hàng Gợi ý có nghệ sĩ album và playback dock"><br><sub><b>Desktop catalog workspace</b> · biểu đồ 24 giờ, Gợi ý chính thức với nghệ sĩ/album mở nội bộ, metadata BXH và playback dock cùng màn hình</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-desktop-playback-dock.png" alt="Desktop #zingChart với playback dock, shortcut MV lời bài hát Now Playing menu bài hát và drawer hàng đợi"><br><sub><b>Playback dock & queue drawer kiểu Zing MP3</b> · mở nhanh MV, lời/Karaoke, Now Playing và menu bài hát; queue đổi thứ tự được, lịch sử chỉ ở trên thiết bị</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-desktop-playback-dock.png" alt="Desktop #zingChart với playback dock, shortcut MV lời bài hát Now Playing menu bài hát và drawer hàng đợi"><br><sub><b>Playback dock & queue drawer kiểu Zing MP3</b> · mở nhanh MV, lời/Karaoke, Now Playing và menu bài hát; queue đổi thứ tự được, lịch sử chỉ ở trên thiết bị</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-desktop-lyrics-drawer.png" alt="Desktop #zingChart với tab Lời bài hát đồng bộ trong drawer phát nhạc"><br><sub><b>Lời đồng bộ ngay trong catalog</b> · theo dõi câu đang hát, chạm để tua hoặc mở Karaoke toàn màn hình mà không rời trang đang duyệt</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-desktop-lyrics-drawer.png" alt="Desktop #zingChart với tab Lời bài hát đồng bộ trong drawer phát nhạc"><br><sub><b>Lời đồng bộ ngay trong catalog</b> · theo dõi câu đang hát, chạm để tua hoặc mở Karaoke toàn màn hình mà không rời trang đang duyệt</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-library-workspace-desktop.png" alt="Thư viện desktop với các phân mục Tổng quan Bài hát Gần đây Playlist Album và Nghệ sĩ"><br><sub><b>Thư viện kiểu Zing, dữ liệu Local-First</b> · sáu phân mục responsive, playlist cá nhân, lịch sử nghe và nội dung chính thức đã lưu mà không cần tài khoản</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-library-workspace-desktop.png" alt="Thư viện desktop với các phân mục Tổng quan Bài hát Gần đây Playlist Album và Nghệ sĩ"><br><sub><b>Thư viện kiểu Zing, dữ liệu Local-First</b> · sáu phân mục responsive, playlist cá nhân, lịch sử nghe và nội dung chính thức đã lưu mà không cần tài khoản</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-local-playlist-workspace-desktop.png" alt="Workspace playlist cá nhân với cover mosaic, nút phát trộn bài và danh sách có thể sắp xếp"><br><sub><b>Playlist cá nhân Local-First</b> · cover mosaic, Play/Shuffle, đổi tên, xóa, reorder và Undo; chỉnh sửa không chạm vào queue đang phát</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-local-playlist-workspace-desktop.png" alt="Workspace playlist cá nhân với cover mosaic, nút phát trộn bài và danh sách có thể sắp xếp"><br><sub><b>Playlist cá nhân Local-First</b> · cover mosaic, Play/Shuffle, đổi tên, xóa, reorder và Undo; chỉnh sửa không chạm vào queue đang phát</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-local-history-workspace-desktop.png" alt="Workspace lịch sử nghe Local-First nhóm theo ngày với thời điểm và thời lượng đã nghe"><br><sub><b>Lịch sử nghe Local-First</b> · nhóm theo ngày local, Play/Shuffle, thời điểm và thời lượng đã nghe, menu đầy đủ và xóa có xác nhận</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-local-history-workspace-desktop.png" alt="Workspace lịch sử nghe Local-First nhóm theo ngày với thời điểm và thời lượng đã nghe"><br><sub><b>Lịch sử nghe Local-First</b> · nhóm theo ngày local, Play/Shuffle, thời điểm và thời lượng đã nghe, menu đầy đủ và xóa có xác nhận</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-realtime-chart-desktop.png" alt="Biểu đồ ZingChart 24 giờ với điểm dữ liệu và tooltip bài hát đang chọn"><br><sub><b>Nhịp BXH 24 giờ</b> · hover, chạm/kéo hoặc remote để xem tỷ lệ theo giờ và phát bài đang chọn</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-realtime-chart-desktop.png" alt="Biểu đồ ZingChart 24 giờ với điểm dữ liệu và tooltip bài hát đang chọn"><br><sub><b>Nhịp BXH 24 giờ</b> · hover, chạm/kéo hoặc remote để xem tỷ lệ theo giờ và phát bài đang chọn</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-chart-top-100-desktop.png" alt="Danh sách #zingchart hạng 1 đến 10 cùng nút Xem top 100"><br><sub><b>Top 10 → Top 100</b> · mặc định gọn như Zing MP3, mở rộng tại chỗ nhưng queue luôn giữ đủ BXH</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-chart-top-100-desktop.png" alt="Danh sách #zingchart hạng 1 đến 10 cùng nút Xem top 100"><br><sub><b>Top 10 → Top 100</b> · mặc định gọn như Zing MP3, mở rộng tại chỗ nhưng queue luôn giữ đủ BXH</sub></td>
   </tr>
   <tr>
-    <td width="50%" align="center"><img src="docs/screenshots/v1.2-discovery-home-desktop.png" alt="Trang Khám phá với hero Có thể bạn thích và banner panorama toàn chiều rộng"><br><sub><b>Khám phá</b> · artwork trái kiểu Zing, banner panorama không phủ metadata và carousel điều khiển được</sub></td>
-    <td width="50%" align="center"><img src="docs/screenshots/v1.2-new-releases-desktop.png" alt="BXH Nhạc Mới với thứ hạng, xu hướng, nghệ sĩ, album và thời lượng trên desktop"><br><sub><b>BXH Nhạc Mới</b> · nghệ sĩ/album mở nội bộ, thứ hạng, xu hướng, thời lượng và hàng đợi chỉ gồm bài phát được</sub></td>
+    <td width="50%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-home-desktop.png" alt="Trang Khám phá với hero Có thể bạn thích và banner panorama toàn chiều rộng"><br><sub><b>Khám phá</b> · artwork trái kiểu Zing, banner panorama không phủ metadata và carousel điều khiển được</sub></td>
+    <td width="50%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-new-releases-desktop.png" alt="BXH Nhạc Mới với thứ hạng, xu hướng, nghệ sĩ, album và thời lượng trên desktop"><br><sub><b>BXH Nhạc Mới</b> · nghệ sĩ/album mở nội bộ, thứ hạng, xu hướng, thời lượng và hàng đợi chỉ gồm bài phát được</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-discovery-mv-desktop.png" alt="Rail MV Nổi Bật chính thức trên Discovery Home"><br><sub><b>MV Nổi Bật</b> · card 16:9 adaptive, chỉ mở trang Zing đã kiểm tra và dùng QR handoff trên TV</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-mv-desktop.png" alt="Rail MV Nổi Bật chính thức trên Discovery Home"><br><sub><b>MV Nổi Bật</b> · card 16:9 adaptive, chỉ mở trang Zing đã kiểm tra và dùng QR handoff trên TV</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-discovery-new-releases-desktop.png" alt="Cụm Mới Phát Hành ba cột trên Discovery Home"><br><sub><b>Mới Phát Hành trên Home</b> · 12 bài, lọc Tất cả/Việt Nam/Quốc tế và queue loại bài khóa</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-new-releases-desktop.png" alt="Cụm Mới Phát Hành ba cột trên Discovery Home"><br><sub><b>Mới Phát Hành trên Home</b> · 12 bài, lọc Tất cả/Việt Nam/Quốc tế và queue loại bài khóa</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-discovery-recent-desktop.png" alt="Rail Nghe Gần Đây local-first trên Discovery Home"><br><sub><b>Nghe Gần Đây</b> · lịch sử riêng tư trên thiết bị, queue đã khử trùng lặp và không gửi lên proxy</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-recent-desktop.png" alt="Rail Nghe Gần Đây local-first trên Discovery Home"><br><sub><b>Nghe Gần Đây</b> · lịch sử riêng tư trên thiết bị, queue đã khử trùng lặp và không gửi lên proxy</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-discovery-new-release-chart-desktop.png" alt="Top ba BXH Nhạc Mới trên Discovery Home với thứ hạng và xu hướng"><br><sub><b>Top 3 BXH Nhạc Mới</b> · spotlight responsive, trạng thái bài khóa và queue chỉ gồm bài phát được</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-new-release-chart-desktop.png" alt="Top ba BXH Nhạc Mới trên Discovery Home với thứ hạng và xu hướng"><br><sub><b>Top 3 BXH Nhạc Mới</b> · spotlight responsive, trạng thái bài khóa và queue chỉ gồm bài phát được</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-suggestions-desktop.png" alt="Autocomplete tìm kiếm kiểu Zing với gợi ý từ khóa và bài hát"><br><sub><b>Autocomplete tìm kiếm</b> · bài xem trước mở Song Detail trước khi người dùng chủ động Play, hỗ trợ chuột, bàn phím và remote TV</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-search-suggestions-desktop.png" alt="Autocomplete tìm kiếm kiểu Zing với gợi ý từ khóa và bài hát"><br><sub><b>Autocomplete tìm kiếm</b> · bài xem trước mở Song Detail trước khi người dùng chủ động Play, hỗ trợ chuột, bàn phím và remote TV</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-all-desktop.png" alt="Kết quả Tất cả với ba card Nổi bật đồng chiều cao kiểu Zing"><br><sub><b>Tất cả · Nổi bật</b> · một nghệ sĩ, hai bài hát, follower thật và bố cục responsive 1/2/3 cột</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-search-all-desktop.png" alt="Kết quả Tất cả với ba card Nổi bật đồng chiều cao kiểu Zing"><br><sub><b>Tất cả · Nổi bật</b> · một nghệ sĩ, hai bài hát, follower thật và bố cục responsive 1/2/3 cột</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-songs-desktop.png" alt="Trang kết quả Bài hát kiểu Zing với 18 mục phân trang trong lưới hai cột"><br><sub><b>Bài hát · phân trang chính thức</b> · 18 mục/trang, desktop hai cột; tự tải gần cuối trên mobile/tablet/desktop và giữ XEM THÊM cho fallback hoặc remote TV</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-search-songs-desktop.png" alt="Trang kết quả Bài hát kiểu Zing với 18 mục phân trang trong lưới hai cột"><br><sub><b>Bài hát · phân trang chính thức</b> · 18 mục/trang, desktop hai cột; tự tải gần cuối trên mobile/tablet/desktop và giữ XEM THÊM cho fallback hoặc remote TV</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-mv-desktop.png" alt="Kết quả MV chính thức kiểu Zing trên desktop"><br><sub><b>Tìm kiếm MV chính thức</b> · thumbnail 16:9, thời lượng, avatar nghệ sĩ và overlay hover/focus; mở bằng liên kết Zing hoặc QR trên TV</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-search-mv-desktop.png" alt="Kết quả MV chính thức kiểu Zing trên desktop"><br><sub><b>Tìm kiếm MV chính thức</b> · thumbnail 16:9, thời lượng, avatar nghệ sĩ và overlay hover/focus; mở bằng liên kết Zing hoặc QR trên TV</sub></td>
   </tr>
   <tr>
-    <td width="50%" align="center"><img src="docs/screenshots/v1.2-hubs-desktop.png" alt="Chủ đề và Thể loại theo quốc gia, tâm trạng, hoạt động và thể loại"><br><sub><b>Chủ đề & Thể loại</b> · điều hướng responsive từ hub đến playlist/album detail</sub></td>
-    <td width="50%" align="center"><img src="docs/screenshots/v1.2-top-100-desktop.png" alt="Top 100 theo từng nhóm thị trường âm nhạc"><br><sub><b>Top 100</b> · playlist theo Nổi bật, Việt Nam, Châu Á, Âu Mỹ và Hòa Tấu</sub></td>
+    <td width="50%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-hubs-desktop.png" alt="Chủ đề và Thể loại theo quốc gia, tâm trạng, hoạt động và thể loại"><br><sub><b>Chủ đề & Thể loại</b> · điều hướng responsive từ hub đến playlist/album detail</sub></td>
+    <td width="50%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-top-100-desktop.png" alt="Top 100 theo từng nhóm thị trường âm nhạc"><br><sub><b>Top 100</b> · playlist theo Nổi bật, Việt Nam, Châu Á, Âu Mỹ và Hòa Tấu</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-release-catalog-desktop.png" alt="Mới Phát Hành với nghệ sĩ album thời lượng và bộ lọc khu vực"><br><sub><b>Mới Phát Hành</b> · từng bài hiện nghệ sĩ/album điều hướng nội bộ và thời lượng; kèm tab Album, lọc thị trường, thời điểm ra mắt và playback fail-closed</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-release-catalog-desktop.png" alt="Mới Phát Hành với nghệ sĩ album thời lượng và bộ lọc khu vực"><br><sub><b>Mới Phát Hành</b> · từng bài hiện nghệ sĩ/album điều hướng nội bộ và thời lượng; kèm tab Album, lọc thị trường, thời điểm ra mắt và playback fail-closed</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Hồ sơ nghệ sĩ kiểu Zing OA với hero tím và workspace Mới Phát Hành cạnh Bài Hát Nổi Bật"><br><sub><b>Nghệ sĩ/OA</b> · hero full-width cùng Mới Phát Hành/Bài Hát Nổi Bật hai cột; TẤT CẢ mở 50 bài đầu rồi phân trang toàn bộ catalog, Single & EP hoặc MV ngay trong app</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-artist-profile-desktop.png" alt="Hồ sơ nghệ sĩ kiểu Zing OA với hero tím và workspace Mới Phát Hành cạnh Bài Hát Nổi Bật"><br><sub><b>Nghệ sĩ/OA</b> · hero full-width cùng Mới Phát Hành/Bài Hát Nổi Bật hai cột; TẤT CẢ mở 50 bài đầu rồi phân trang toàn bộ catalog, Single & EP hoặc MV ngay trong app</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="Hồ sơ nghệ sĩ với trạng thái Đang quan tâm được lưu cục bộ"><br><sub><b>Quan tâm nghệ sĩ</b> · theo dõi OA không cần tài khoản, khôi phục qua backup v3 và mở lại từ Thư viện</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-artist-follow-desktop.png" alt="Hồ sơ nghệ sĩ với trạng thái Đang quan tâm được lưu cục bộ"><br><sub><b>Quan tâm nghệ sĩ</b> · theo dõi OA không cần tài khoản, khôi phục qua backup v3 và mở lại từ Thư viện</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-catalog-actions-desktop.png" alt="Rail Single EP của nghệ sĩ với action deck Play Lưu và Thêm, phía dưới là rail MV có nút phát"><br><sub><b>Catalog nghệ sĩ</b> · Collection có Play/Lưu/Thêm/Chia sẻ; MV có nút phát riêng; các rail hỗ trợ chuột, swipe, bàn phím và remote TV</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-artist-catalog-actions-desktop.png" alt="Rail Single EP của nghệ sĩ với action deck Play Lưu và Thêm, phía dưới là rail MV có nút phát"><br><sub><b>Catalog nghệ sĩ</b> · Collection có Play/Lưu/Thêm/Chia sẻ; MV có nút phát riêng; các rail hỗ trợ chuột, swipe, bàn phím và remote TV</sub></td>
   </tr>
   <tr>
-    <td width="34%" align="center"><img src="docs/screenshots/v1.2-collection-mobile.png" alt="Trang album chính thức trên điện thoại với hero gọn Play Lưu Thêm và track đầu trong viewport"><br><sub><b>Collection mobile</b> · Play/Lưu/Thêm cỡ chạm, Share trong menu và hàng bài chỉ giữ một overflow</sub></td>
-    <td width="66%" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="Album chính thức trong workspace hai cột kiểu Zing với artwork trái và danh sách track đánh số bên phải"><br><sub><b>Album/playlist desktop</b> · CTA theo loại nội dung, track đánh số hoặc cột Album, bài khóa fail-closed và trạng thái lưu vẫn local-first</sub></td>
+    <td width="34%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-collection-mobile.png" alt="Trang album chính thức trên điện thoại với hero gọn Play Lưu Thêm và track đầu trong viewport"><br><sub><b>Collection mobile</b> · Play/Lưu/Thêm cỡ chạm, Share trong menu và hàng bài chỉ giữ một overflow</sub></td>
+    <td width="66%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-collection-save-desktop.png" alt="Album chính thức trong workspace hai cột kiểu Zing với artwork trái và danh sách track đánh số bên phải"><br><sub><b>Album/playlist desktop</b> · CTA theo loại nội dung, track đánh số hoặc cột Album, bài khóa fail-closed và trạng thái lưu vẫn local-first</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="Thông tin phát hành, nghệ sĩ tham gia và các album playlist liên quan trong trang chi tiết bộ sưu tập"><br><sub><b>Thông tin bộ sưu tập</b> · metadata gọn, nghệ sĩ tham gia có theo dõi local và các rail liên quan với Play/Lưu/Chia sẻ</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-collection-information-desktop.png" alt="Thông tin phát hành, nghệ sĩ tham gia và các album playlist liên quan trong trang chi tiết bộ sưu tập"><br><sub><b>Thông tin bộ sưu tập</b> · metadata gọn, nghệ sĩ tham gia có theo dõi local và các rail liên quan với Play/Lưu/Chia sẻ</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-weekly-chart-desktop.png" alt="Bảng Xếp Hạng Tuần với ba khu vực, bộ chọn tuần và liên kết nghệ sĩ/album"><br><sub><b>BXH Tuần</b> · Việt Nam/US-UK/K-Pop, nghệ sĩ/album mở nội bộ, biến động hạng, thời lượng và queue chỉ gồm bài phát được</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-weekly-chart-desktop.png" alt="Bảng Xếp Hạng Tuần với ba khu vực, bộ chọn tuần và liên kết nghệ sĩ/album"><br><sub><b>BXH Tuần</b> · Việt Nam/US-UK/K-Pop, nghệ sĩ/album mở nội bộ, biến động hạng, thời lượng và queue chỉ gồm bài phát được</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-song-detail-desktop.png" alt="Trang Thông Tin bài hát chính thức trên desktop"><br><sub><b>Thông Tin bài hát</b> · metadata, số liệu tương tác, nghệ sĩ/album điều hướng nội bộ, chia sẻ liên kết và MV chính thức</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-song-detail-desktop.png" alt="Trang Thông Tin bài hát chính thức trên desktop"><br><sub><b>Thông Tin bài hát</b> · metadata, số liệu tương tác, nghệ sĩ/album điều hướng nội bộ, chia sẻ liên kết và MV chính thức</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-synced-lyrics-desktop.png" alt="Karaoke toàn màn hình với từng từ được làm nổi bật"><br><sub><b>Karaoke & lời bài hát</b> · ảnh bìa lớn, đồng bộ từng từ, chạm để tua và thích ứng mobile/desktop/TV</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-synced-lyrics-desktop.png" alt="Karaoke toàn màn hình với từng từ được làm nổi bật"><br><sub><b>Karaoke & lời bài hát</b> · ảnh bìa lớn, đồng bộ từng từ, chạm để tua và thích ứng mobile/desktop/TV</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-lyric-share-desktop.png" alt="Trình tạo Lyric Card chọn nhiều câu và xem trước ảnh chia sẻ"><br><sub><b>Lyric Card</b> · chọn tối đa bốn câu, render PNG tại máy và dùng QR local trên TV</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-lyric-share-desktop.png" alt="Trình tạo Lyric Card chọn nhiều câu và xem trước ảnh chia sẻ"><br><sub><b>Lyric Card</b> · chọn tối đa bốn câu, render PNG tại máy và dùng QR local trên TV</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-car-mode-desktop.png" alt="Chế độ lái xe của #zingChart với nút phát lớn và giao diện tối giản"><br><sub><b>Chế độ lái xe</b> · thông tin dễ liếc, tiến trình rõ và điều khiển Previous/Play/Next/Stop cỡ lớn</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-car-mode-desktop.png" alt="Chế độ lái xe của #zingChart với nút phát lớn và giao diện tối giản"><br><sub><b>Chế độ lái xe</b> · thông tin dễ liếc, tiến trình rõ và điều khiển Previous/Play/Next/Stop cỡ lớn</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-song-radio-desktop.png" alt="Song Radio và tự động phát trong panel desktop"><br><sub><b>Song Radio</b> · gợi ý được phép, tự nối hàng đợi và điều khiển autoplay trên mobile/desktop/TV</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-song-radio-desktop.png" alt="Song Radio và tự động phát trong panel desktop"><br><sub><b>Song Radio</b> · gợi ý được phép, tự nối hàng đợi và điều khiển autoplay trên mobile/desktop/TV</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="Hàng đợi desktop với thứ tự Tiếp theo thật, Smart Shuffle và các bài tự thêm được đánh dấu"><br><sub><b>True Up Next, Fair Shuffle & Smart Shuffle</b> · bài đang phát tách riêng, phần chờ đổi thứ tự phát thật, không lặp trong một chu kỳ và gắn nhãn rõ cho gợi ý local-first</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="Hàng đợi desktop với thứ tự Tiếp theo thật, Smart Shuffle và các bài tự thêm được đánh dấu"><br><sub><b>True Up Next, Fair Shuffle & Smart Shuffle</b> · bài đang phát tách riêng, phần chờ đổi thứ tự phát thật, không lặp trong một chu kỳ và gắn nhãn rõ cho gợi ý local-first</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-stream-quality-desktop.png" alt="Bộ chọn chất lượng phát Auto 128 và 320 kbps"><br><sub><b>Chất lượng phát thật</b> · Auto ưu tiên 320 rồi về 128; chế độ 128/320 giữ đúng bitrate đã chọn qua relay ký số</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-stream-quality-desktop.png" alt="Bộ chọn chất lượng phát Auto 128 và 320 kbps"><br><sub><b>Chất lượng phát thật</b> · Auto ưu tiên 320 rồi về 128; chế độ 128/320 giữ đúng bitrate đã chọn qua relay ký số</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-live-radio-desktop.png" alt="Phòng Nhạc LIVE với các kênh V-Pop Bolero US-UK và K-Pop"><br><sub><b>Phòng Nhạc LIVE</b> · kênh trực tiếp, chương trình hiện tại, lượng người nghe và HLS same-origin trên mobile/desktop/TV</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-live-radio-desktop.png" alt="Phòng Nhạc LIVE với các kênh V-Pop Bolero US-UK và K-Pop"><br><sub><b>Phòng Nhạc LIVE</b> · kênh trực tiếp, chương trình hiện tại, lượng người nghe và HLS same-origin trên mobile/desktop/TV</sub></td>
   </tr>
 </table>
 
@@ -609,7 +609,7 @@ không chứa dữ liệu người dùng thật.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3a-seamless-next-settings-desktop.png" alt="Cài đặt desktop của #zingChart với lựa chọn Seamless Next Tự động hoặc Tắt"><br><sub><b>Seamless Next có fallback</b> · chỉ buffer tạm đúng bài đầu tiên của Tiếp theo trong 30 giây cuối, không lưu file audio/cache offline</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3a-seamless-next-settings-desktop.png" alt="Cài đặt desktop của #zingChart với lựa chọn Seamless Next Tự động hoặc Tắt"><br><sub><b>Seamless Next có fallback</b> · chỉ buffer tạm đúng bài đầu tiên của Tiếp theo trong 30 giây cuối, không lưu file audio/cache offline</sub></td>
   </tr>
 </table>
 
@@ -617,7 +617,7 @@ không chứa dữ liệu người dùng thật.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3b-local-mix-workspace-desktop.png" alt="Trang chi tiết Daily Mix local-first trên desktop với cover mosaic và danh sách bài hát"><br><sub><b>Local Mix Workspace</b> · mở card để duyệt trước, Play/Shuffle riêng, thao tác đầy đủ cho từng bài và route local-safe không lộ dữ liệu nghe</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3b-local-mix-workspace-desktop.png" alt="Trang chi tiết Daily Mix local-first trên desktop với cover mosaic và danh sách bài hát"><br><sub><b>Local Mix Workspace</b> · mở card để duyệt trước, Play/Shuffle riêng, thao tác đầy đủ cho từng bài và route local-safe không lộ dữ liệu nghe</sub></td>
   </tr>
 </table>
 
@@ -625,7 +625,7 @@ không chứa dữ liệu người dùng thật.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3c-artist-pagination-desktop.png" alt="Catalog bài hát nghệ sĩ trên desktop hiển thị tiến độ phân trang 50 trên 73 bài"><br><sub><b>Artist Catalog Pagination</b> · mở tức thì với 50 bài đầu, tự tải gần cuối trên thiết bị cảm ứng/desktop, giữ XEM THÊM cho fallback và remote TV</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3c-artist-pagination-desktop.png" alt="Catalog bài hát nghệ sĩ trên desktop hiển thị tiến độ phân trang 50 trên 73 bài"><br><sub><b>Artist Catalog Pagination</b> · mở tức thì với 50 bài đầu, tự tải gần cuối trên thiết bị cảm ứng/desktop, giữ XEM THÊM cho fallback và remote TV</sub></td>
   </tr>
 </table>
 
@@ -633,7 +633,7 @@ không chứa dữ liệu người dùng thật.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3d-artist-discography-desktop.png" alt="Trang Album nghệ sĩ trên desktop với thanh tab Tổng quan Bài hát Single EP Album và MV cùng grid bốn cột"><br><sub><b>Artist Discography Tabs</b> · điều hướng media thống nhất, Album grid responsive, action kiểu Zing và Back/Forward dùng lại detail đã cache</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3d-artist-discography-desktop.png" alt="Trang Album nghệ sĩ trên desktop với thanh tab Tổng quan Bài hát Single EP Album và MV cùng grid bốn cột"><br><sub><b>Artist Discography Tabs</b> · điều hướng media thống nhất, Album grid responsive, action kiểu Zing và Back/Forward dùng lại detail đã cache</sub></td>
   </tr>
 </table>
 
@@ -641,8 +641,8 @@ không chứa dữ liệu người dùng thật.
 
 <table>
   <tr>
-    <td width="66%" align="center"><img src="docs/screenshots/v1.3e-artist-about-desktop.png" alt="Khối Về nghệ sĩ trên desktop với ảnh cover bên trái và tiểu sử cùng metadata bên phải"><br><sub><b>Desktop/TV</b> · bố cục biên tập hai cột, thống kê người quan tâm/thành tích và metadata chính thức</sub></td>
-    <td width="34%" align="center"><img src="docs/screenshots/v1.3e-artist-about-mobile.png" alt="Khối Về nghệ sĩ dạng một cột trên điện thoại 360 px"><br><sub><b>Mobile/tablet</b> · một cột gọn, preview nhận biết overflow và modal tiểu sử đầy đủ có thể chọn</sub></td>
+    <td width="66%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3e-artist-about-desktop.png" alt="Khối Về nghệ sĩ trên desktop với ảnh cover bên trái và tiểu sử cùng metadata bên phải"><br><sub><b>Desktop/TV</b> · bố cục biên tập hai cột, thống kê người quan tâm/thành tích và metadata chính thức</sub></td>
+    <td width="34%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3e-artist-about-mobile.png" alt="Khối Về nghệ sĩ dạng một cột trên điện thoại 360 px"><br><sub><b>Mobile/tablet</b> · một cột gọn, preview nhận biết overflow và modal tiểu sử đầy đủ có thể chọn</sub></td>
   </tr>
 </table>
 
@@ -650,7 +650,7 @@ không chứa dữ liệu người dùng thật.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3f-playback-shell-tablet.png" alt="Playback shell tablet 768 px với sidebar icon-only đầy đủ route, catalog, queue co giãn và dock toàn chiều rộng"><br><sub><b>Tablet 768 px</b> · sidebar 70 px vẫn mở trực tiếp đủ catalog, queue dùng chung workspace và dock chạy xuyên suốt bên dưới như Zing MP3</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3f-playback-shell-tablet.png" alt="Playback shell tablet 768 px với sidebar icon-only đầy đủ route, catalog, queue co giãn và dock toàn chiều rộng"><br><sub><b>Tablet 768 px</b> · sidebar 70 px vẫn mở trực tiếp đủ catalog, queue dùng chung workspace và dock chạy xuyên suốt bên dưới như Zing MP3</sub></td>
   </tr>
 </table>
 

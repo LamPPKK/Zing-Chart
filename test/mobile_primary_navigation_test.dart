@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zmp3chart/analytics_dashboard_screen.dart';
 import 'package:zmp3chart/data/library_repository.dart';
@@ -142,15 +143,73 @@ void main() {
         );
       }
       if (compact) {
+        expect(
+          find.byKey(const ValueKey('desktop-expand-sidebar')),
+          findsOneWidget,
+        );
         expect(find.byTooltip('Chủ Đề & Thể Loại'), findsOneWidget);
         expect(find.byTooltip('Top 100'), findsOneWidget);
       } else {
+        expect(
+          find.byKey(const ValueKey('desktop-expand-sidebar')),
+          findsNothing,
+        );
         expect(find.text('Chủ Đề & Thể Loại'), findsOneWidget);
         expect(find.text('Top 100'), findsOneWidget);
       }
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets(
+    'compact sidebar expands as an overlay without resizing the catalog',
+    (tester) async {
+      await _setViewport(tester, const Size(1024, 768));
+      final controller = MusicPlayerController(
+        libraryRepository: MemoryLibraryRepository(),
+      );
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(_app(controller));
+      await tester.pumpAndSettle();
+
+      final header = find.byKey(const ValueKey('catalog-page-header'));
+      final headerLeft = tester.getRect(header).left;
+      await tester.tap(find.byKey(const ValueKey('desktop-expand-sidebar')));
+      await tester.pumpAndSettle();
+
+      final overlay = find.byKey(
+        const ValueKey('desktop-catalog-sidebar-overlay'),
+      );
+      expect(overlay, findsOneWidget);
+      expect(tester.getSize(overlay).width, DesktopCatalogSidebar.width);
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('desktop-catalog-sidebar')))
+            .width,
+        DesktopCatalogSidebar.compactWidth,
+      );
+      expect(tester.getRect(header).left, headerLeft);
+      expect(
+        find.byKey(const ValueKey('desktop-sidebar-overlay-barrier')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('desktop-overlay-nav-hubs')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('desktop-collapse-sidebar')),
+        findsOneWidget,
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(overlay, findsNothing);
+      expect(tester.getRect(header).left, headerLeft);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('mobile Personal tab exposes the private local profile', (
     tester,

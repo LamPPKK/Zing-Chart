@@ -1,6 +1,6 @@
 # #zingChart
 
-<p align="center"><img src="web/icons/Icon-192.png" width="112" height="112" alt="#zingChart mark: coral hash and lime audio pulse"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/web/icons/Icon-192.png" width="112" height="112" alt="#zingChart mark: coral hash and lime audio pulse"></p>
 
 [Tiếng Việt](README.md) · [English](README.en.md) · [简体中文](README.zh-CN.md)
 
@@ -460,13 +460,13 @@ historical binaries and contain no real user data.
 
 <table>
   <tr>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.0-home-mobile.png" alt="Realtime ZingChart home on mobile"><br><sub><b>Home</b> · realtime chart and Daily Mix</sub></td>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.0-search-mobile.png" alt="Music search on mobile"><br><sub><b>Search</b> · songs, artists, and recent queries</sub></td>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.0-now-playing-mobile.png" alt="Now Playing on mobile"><br><sub><b>Now Playing</b> · seek, queue, moods, and sleep timer</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-home-mobile.png" alt="Realtime ZingChart home on mobile"><br><sub><b>Home</b> · realtime chart and Daily Mix</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-search-mobile.png" alt="Music search on mobile"><br><sub><b>Search</b> · songs, artists, and recent queries</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-now-playing-mobile.png" alt="Now Playing on mobile"><br><sub><b>Now Playing</b> · seek, queue, moods, and sleep timer</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.0-library-mobile.png" alt="Local-First library on mobile"><br><sub><b>Library</b> · favorites, playlists, and local backup</sub></td>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.0-desktop-player.png" alt="Adaptive desktop layout with Now Playing and queue panels"><br><sub><b>Adaptive desktop</b> · chart, Now Playing, and queue in one workspace</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-library-mobile.png" alt="Local-First library on mobile"><br><sub><b>Library</b> · favorites, playlists, and local backup</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.0-desktop-player.png" alt="Adaptive desktop layout with Now Playing and queue panels"><br><sub><b>Adaptive desktop</b> · chart, Now Playing, and queue in one workspace</sub></td>
   </tr>
 </table>
 
@@ -474,12 +474,12 @@ historical binaries and contain no real user data.
 
 <table>
   <tr>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.1-for-you-mobile.png" alt="Daily Mix and Mood Mix in For You"><br><sub><b>For You</b> · on-device Daily Mix and Mood Mix</sub></td>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.1-analytics-mobile.png" alt="Local listening analytics dashboard"><br><sub><b>Analytics</b> · 7-day, 30-day, and yearly views</sub></td>
-    <td width="33%" align="center"><img src="docs/screenshots/v1.1-wrapped-mobile.png" alt="Exportable Mini Wrapped"><br><sub><b>Mini Wrapped</b> · six slides with PNG export</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.1-for-you-mobile.png" alt="Daily Mix and Mood Mix in For You"><br><sub><b>For You</b> · on-device Daily Mix and Mood Mix</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.1-analytics-mobile.png" alt="Local listening analytics dashboard"><br><sub><b>Analytics</b> · 7-day, 30-day, and yearly views</sub></td>
+    <td width="33%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.1-wrapped-mobile.png" alt="Exportable Mini Wrapped"><br><sub><b>Mini Wrapped</b> · six slides with PNG export</sub></td>
   </tr>
   <tr>
-    <td colspan="3" align="center"><img src="docs/screenshots/v1.1-tv-for-you.png" alt="For You TV layout with remote focus and player panel"><br><sub><b>10-foot TV UI</b> · remote navigation, local mixes, and player panel</sub></td>
+    <td colspan="3" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.1-tv-for-you.png" alt="For You TV layout with remote focus and player panel"><br><sub><b>10-foot TV UI</b> · remote navigation, local mixes, and player panel</sub></td>
   </tr>
 </table>
 
@@ -487,106 +487,106 @@ historical binaries and contain no real user data.
 
 <table>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-desktop-sidebar.png" alt="#zingChart desktop with the grouped catalog sidebar, realtime chart, official Suggestion row with artist and album, and playback dock"><br><sub><b>Desktop catalog workspace</b> · 24-hour chart, official Suggestion with in-app artist/album navigation, chart metadata, and playback dock in one screen</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-desktop-sidebar.png" alt="#zingChart desktop with the grouped catalog sidebar, realtime chart, official Suggestion row with artist and album, and playback dock"><br><sub><b>Desktop catalog workspace</b> · 24-hour chart, official Suggestion with in-app artist/album navigation, chart metadata, and playback dock in one screen</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-desktop-playback-dock.png" alt="#zingChart desktop with MV Lyrics Now Playing song menu shortcuts and the playback queue drawer"><br><sub><b>Zing MP3-style dock & queue drawer</b> · direct MV, Lyrics/Karaoke, Now Playing and song actions; reorderable queue and on-device history</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-desktop-playback-dock.png" alt="#zingChart desktop with MV Lyrics Now Playing song menu shortcuts and the playback queue drawer"><br><sub><b>Zing MP3-style dock & queue drawer</b> · direct MV, Lyrics/Karaoke, Now Playing and song actions; reorderable queue and on-device history</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-desktop-lyrics-drawer.png" alt="#zingChart desktop with synchronized Lyrics inside the player drawer"><br><sub><b>Synced lyrics beside the catalog</b> · follow the active line, tap to seek, or expand full-screen Karaoke without leaving the current page</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-desktop-lyrics-drawer.png" alt="#zingChart desktop with synchronized Lyrics inside the player drawer"><br><sub><b>Synced lyrics beside the catalog</b> · follow the active line, tap to seek, or expand full-screen Karaoke without leaving the current page</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-library-workspace-desktop.png" alt="Desktop Library with Overview Songs Recently Played Playlists Albums and Artists sections"><br><sub><b>Zing-style, Local-First Library</b> · six responsive sections, personal playlists, listening history, and saved official content without an account</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-library-workspace-desktop.png" alt="Desktop Library with Overview Songs Recently Played Playlists Albums and Artists sections"><br><sub><b>Zing-style, Local-First Library</b> · six responsive sections, personal playlists, listening history, and saved official content without an account</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-local-playlist-workspace-desktop.png" alt="Personal playlist workspace with a mosaic cover, play and shuffle actions, and reorderable tracks"><br><sub><b>Local-First personal playlists</b> · mosaic cover, Play/Shuffle, rename, delete, reorder, and Undo without touching the active queue</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-local-playlist-workspace-desktop.png" alt="Personal playlist workspace with a mosaic cover, play and shuffle actions, and reorderable tracks"><br><sub><b>Local-First personal playlists</b> · mosaic cover, Play/Shuffle, rename, delete, reorder, and Undo without touching the active queue</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-local-history-workspace-desktop.png" alt="Local-First listening history workspace grouped by day with play time and listened duration"><br><sub><b>Local-First listening history</b> · local-day groups, Play/Shuffle, play time, listened duration, full song actions, and confirmed clearing</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-local-history-workspace-desktop.png" alt="Local-First listening history workspace grouped by day with play time and listened duration"><br><sub><b>Local-First listening history</b> · local-day groups, Play/Shuffle, play time, listened duration, full song actions, and confirmed clearing</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-realtime-chart-desktop.png" alt="Interactive 24-hour ZingChart plot with data points and the selected-song tooltip"><br><sub><b>24-hour chart pulse</b> · hover, touch/drag, or remote navigation to inspect hourly share and play the selected song</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-realtime-chart-desktop.png" alt="Interactive 24-hour ZingChart plot with data points and the selected-song tooltip"><br><sub><b>24-hour chart pulse</b> · hover, touch/drag, or remote navigation to inspect hourly share and play the selected song</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-chart-top-100-desktop.png" alt="#zingchart ranks 1 through 10 with the View top 100 action"><br><sub><b>Top 10 → Top 100</b> · compact by default like Zing MP3, expanded in place with the complete queue preserved</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-chart-top-100-desktop.png" alt="#zingchart ranks 1 through 10 with the View top 100 action"><br><sub><b>Top 10 → Top 100</b> · compact by default like Zing MP3, expanded in place with the complete queue preserved</sub></td>
   </tr>
   <tr>
-    <td width="50%" align="center"><img src="docs/screenshots/v1.2-discovery-home-desktop.png" alt="Discovery Home with compact You may like cards and a full-width panorama banner"><br><sub><b>Discovery</b> · Zing-style left artwork, an overlay-free panorama, and accessible carousel controls</sub></td>
-    <td width="50%" align="center"><img src="docs/screenshots/v1.2-new-releases-desktop.png" alt="New Release Chart with rank, movement, linked artist and album, and duration on desktop"><br><sub><b>New Release Chart</b> · in-app artist/album navigation, rank movement, duration, and a playable-only queue</sub></td>
+    <td width="50%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-home-desktop.png" alt="Discovery Home with compact You may like cards and a full-width panorama banner"><br><sub><b>Discovery</b> · Zing-style left artwork, an overlay-free panorama, and accessible carousel controls</sub></td>
+    <td width="50%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-new-releases-desktop.png" alt="New Release Chart with rank, movement, linked artist and album, and duration on desktop"><br><sub><b>New Release Chart</b> · in-app artist/album navigation, rank movement, duration, and a playable-only queue</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-discovery-mv-desktop.png" alt="Official Featured MVs rail on Discovery Home"><br><sub><b>Featured MVs</b> · adaptive 16:9 cards, validated Zing pages, and TV QR handoff</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-mv-desktop.png" alt="Official Featured MVs rail on Discovery Home"><br><sub><b>Featured MVs</b> · adaptive 16:9 cards, validated Zing pages, and TV QR handoff</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-discovery-new-releases-desktop.png" alt="Three-column New Releases shelf on Discovery Home"><br><sub><b>New Releases on Home</b> · 12 tracks, All/Vietnam/International filters, and locked-track-safe queues</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-new-releases-desktop.png" alt="Three-column New Releases shelf on Discovery Home"><br><sub><b>New Releases on Home</b> · 12 tracks, All/Vietnam/International filters, and locked-track-safe queues</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-discovery-recent-desktop.png" alt="Local-first Recently Played rail on Discovery Home"><br><sub><b>Recently Played</b> · private on-device history, a deduplicated queue, and no proxy upload</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-recent-desktop.png" alt="Local-first Recently Played rail on Discovery Home"><br><sub><b>Recently Played</b> · private on-device history, a deduplicated queue, and no proxy upload</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-discovery-new-release-chart-desktop.png" alt="Top-three New Release Chart spotlight on Discovery Home with rank movement"><br><sub><b>New Release Chart Top 3</b> · responsive spotlight, locked states, and a playable-only queue</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-discovery-new-release-chart-desktop.png" alt="Top-three New Release Chart spotlight on Discovery Home with rank movement"><br><sub><b>New Release Chart Top 3</b> · responsive spotlight, locked states, and a playable-only queue</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-suggestions-desktop.png" alt="Zing-style search autocomplete with keyword and song suggestions"><br><sub><b>Search autocomplete</b> · song previews open Song Info before explicit Play, with mouse, keyboard, and TV-remote control</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-search-suggestions-desktop.png" alt="Zing-style search autocomplete with keyword and song suggestions"><br><sub><b>Search autocomplete</b> · song previews open Song Info before explicit Play, with mouse, keyboard, and TV-remote control</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-all-desktop.png" alt="All results with three equal-height Zing-style Highlight cards"><br><sub><b>All · Highlights</b> · one artist, two songs, a real follower count, and responsive 1/2/3-column layout</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-search-all-desktop.png" alt="All results with three equal-height Zing-style Highlight cards"><br><sub><b>All · Highlights</b> · one artist, two songs, a real follower count, and responsive 1/2/3-column layout</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-songs-desktop.png" alt="Zing-style Songs results with an official 18-item page in a two-column desktop grid"><br><sub><b>Songs · official pagination</b> · 18 items per page and a two-column desktop layout; near-end auto-load on phone/tablet/desktop with XEM THÊM retained for fallback and TV remote</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-search-songs-desktop.png" alt="Zing-style Songs results with an official 18-item page in a two-column desktop grid"><br><sub><b>Songs · official pagination</b> · 18 items per page and a two-column desktop layout; near-end auto-load on phone/tablet/desktop with XEM THÊM retained for fallback and TV remote</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-search-mv-desktop.png" alt="Zing-style official MV results on desktop"><br><sub><b>Official MV search</b> · 16:9 artwork, duration, artist avatar, and hover/focus overlay; opens through a trusted Zing link or TV QR handoff</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-search-mv-desktop.png" alt="Zing-style official MV results on desktop"><br><sub><b>Official MV search</b> · 16:9 artwork, duration, artist avatar, and hover/focus overlay; opens through a trusted Zing link or TV QR handoff</sub></td>
   </tr>
   <tr>
-    <td width="50%" align="center"><img src="docs/screenshots/v1.2-hubs-desktop.png" alt="Topic and Genre browsing by nation, mood, activity, and genre"><br><sub><b>Topics & Genres</b> · responsive hub navigation into playlist and album detail</sub></td>
-    <td width="50%" align="center"><img src="docs/screenshots/v1.2-top-100-desktop.png" alt="Top 100 grouped by music market"><br><sub><b>Top 100</b> · Featured, Vietnam, Asia, US-UK, and Instrumental playlist rails</sub></td>
+    <td width="50%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-hubs-desktop.png" alt="Topic and Genre browsing by nation, mood, activity, and genre"><br><sub><b>Topics & Genres</b> · responsive hub navigation into playlist and album detail</sub></td>
+    <td width="50%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-top-100-desktop.png" alt="Top 100 grouped by music market"><br><sub><b>Top 100</b> · Featured, Vietnam, Asia, US-UK, and Instrumental playlist rails</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-release-catalog-desktop.png" alt="New Releases with per-track artist album duration and market filters"><br><sub><b>New Releases</b> · each song exposes navigable artist/album and duration metadata, plus the Albums tab, market filters, release time, and fail-closed playback</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-release-catalog-desktop.png" alt="New Releases with per-track artist album duration and market filters"><br><sub><b>New Releases</b> · each song exposes navigable artist/album and duration metadata, plus the Albums tab, market filters, release time, and fail-closed playback</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-profile-desktop.png" alt="Zing OA-style artist profile with a purple hero and Latest Release beside Featured Songs"><br><sub><b>Artist/OA</b> · full-width hero plus two-column Latest Release/Featured Songs; ALL opens the first 50 songs and paginates the complete catalog, Single & EP, or MV inside the app</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-artist-profile-desktop.png" alt="Zing OA-style artist profile with a purple hero and Latest Release beside Featured Songs"><br><sub><b>Artist/OA</b> · full-width hero plus two-column Latest Release/Featured Songs; ALL opens the first 50 songs and paginates the complete catalog, Single & EP, or MV inside the app</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-follow-desktop.png" alt="Artist profile with an on-device Following state"><br><sub><b>Follow artists</b> · account-free OA following, restored by backup v3 and reopened from Library</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-artist-follow-desktop.png" alt="Artist profile with an on-device Following state"><br><sub><b>Follow artists</b> · account-free OA following, restored by backup v3 and reopened from Library</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-artist-catalog-actions-desktop.png" alt="Artist Single EP rail with Play Save and More actions plus a separate MV rail with a play overlay"><br><sub><b>Artist catalog</b> · Collections expose Play/Save/More/Share; MVs use a dedicated play overlay; rails support mouse, swipe, keyboard, and TV remote</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-artist-catalog-actions-desktop.png" alt="Artist Single EP rail with Play Save and More actions plus a separate MV rail with a play overlay"><br><sub><b>Artist catalog</b> · Collections expose Play/Save/More/Share; MVs use a dedicated play overlay; rails support mouse, swipe, keyboard, and TV remote</sub></td>
   </tr>
   <tr>
-    <td width="34%" align="center"><img src="docs/screenshots/v1.2-collection-mobile.png" alt="Official mobile album detail with a compact hero Play Save More and the first track in view"><br><sub><b>Mobile collection</b> · touch-sized Play/Save/More, Share in the menu, and one trailing overflow per track</sub></td>
-    <td width="66%" align="center"><img src="docs/screenshots/v1.2-collection-save-desktop.png" alt="Official album in a Zing-style two-column workspace with artwork left and numbered tracks right"><br><sub><b>Desktop albums/playlists</b> · type-aware CTA, numbered album tracks or playlist Album column, fail-closed locked songs, and Local-First Saved state</sub></td>
+    <td width="34%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-collection-mobile.png" alt="Official mobile album detail with a compact hero Play Save More and the first track in view"><br><sub><b>Mobile collection</b> · touch-sized Play/Save/More, Share in the menu, and one trailing overflow per track</sub></td>
+    <td width="66%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-collection-save-desktop.png" alt="Official album in a Zing-style two-column workspace with artwork left and numbered tracks right"><br><sub><b>Desktop albums/playlists</b> · type-aware CTA, numbered album tracks or playlist Album column, fail-closed locked songs, and Local-First Saved state</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-collection-information-desktop.png" alt="Release information, participating artists, and related official collections on a collection detail page"><br><sub><b>Collection information</b> · compact metadata, locally followed participating artists, and related rails with Play/Save/Share</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-collection-information-desktop.png" alt="Release information, participating artists, and related official collections on a collection detail page"><br><sub><b>Collection information</b> · compact metadata, locally followed participating artists, and related rails with Play/Save/Share</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-weekly-chart-desktop.png" alt="Weekly Chart with three regions, a period picker, and linked artist and album"><br><sub><b>Weekly Chart</b> · Vietnam/US-UK/K-Pop, in-app artist/album navigation, rank movement, duration, and a playable-only queue</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-weekly-chart-desktop.png" alt="Weekly Chart with three regions, a period picker, and linked artist and album"><br><sub><b>Weekly Chart</b> · Vietnam/US-UK/K-Pop, in-app artist/album navigation, rank movement, duration, and a playable-only queue</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-song-detail-desktop.png" alt="Official Song Info page on desktop"><br><sub><b>Song Info</b> · metadata, engagement, in-app artist/album navigation, official-link sharing, and MV handoff</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-song-detail-desktop.png" alt="Official Song Info page on desktop"><br><sub><b>Song Info</b> · metadata, engagement, in-app artist/album navigation, official-link sharing, and MV handoff</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-synced-lyrics-desktop.png" alt="Immersive Karaoke with word-level highlighting"><br><sub><b>Karaoke & lyrics</b> · large artwork, word sync, tap-to-seek, and adaptive phone/desktop/TV layout</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-synced-lyrics-desktop.png" alt="Immersive Karaoke with word-level highlighting"><br><sub><b>Karaoke & lyrics</b> · large artwork, word sync, tap-to-seek, and adaptive phone/desktop/TV layout</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-lyric-share-desktop.png" alt="Lyric Card composer with multi-line selection and share-image preview"><br><sub><b>Lyric Card</b> · select up to four lines, render PNG locally, and use an on-device QR on TV</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-lyric-share-desktop.png" alt="Lyric Card composer with multi-line selection and share-image preview"><br><sub><b>Lyric Card</b> · select up to four lines, render PNG locally, and use an on-device QR on TV</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-car-mode-desktop.png" alt="#zingChart Car Mode with large playback controls and a reduced interface"><br><sub><b>Car Mode</b> · glanceable metadata, clear progress, and large Previous/Play/Next/Stop controls</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-car-mode-desktop.png" alt="#zingChart Car Mode with large playback controls and a reduced interface"><br><sub><b>Car Mode</b> · glanceable metadata, clear progress, and large Previous/Play/Next/Stop controls</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-song-radio-desktop.png" alt="Song Radio and autoplay in the desktop player panel"><br><sub><b>Song Radio</b> · authorized recommendations, queue extension, and autoplay controls on phone/desktop/TV</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-song-radio-desktop.png" alt="Song Radio and autoplay in the desktop player panel"><br><sub><b>Song Radio</b> · authorized recommendations, queue extension, and autoplay controls on phone/desktop/TV</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="Desktop queue with the real Up Next order, Smart Shuffle, and clearly marked inserted songs"><br><sub><b>True Up Next, Fair Shuffle & Smart Shuffle</b> · separate the current track, reorder the real future, avoid repeats for a full cycle, and label every local-first suggestion</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-smart-shuffle-desktop.png" alt="Desktop queue with the real Up Next order, Smart Shuffle, and clearly marked inserted songs"><br><sub><b>True Up Next, Fair Shuffle & Smart Shuffle</b> · separate the current track, reorder the real future, avoid repeats for a full cycle, and label every local-first suggestion</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-stream-quality-desktop.png" alt="Auto 128 and 320 kbps streaming-quality picker"><br><sub><b>Real streaming quality</b> · Auto prefers 320 then 128, while explicit 128/320 keeps the selected bitrate through the signed relay</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-stream-quality-desktop.png" alt="Auto 128 and 320 kbps streaming-quality picker"><br><sub><b>Real streaming quality</b> · Auto prefers 320 then 128, while explicit 128/320 keeps the selected bitrate through the signed relay</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/v1.2-live-radio-desktop.png" alt="LIVE Radio rooms for V-Pop Bolero US-UK and K-Pop"><br><sub><b>LIVE Radio</b> · live rooms, current programs, listener counts, and same-origin HLS on phone/desktop/TV</sub></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.2-live-radio-desktop.png" alt="LIVE Radio rooms for V-Pop Bolero US-UK and K-Pop"><br><sub><b>LIVE Radio</b> · live rooms, current programs, listener counts, and same-origin HLS on phone/desktop/TV</sub></td>
   </tr>
 </table>
 
@@ -594,7 +594,7 @@ historical binaries and contain no real user data.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3a-seamless-next-settings-desktop.png" alt="#zingChart desktop settings with Automatic or Off Seamless Next"><br><sub><b>Seamless Next with fallback</b> · transiently buffers only the exact first Up Next item in the final 30 seconds, with no offline audio file or persistent cache</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3a-seamless-next-settings-desktop.png" alt="#zingChart desktop settings with Automatic or Off Seamless Next"><br><sub><b>Seamless Next with fallback</b> · transiently buffers only the exact first Up Next item in the final 30 seconds, with no offline audio file or persistent cache</sub></td>
   </tr>
 </table>
 
@@ -602,7 +602,7 @@ historical binaries and contain no real user data.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3b-local-mix-workspace-desktop.png" alt="Local-first Daily Mix detail on desktop with a cover mosaic and track list"><br><sub><b>Local Mix Workspace</b> · browse before playback, separate Play/Shuffle controls, complete per-track actions, and a local-safe route that exposes no listening data</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3b-local-mix-workspace-desktop.png" alt="Local-first Daily Mix detail on desktop with a cover mosaic and track list"><br><sub><b>Local Mix Workspace</b> · browse before playback, separate Play/Shuffle controls, complete per-track actions, and a local-safe route that exposes no listening data</sub></td>
   </tr>
 </table>
 
@@ -610,7 +610,7 @@ historical binaries and contain no real user data.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3c-artist-pagination-desktop.png" alt="Desktop artist song catalog showing pagination progress at 50 of 73 tracks"><br><sub><b>Artist Catalog Pagination</b> · opens immediately with the first 50 tracks, auto-loads near the end on touch/desktop, and retains XEM THÊM for fallback and TV remotes</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3c-artist-pagination-desktop.png" alt="Desktop artist song catalog showing pagination progress at 50 of 73 tracks"><br><sub><b>Artist Catalog Pagination</b> · opens immediately with the first 50 tracks, auto-loads near the end on touch/desktop, and retains XEM THÊM for fallback and TV remotes</sub></td>
   </tr>
 </table>
 
@@ -618,7 +618,7 @@ historical binaries and contain no real user data.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3d-artist-discography-desktop.png" alt="Desktop artist Album view with Overview Songs Single EP Album and MV tabs above a four-column grid"><br><sub><b>Artist Discography Tabs</b> · unified media navigation, responsive Album grid, Zing-style actions, and Back/Forward backed by the cached artist detail</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3d-artist-discography-desktop.png" alt="Desktop artist Album view with Overview Songs Single EP Album and MV tabs above a four-column grid"><br><sub><b>Artist Discography Tabs</b> · unified media navigation, responsive Album grid, Zing-style actions, and Back/Forward backed by the cached artist detail</sub></td>
   </tr>
 </table>
 
@@ -626,8 +626,8 @@ historical binaries and contain no real user data.
 
 <table>
   <tr>
-    <td width="66%" align="center"><img src="docs/screenshots/v1.3e-artist-about-desktop.png" alt="Desktop Artist About block with cover art on the left and biography plus metadata on the right"><br><sub><b>Desktop/TV</b> · two-column editorial layout with follower/achievement stats and authoritative metadata</sub></td>
-    <td width="34%" align="center"><img src="docs/screenshots/v1.3e-artist-about-mobile.png" alt="Single-column Artist About block on a 360 px phone"><br><sub><b>Phone/tablet</b> · compact stack, overflow-aware preview, and a full selectable biography modal</sub></td>
+    <td width="66%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3e-artist-about-desktop.png" alt="Desktop Artist About block with cover art on the left and biography plus metadata on the right"><br><sub><b>Desktop/TV</b> · two-column editorial layout with follower/achievement stats and authoritative metadata</sub></td>
+    <td width="34%" align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3e-artist-about-mobile.png" alt="Single-column Artist About block on a 360 px phone"><br><sub><b>Phone/tablet</b> · compact stack, overflow-aware preview, and a full selectable biography modal</sub></td>
   </tr>
 </table>
 
@@ -635,7 +635,7 @@ historical binaries and contain no real user data.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3f-playback-shell-tablet.png" alt="768 px tablet playback shell with a complete icon-only sidebar, catalog, adaptive queue, and full-width dock"><br><sub><b>768 px tablet</b> · the 70 px sidebar still opens every catalog route, the queue shares the workspace, and the dock spans underneath like Zing MP3</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/LamPPKK/Zing-Chart/main/docs/screenshots/v1.3f-playback-shell-tablet.png" alt="768 px tablet playback shell with a complete icon-only sidebar, catalog, adaptive queue, and full-width dock"><br><sub><b>768 px tablet</b> · the 70 px sidebar still opens every catalog route, the queue shares the workspace, and the dock spans underneath like Zing MP3</sub></td>
   </tr>
 </table>
 
