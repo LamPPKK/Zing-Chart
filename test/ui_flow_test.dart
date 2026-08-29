@@ -19,6 +19,7 @@ import 'package:zmp3chart/music_player_scope.dart';
 import 'package:zmp3chart/services/library_backup_file_service.dart';
 import 'package:zmp3chart/services/system_media_bridge.dart';
 import 'package:zmp3chart/widgets/desktop_now_playing_panel.dart';
+import 'package:zmp3chart/widgets/desktop_catalog_sidebar.dart';
 import 'package:zmp3chart/zing_chart_screen.dart';
 import 'package:zmp3chart/zing_mp3_api.dart';
 
@@ -600,7 +601,7 @@ void main() {
 
     expect(controller.currentSong, songs.first);
     expect(find.byType(MusicPlayerScreen), findsNothing);
-    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byType(DesktopCatalogSidebar), findsOneWidget);
     expect(find.byKey(const ValueKey('mobile-mini-player')), findsNothing);
     final dock = find.byKey(const ValueKey('desktop-playback-dock'));
     expect(dock, findsOneWidget);
@@ -608,7 +609,7 @@ void main() {
     expect(dockRect.left, 0);
     expect(dockRect.right, 720);
     expect(
-      tester.getRect(find.byType(NavigationRail)).bottom,
+      tester.getRect(find.byType(DesktopCatalogSidebar)).bottom,
       lessThanOrEqualTo(dockRect.top),
     );
     expect(tester.takeException(), isNull);

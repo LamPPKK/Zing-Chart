@@ -9,6 +9,7 @@ import 'package:zmp3chart/models/song.dart';
 import 'package:zmp3chart/music_player_controller.dart';
 import 'package:zmp3chart/music_player_scope.dart';
 import 'package:zmp3chart/zing_chart_screen.dart';
+import 'package:zmp3chart/widgets/desktop_catalog_sidebar.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -85,7 +86,7 @@ void main() {
     },
   );
 
-  testWidgets('tablet rail retains the dedicated new-release destination', (
+  testWidgets('tablet sidebar retains every catalog destination', (
     tester,
   ) async {
     await _setViewport(tester, const Size(768, 1024));
@@ -97,11 +98,59 @@ void main() {
     await tester.pumpWidget(_app(controller));
     await tester.pumpAndSettle();
 
-    final rail = tester.widget<NavigationRail>(find.byType(NavigationRail));
-    expect(rail.destinations, hasLength(6));
-    expect(find.text('BXH Nhạc Mới'), findsOneWidget);
+    final sidebar = tester.widget<DesktopCatalogSidebar>(
+      find.byType(DesktopCatalogSidebar),
+    );
+    expect(sidebar.compact, isTrue);
+    expect(find.byTooltip('BXH Nhạc Mới'), findsOneWidget);
+    expect(find.byKey(const ValueKey('desktop-nav-hubs')), findsOneWidget);
+    expect(find.byKey(const ValueKey('desktop-nav-top100')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  for (final width in const [720.0, 1024.0, 1133.0, 1134.0, 1280.0, 1440.0]) {
+    testWidgets('catalog sidebar matches Zing density at ${width.toInt()}px', (
+      tester,
+    ) async {
+      await _setViewport(tester, Size(width, 900));
+      final controller = MusicPlayerController(
+        libraryRepository: MemoryLibraryRepository(),
+      );
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(_app(controller));
+      await tester.pumpAndSettle();
+
+      final sidebarFinder = find.byType(DesktopCatalogSidebar);
+      final sidebar = tester.widget<DesktopCatalogSidebar>(sidebarFinder);
+      final compact = width < DesktopCatalogSidebar.expandedBreakpoint;
+      expect(sidebar.compact, compact);
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('desktop-catalog-sidebar')))
+            .width,
+        compact
+            ? DesktopCatalogSidebar.compactWidth
+            : DesktopCatalogSidebar.width,
+      );
+      expect(find.byType(NavigationRail), findsNothing);
+      expect(find.byType(NavigationBar), findsNothing);
+      for (final destination in DesktopCatalogDestination.values) {
+        expect(
+          find.byKey(ValueKey('desktop-nav-${destination.name}')),
+          findsOneWidget,
+        );
+      }
+      if (compact) {
+        expect(find.byTooltip('Chủ Đề & Thể Loại'), findsOneWidget);
+        expect(find.byTooltip('Top 100'), findsOneWidget);
+      } else {
+        expect(find.text('Chủ Đề & Thể Loại'), findsOneWidget);
+        expect(find.text('Top 100'), findsOneWidget);
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('mobile Personal tab exposes the private local profile', (
     tester,

@@ -1247,15 +1247,12 @@ void main() {
   });
 
   testWidgets(
-    'tablet prioritizes compact Quick Play before secondary shortcuts',
+    'tablet prioritizes compact Quick Play without duplicate sidebar shortcuts',
     (tester) async {
       await _pumpRail(tester, const Size(768, 1024), quickPlayHome);
 
       final quickPlay = tester.getRect(
         find.byKey(const ValueKey('discovery-quick-play-rail')),
-      );
-      final shortcut = tester.getRect(
-        find.byKey(const ValueKey('open-weekly-chart')),
       );
       final firstCard = tester.getRect(
         find.byKey(
@@ -1263,8 +1260,11 @@ void main() {
         ),
       );
 
-      expect(quickPlay.top, lessThan(shortcut.top));
-      expect(quickPlay.bottom, lessThan(shortcut.top));
+      expect(quickPlay.top, greaterThanOrEqualTo(0));
+      expect(find.byKey(const ValueKey('open-weekly-chart')), findsNothing);
+      expect(find.byKey(const ValueKey('open-hub-home')), findsNothing);
+      expect(find.byKey(const ValueKey('open-top-100')), findsNothing);
+      expect(find.byKey(const ValueKey('open-new-releases')), findsNothing);
       expect(firstCard.height, inInclusiveRange(152, 168));
       expect(tester.takeException(), isNull);
     },

@@ -71,7 +71,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   不显示播放、队列或 Radio。
 - 主题与流派：按国家、心情和活动浏览，并提供“精选、越南、亚洲、欧美、纯音乐”
   分组的 Top 100 歌单；歌单/专辑上的艺人名称保留类似 Zing 的应用内导航。
-- 大屏桌面端采用接近 Zing MP3 信息层级的分组侧栏，包含音乐库、发现、#zingchart、
+- 平板与桌面端采用接近 Zing MP3 信息层级的自适应分组侧栏，包含音乐库、发现、#zingchart、
   LIVE 电台、新歌榜、主题与流派、Top 100 和“为你推荐”；Hub 与 Top 100 可直接打开，
   底部提供“新建歌单”和“播放队列”。返回/前进可保留最多 50 个应用内标签、搜索、
   歌手、专辑/歌单及音乐库分区状态，桌面端支持 `Alt+←/→`。Web 会把语义化目的地同步到
@@ -79,7 +79,8 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   Native 与 TV 继续使用应用内栈，webOS/Tizen 不依赖 History API。平板与桌面端在内容滚动时会固定返回/前进、
   搜索与设置工具栏；“发现”页还会在其下固定分类栏；宽屏桌面提供“个人”头像及侧栏本机资料卡，显示真实的收藏、歌单与收听分钟数，
   并直接打开本机资料，不伪装云端账号。
-  平板与 TV 保留导航栏；手机使用五项底部导航：
+  侧栏在 `720–1133 px` 收窄为 70 px，以图标和 tooltip 保留全部入口；从
+  `1134 px` 起像 Zing MP3 一样展开文字标签。TV 继续使用遥控器优先的导航栏；手机使用五项底部导航：
   `音乐库 · 发现 · #zingchart · 电台 · 个人`。“个人”集中展示仅存于设备的资料、收藏、歌单、
   已关注艺人、Daily/Mood Mix、统计与 Wrapped，无需登录。完整新歌榜继续从“发现”进入，不再额外占用主导航位置。
 - 官方歌曲、歌手、歌词、歌单/专辑与 MV 搜索，提供 Zing 风格自动补全（最多四个关键词和六首
@@ -139,7 +140,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
   进度、音量，以及官方 MV、歌词/卡拉 OK、Now Playing 和“播放队列”
   快捷入口。收藏旁的“更多选项”可打开歌曲信息、Song Radio、加入歌单和分享 Zing
   官方链接。MV 元数据仅在用户点击后加载，并继续使用经过校验的 Zing 交接流程；窄平板/
-  桌面会隐藏扩展快捷键、使用仅图标 rail，并按 viewport 调整抽屉宽度，为目录与播放控制
+  桌面会隐藏扩展快捷键、使用仅图标侧栏，并按 viewport 调整抽屉宽度，为目录与播放控制
   保留空间。右侧抽屉包含“播放队列”“最近播放”与
   “歌词”三个标签：队列可播放、拖动排序、逐首移除，也可在手机、桌面和电视上经确认后
   清空待播歌曲，同时保留当前歌曲、进度与播放来源。历史仅保存在本机；同步歌词自动跟随
@@ -500,7 +501,7 @@ Amazon Fire OS/Fire TV、LG webOS TV、Samsung Tizen TV 和 HarmonyOS。
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3f-playback-shell-tablet.png" alt="768 像素平板播放 shell，包含仅图标 rail、目录、自适应队列和全宽播放坞"><br><sub><b>768 px 平板</b> · 播放时保留目录，队列与目录共享 workspace，播放坞像 Zing MP3 一样贯穿 rail 下方</sub></td>
+    <td align="center"><img src="docs/screenshots/v1.3f-playback-shell-tablet.png" alt="768 像素平板播放 shell，包含保留全部入口的仅图标侧栏、目录、自适应队列和全宽播放坞"><br><sub><b>768 px 平板</b> · 70 px 侧栏仍可直接打开全部目录入口，队列共享 workspace，播放坞像 Zing MP3 一样贯穿下方</sub></td>
   </tr>
 </table>
 

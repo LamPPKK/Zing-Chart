@@ -101,7 +101,7 @@ clients never call Zing upstream directly.
 - Topic & Genre browsing by nation, mood, and activity, plus Top 100 rails for
   Featured, Vietnam, Asia, US-UK, and Instrumental catalogs; playlist/album
   artist names retain Zing-style in-app navigation.
-- Large desktops use a Zing MP3-inspired grouped sidebar for Library,
+- Tablets and desktops use an adaptive Zing MP3-inspired grouped sidebar for Library,
   Discovery, #zingchart, LIVE Radio, New Release Chart, Topics & Genres, Top
   100, and For You. Hub/Top 100 open directly, with Create playlist and Playback
   queue actions in the footer. Back/Forward keeps up to 50 in-shell tab,
@@ -115,7 +115,9 @@ clients never call Zing upstream directly.
   Wide desktop adds a Personal avatar and a Local Profile card
   in the sidebar with real like, playlist, and listening-minute counts. Both
   open the on-device profile without pretending a cloud account exists.
-  Tablets/TV retain the rail. Phones use a five-item bottom bar:
+  The sidebar collapses to 70 px at `720–1133 px`, retaining every destination
+  as an icon with a tooltip, then expands with labels from `1134 px` like Zing
+  MP3. TV retains its remote-first rail. Phones use a five-item bottom bar:
   `Library · Discovery · #zingchart · Radio · Personal`; Personal groups the
   private on-device profile, likes, playlists, followed artists, Daily/Mood
   Mixes, analytics, and Wrapped without requiring an account. The full New
@@ -208,7 +210,7 @@ clients never call Zing upstream directly.
   Playback queue actions. The More button beside Like opens Song details, Song
   Radio, Add to playlist, and official Zing link sharing. MV metadata is loaded
   only after the user clicks and still uses the validated Zing handoff; narrow
-  tablet/desktop layouts hide expanded shortcuts, use an icon-only rail, and
+  tablet/desktop layouts hide expanded shortcuts, use an icon-only sidebar, and
   resize the drawer to protect catalog and transport space. The right drawer
   has Queue, Recently played, and Lyrics tabs: the queue supports play, reorder, per-track
   removal, or a confirmed clear that preserves the active song, progress, and
@@ -633,7 +635,7 @@ historical binaries and contain no real user data.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3f-playback-shell-tablet.png" alt="768 px tablet playback shell with icon-only rail, catalog, adaptive queue, and full-width dock"><br><sub><b>768 px tablet</b> · catalog persists during playback, queue shares the workspace, and the dock spans beneath the rail like Zing MP3</sub></td>
+    <td align="center"><img src="docs/screenshots/v1.3f-playback-shell-tablet.png" alt="768 px tablet playback shell with a complete icon-only sidebar, catalog, adaptive queue, and full-width dock"><br><sub><b>768 px tablet</b> · the 70 px sidebar still opens every catalog route, the queue shares the workspace, and the dock spans underneath like Zing MP3</sub></td>
   </tr>
 </table>
 

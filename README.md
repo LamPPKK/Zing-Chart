@@ -100,7 +100,7 @@ proxy Node/TypeScript do người triển khai tự host.
 - Chủ đề & Thể loại theo quốc gia, tâm trạng và hoạt động; Top 100 được chia
   thành các rail Nổi bật, Việt Nam, Châu Á, Âu Mỹ và Hòa Tấu như catalog Zing;
   tên nghệ sĩ trên playlist/album giữ nguyên điều hướng nội bộ như Zing MP3.
-- Desktop lớn dùng sidebar theo nhịp điều hướng Zing MP3, gom Thư viện, Khám
+- Tablet và desktop dùng sidebar thích ứng theo nhịp điều hướng Zing MP3, gom Thư viện, Khám
   phá, #zingchart, Phòng Nhạc LIVE, BXH Nhạc Mới, Chủ Đề & Thể Loại, Top 100 và
   Dành cho bạn; Hub/Top 100 mở trực tiếp, cuối sidebar có Tạo playlist mới và
   Danh sách phát. Nút Quay lại/Tiến lưu tối đa 50 trạng thái tab, tìm
@@ -114,7 +114,9 @@ proxy Node/TypeScript do người triển khai tự host.
   avatar và thẻ Cá nhân local ngay trong sidebar, hiển thị
   số bài thích, playlist và phút nghe thật rồi mở thẳng dữ liệu tại máy, không
   giả lập tài khoản cloud.
-  Tablet/TV tiếp tục dùng rail. Điện thoại dùng bottom nav năm mục
+  Sidebar thu gọn còn 70 px ở `720–1133 px`, hiển thị icon cùng tooltip nhưng
+  vẫn giữ đủ mọi đích; từ `1134 px` sidebar mở rộng có nhãn như Zing MP3. TV
+  tiếp tục dùng rail ưu tiên remote. Điện thoại dùng bottom nav năm mục
   `Thư viện · Khám phá · #zingchart · Radio · Cá nhân`; tab Cá nhân gom hồ sơ
   local, bài thích, playlist, nghệ sĩ quan tâm, Daily/Mood Mix, thống kê và
   Wrapped mà không cần đăng nhập. BXH Nhạc Mới vẫn mở đầy đủ từ Khám phá thay
@@ -223,7 +225,7 @@ proxy Node/TypeScript do người triển khai tự host.
   Song Radio, thêm vào playlist và chia sẻ liên kết Zing chính thức. MV chỉ được
   tải metadata khi người dùng bấm và vẫn dùng luồng handoff Zing đã kiểm tra;
   desktop/tablet hẹp tự ẩn nhóm shortcut mở rộng để giữ transport dễ thao tác.
-  Rail tablet dùng icon-only như Zing và drawer co giãn theo viewport để luôn
+  Sidebar tablet dùng icon-only như Zing và drawer co giãn theo viewport để luôn
   chừa đủ không gian cho catalog. Drawer bên phải có ba tab Hàng đợi/Gần đây/Lời
   bài hát: queue cho phát, đổi thứ tự, xóa từng bài hoặc xóa toàn bộ phần chờ nhưng
   vẫn giữ bài hiện tại, progress và nguồn phát; thao tác xóa toàn bộ luôn có
@@ -648,7 +650,7 @@ không chứa dữ liệu người dùng thật.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/v1.3f-playback-shell-tablet.png" alt="Playback shell tablet 768 px với rail icon-only, catalog, queue co giãn và dock toàn chiều rộng"><br><sub><b>Tablet 768 px</b> · giữ catalog khi phát, queue hiển thị cùng workspace và dock chạy xuyên suốt bên dưới rail như Zing MP3</sub></td>
+    <td align="center"><img src="docs/screenshots/v1.3f-playback-shell-tablet.png" alt="Playback shell tablet 768 px với sidebar icon-only đầy đủ route, catalog, queue co giãn và dock toàn chiều rộng"><br><sub><b>Tablet 768 px</b> · sidebar 70 px vẫn mở trực tiếp đủ catalog, queue dùng chung workspace và dock chạy xuyên suốt bên dưới như Zing MP3</sub></td>
   </tr>
 </table>
 

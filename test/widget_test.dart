@@ -5550,11 +5550,11 @@ void main() {
           1,
         );
         expect(find.text('Top 100 Trên Mọi Màn Hình'), findsWidgets);
-        final wideDesktopSidebar =
-            viewport.size.width >= 1320 && !viewport.tvMode;
+        final hasDesktopSidebar =
+            viewport.size.width >= 720 && !viewport.tvMode;
         expect(
           find.byKey(const ValueKey('open-top-100')),
-          wideDesktopSidebar ? findsNothing : findsOneWidget,
+          hasDesktopSidebar ? findsNothing : findsOneWidget,
         );
         expect(
           find.byKey(
@@ -5812,8 +5812,8 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('desktop sidebar opens Hub and Top 100 directly', (tester) async {
-    tester.view.physicalSize = const Size(1440, 900);
+  testWidgets('compact sidebar opens Hub and Top 100 directly', (tester) async {
+    tester.view.physicalSize = const Size(768, 1024);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -7762,7 +7762,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      if (width >= 1320) {
+      if (width >= 720) {
         expect(find.byType(DesktopCatalogSidebar), findsOneWidget);
         expect(find.byType(NavigationRail), findsNothing);
       } else {
@@ -7877,7 +7877,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byKey(const ValueKey('live-radio-vpop')), findsOneWidget);
-        if (viewport.$2 || viewport.$1.width < 1320) {
+        if (viewport.$2) {
           expect(find.byType(NavigationRail), findsOneWidget);
           expect(find.byType(DesktopCatalogSidebar), findsNothing);
         } else {

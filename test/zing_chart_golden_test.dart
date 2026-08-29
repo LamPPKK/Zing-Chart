@@ -26,6 +26,7 @@ import 'package:zmp3chart/services/system_media_bridge.dart';
 import 'package:zmp3chart/theme/app_theme.dart';
 import 'package:zmp3chart/zing_chart_screen.dart';
 import 'package:zmp3chart/widgets/discovery_home_hub.dart';
+import 'package:zmp3chart/widgets/desktop_catalog_sidebar.dart';
 import 'package:zmp3chart/widgets/collection_detail_hero.dart';
 import 'package:zmp3chart/widgets/artist_biography_section.dart';
 import 'package:zmp3chart/widgets/lyric_share_composer.dart';
@@ -334,9 +335,9 @@ void main() {
     final dockRect = tester.getRect(dock);
     expect(dockRect.left, 0);
     expect(dockRect.right, 768);
-    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byType(DesktopCatalogSidebar), findsOneWidget);
     expect(
-      tester.getRect(find.byType(NavigationRail)).bottom,
+      tester.getRect(find.byType(DesktopCatalogSidebar)).bottom,
       lessThanOrEqualTo(dockRect.top),
     );
     expect(

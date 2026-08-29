@@ -176,7 +176,7 @@ class DiscoveryHomeHub extends StatelessWidget {
     final horizontal = tvMode ? 32.0 : 20.0;
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final compactDesktop = !tvMode && viewportWidth >= 720;
-    final hasDesktopCatalogSidebar = !tvMode && viewportWidth >= 1320;
+    final hasDesktopCatalogSidebar = !tvMode && viewportWidth >= 720;
     final switchingCategory =
         loading && !home.isEmpty && selectedCategoryId != home.categoryId;
     var selectedCategoryName = 'danh mục đã chọn';

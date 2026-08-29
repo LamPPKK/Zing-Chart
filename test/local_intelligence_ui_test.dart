@@ -410,7 +410,18 @@ void main() {
     addTearDown(controller.dispose);
     await _pumpChart(tester, controller, songs);
 
-    await tester.tap(find.byIcon(Icons.auto_awesome_outlined).first);
+    final forYouDestination = find.byKey(const ValueKey('desktop-nav-forYou'));
+    await tester.scrollUntilVisible(
+      forYouDestination,
+      100,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('desktop-catalog-sidebar')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.tap(forYouDestination);
     await tester.pumpAndSettle();
     final openAnalytics = find.text('Xem thống kê');
     final contentScroll = find.descendant(

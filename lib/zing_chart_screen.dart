@@ -3691,8 +3691,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     final visibleSongs = _visibleSongs(controller);
     final width = MediaQuery.sizeOf(context).width;
     final useRail = widget.tvMode || width >= _persistentPlaybackDockBreakpoint;
-    final useDesktopCatalogSidebar = !widget.tvMode && width >= 1320;
-    final extendRail = widget.tvMode || width >= 1180;
+    final useDesktopCatalogSidebar = !widget.tvMode;
     final showDesktopQueue =
         !widget.tvMode &&
         width >= _persistentPlaybackDockBreakpoint &&
@@ -3703,6 +3702,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         if (useRail)
           if (useDesktopCatalogSidebar)
             DesktopCatalogSidebar(
+              compact: width < DesktopCatalogSidebar.expandedBreakpoint,
               selected: _desktopCatalogDestination,
               onDestinationSelected: _selectDesktopCatalogDestination,
               likedSongs: controller.likedSongs.length,
@@ -3719,7 +3719,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
                   _openDesktopPlayerPanel(DesktopPlaybackPanelTab.queue),
             )
           else
-            _buildNavigationRail(tvMode: widget.tvMode, extended: extendRail),
+            _buildNavigationRail(tvMode: true, extended: true),
         Expanded(
           child: Row(
             children: [
