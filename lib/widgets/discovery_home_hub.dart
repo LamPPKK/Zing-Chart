@@ -5264,9 +5264,15 @@ class _DiscoveryImage extends StatelessWidget {
       ),
     );
     if (normalizedUrl.isEmpty) return fallback;
+    final cacheWidth =
+        (MediaQuery.sizeOf(context).width *
+                MediaQuery.devicePixelRatioOf(context))
+            .round()
+            .clamp(320, 1600);
     return Image.network(
       normalizedUrl,
       fit: BoxFit.cover,
+      cacheWidth: cacheWidth,
       filterQuality: FilterQuality.medium,
       frameBuilder: (context, child, frame, _) => AnimatedOpacity(
         opacity: frame == null ? 0 : 1,

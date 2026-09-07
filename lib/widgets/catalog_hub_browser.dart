@@ -972,9 +972,15 @@ class _NetworkArtwork extends StatelessWidget {
       child: Center(child: Icon(icon, color: ZingColors.coral, size: 34)),
     );
     if (normalizedUrl.isEmpty) return fallback;
+    final cacheWidth =
+        (MediaQuery.sizeOf(context).width *
+                MediaQuery.devicePixelRatioOf(context))
+            .round()
+            .clamp(320, 1600);
     return Image.network(
       normalizedUrl,
       fit: BoxFit.cover,
+      cacheWidth: cacheWidth,
       filterQuality: FilterQuality.medium,
       errorBuilder: (_, __, ___) => fallback,
     );
