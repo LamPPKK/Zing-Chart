@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/catalog_search.dart';
 import '../models/song.dart';
 import '../theme/app_theme.dart';
+import '../utils/image_url.dart';
 
 class ArtistDesktopOverview extends StatelessWidget {
   const ArtistDesktopOverview({
@@ -215,7 +216,7 @@ class _LatestReleaseCardState extends State<_LatestReleaseCard> {
                         child: collection.thumbnail.isEmpty
                             ? const _ReleaseArtworkFallback()
                             : Image.network(
-                                collection.thumbnail,
+                                normalizeImageUrl(collection.thumbnail),
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) =>
                                     const _ReleaseArtworkFallback(),
