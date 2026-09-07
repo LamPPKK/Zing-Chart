@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/image_url.dart';
+
 class AlbumArt extends StatelessWidget {
   const AlbumArt({
     super.key,
@@ -16,6 +18,7 @@ class AlbumArt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final normalizedImageUrl = normalizeImageUrl(imageUrl);
     return Semantics(
       image: true,
       label: semanticLabel,
@@ -24,10 +27,10 @@ class AlbumArt extends StatelessWidget {
           borderRadius: BorderRadius.circular(borderRadius),
           child: SizedBox.square(
             dimension: size,
-            child: imageUrl.isEmpty
+            child: normalizedImageUrl.isEmpty
                 ? const _AlbumPlaceholder()
                 : Image.network(
-                    imageUrl,
+                    normalizedImageUrl,
                     // Keep a frame during a rendition refresh, but never show
                     // the previous track's cover under a new semantic label.
                     key: ValueKey(semanticLabel),

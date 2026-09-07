@@ -12,6 +12,7 @@ import '../models/new_release_chart.dart';
 import '../models/release_catalog.dart';
 import '../models/song.dart';
 import '../models/weekly_chart.dart';
+import '../utils/image_url.dart';
 import '../theme/app_theme.dart';
 import 'album_art.dart';
 import 'catalog_artist_links.dart';
@@ -5255,15 +5256,16 @@ class _DiscoveryImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final normalizedUrl = normalizeImageUrl(url);
     final fallback = ColoredBox(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Center(
         child: Icon(fallbackIcon, color: ZingColors.coral, size: 34),
       ),
     );
-    if (url.isEmpty) return fallback;
+    if (normalizedUrl.isEmpty) return fallback;
     return Image.network(
-      url,
+      normalizedUrl,
       fit: BoxFit.cover,
       filterQuality: FilterQuality.medium,
       frameBuilder: (context, child, frame, _) => AnimatedOpacity(
