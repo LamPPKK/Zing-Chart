@@ -91,6 +91,11 @@ class ArtistProfileHero extends StatelessWidget {
                 child: Image.network(
                   normalizeImageUrl(detail!.cover),
                   fit: BoxFit.cover,
+                  cacheWidth:
+                      (MediaQuery.sizeOf(context).width *
+                              MediaQuery.devicePixelRatioOf(context))
+                          .round()
+                          .clamp(320, 1600),
                   errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),
