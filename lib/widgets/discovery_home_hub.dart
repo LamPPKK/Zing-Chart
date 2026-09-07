@@ -355,17 +355,6 @@ class DiscoveryHomeHub extends StatelessWidget {
                           ),
                           SizedBox(height: tvMode ? 28 : 22),
                         ],
-                        if (home.banners.isNotEmpty) ...[
-                          _BannerRail(
-                            key: ValueKey(
-                              'discovery-banner-category-${home.categoryId}',
-                            ),
-                            banners: home.banners,
-                            tvMode: tvMode,
-                            onCollectionTap: onCollectionTap,
-                          ),
-                          SizedBox(height: tvMode ? 38 : 30),
-                        ],
                         if (home.quickPlay.isNotEmpty) ...[
                           _DiscoveryQuickPlayRail(
                             key: ValueKey(
@@ -377,6 +366,17 @@ class DiscoveryHomeHub extends StatelessWidget {
                             onCollectionTap: onCollectionTap,
                           ),
                           SizedBox(height: tvMode ? 32 : 24),
+                        ],
+                        if (home.banners.isNotEmpty) ...[
+                          _BannerRail(
+                            key: ValueKey(
+                              'discovery-banner-category-${home.categoryId}',
+                            ),
+                            banners: home.banners,
+                            tvMode: tvMode,
+                            onCollectionTap: onCollectionTap,
+                          ),
+                          SizedBox(height: tvMode ? 38 : 30),
                         ],
                         if (home.videos.isNotEmpty) ...[
                           DiscoveryVideoShelf(
