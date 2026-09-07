@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/catalog_artist_detail.dart';
 import '../models/catalog_search.dart';
 import '../theme/app_theme.dart';
+import '../utils/image_url.dart';
 import 'album_art.dart';
 
 class ArtistProfileHero extends StatelessWidget {
@@ -88,7 +89,7 @@ class ArtistProfileHero extends StatelessWidget {
               child: Opacity(
                 opacity: 0.12,
                 child: Image.network(
-                  detail!.cover,
+                  normalizeImageUrl(detail!.cover),
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),

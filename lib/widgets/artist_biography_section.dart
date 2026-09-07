@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../models/catalog_artist_detail.dart';
 import '../theme/app_theme.dart';
+import '../utils/image_url.dart';
 
 /// Editorial "About" section for an official Zing MP3 artist profile.
 ///
@@ -413,9 +414,11 @@ class _ArtistAboutArtwork extends StatelessWidget {
   Widget build(BuildContext context) {
     final cover = detail.cover.trim();
     final avatar = detail.artist.avatar.trim();
-    final imageUrl = cover.isNotEmpty ? cover : avatar;
+    final imageUrl = normalizeImageUrl(cover.isNotEmpty ? cover : avatar);
     // Try the supplied avatar once if a distinct cover fails to load.
-    final fallbackUrl = cover.isNotEmpty && avatar != cover ? avatar : '';
+    final fallbackUrl = normalizeImageUrl(
+      cover.isNotEmpty && avatar != cover ? avatar : '',
+    );
     final ratio = MediaQuery.devicePixelRatioOf(context);
     return Semantics(
       image: true,
