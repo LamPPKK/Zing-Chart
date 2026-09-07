@@ -6,6 +6,7 @@ import '../models/catalog_artist_detail.dart';
 import '../models/catalog_search.dart';
 import '../models/official_zing_link.dart';
 import '../theme/app_theme.dart';
+import '../utils/image_url.dart';
 import 'album_art.dart';
 import 'artist_biography_section.dart';
 import 'catalog_artist_rail.dart';
@@ -1527,7 +1528,7 @@ class _ArtistVideoCardState extends State<_ArtistVideoCard> {
                               )
                             else
                               Image.network(
-                                video.thumbnail,
+                                normalizeImageUrl(video.thumbnail),
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => const ColoredBox(
                                   color: Color(0xFF292A2E),
