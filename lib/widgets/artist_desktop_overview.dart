@@ -218,6 +218,12 @@ class _LatestReleaseCardState extends State<_LatestReleaseCard> {
                             : Image.network(
                                 normalizeImageUrl(collection.thumbnail),
                                 fit: BoxFit.cover,
+                                cacheWidth:
+                                    (156 *
+                                            MediaQuery.devicePixelRatioOf(
+                                              context,
+                                            ))
+                                        .round(),
                                 errorBuilder: (_, __, ___) =>
                                     const _ReleaseArtworkFallback(),
                               ),
