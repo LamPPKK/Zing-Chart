@@ -4,6 +4,7 @@ import '../models/catalog_hub.dart';
 import '../models/catalog_search.dart';
 import '../models/discovery_home.dart';
 import '../theme/app_theme.dart';
+import '../utils/image_url.dart';
 import 'catalog_artist_links.dart';
 import 'catalog_collection_action_deck.dart';
 
@@ -965,13 +966,14 @@ class _NetworkArtwork extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final normalizedUrl = normalizeImageUrl(url);
     final fallback = ColoredBox(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Center(child: Icon(icon, color: ZingColors.coral, size: 34)),
     );
-    if (url.isEmpty) return fallback;
+    if (normalizedUrl.isEmpty) return fallback;
     return Image.network(
-      url,
+      normalizedUrl,
       fit: BoxFit.cover,
       filterQuality: FilterQuality.medium,
       errorBuilder: (_, __, ___) => fallback,
