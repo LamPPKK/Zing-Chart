@@ -16,6 +16,7 @@ class SearchSuggestionDropdown extends StatelessWidget {
     required this.onSongTap,
     required this.onSearchAll,
     required this.onHighlightChanged,
+    this.idleKeywords = const [],
     this.loadingSongId,
     this.tvMode = false,
   });
@@ -29,15 +30,19 @@ class SearchSuggestionDropdown extends StatelessWidget {
   final ValueChanged<SearchSuggestionSong> onSongTap;
   final VoidCallback onSearchAll;
   final ValueChanged<int> onHighlightChanged;
+  final List<String> idleKeywords;
   final String? loadingSongId;
   final bool tvMode;
 
   @override
   Widget build(BuildContext context) {
-    final keywords = snapshot?.keywords ?? const <String>[];
+    final idle = query.trim().isEmpty;
+    final keywords = idle
+        ? idleKeywords
+        : snapshot?.keywords ?? const <String>[];
     final songs = snapshot?.songs ?? const <SearchSuggestionSong>[];
-    final searchAllIndex = keywords.length;
-    final songStartIndex = searchAllIndex + 1;
+    final searchAllIndex = idle ? -1 : keywords.length;
+    final songStartIndex = keywords.length + (idle ? 0 : 1);
     return Material(
       key: const ValueKey('search-suggestion-dropdown'),
       color: Colors.transparent,
@@ -69,10 +74,37 @@ class SearchSuggestionDropdown extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (idle)
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          tvMode ? 20 : 16,
+                          tvMode ? 14 : 11,
+                          tvMode ? 20 : 16,
+                          tvMode ? 9 : 6,
+                        ),
+                        child: Text(
+                          'ĐỀ XUẤT CHO BẠN',
+                          key: const ValueKey('idle-search-suggestions-title'),
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                            fontSize: tvMode ? 14 : 11,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.25,
+                          ),
+                        ),
+                      ),
                     for (var index = 0; index < keywords.length; index++)
                       _SuggestionActionRow(
-                        key: ValueKey('search-keyword-$index'),
-                        icon: Icons.search_rounded,
+                        key: ValueKey(
+                          idle
+                              ? 'idle-search-keyword-$index'
+                              : 'search-keyword-$index',
+                        ),
+                        icon: idle
+                            ? Icons.trending_up_rounded
+                            : Icons.search_rounded,
                         title: keywords[index],
                         highlighted: highlightedIndex == index,
                         onHover: (value) {
@@ -81,18 +113,19 @@ class SearchSuggestionDropdown extends StatelessWidget {
                         onTap: () => onKeywordTap(keywords[index]),
                         tvMode: tvMode,
                       ),
-                    _SuggestionActionRow(
-                      key: const ValueKey('search-suggestion-search-all'),
-                      icon: Icons.manage_search_rounded,
-                      title: 'Tìm kiếm “$query”',
-                      highlighted: highlightedIndex == searchAllIndex,
-                      onHover: (value) {
-                        if (value) onHighlightChanged(searchAllIndex);
-                      },
-                      onTap: onSearchAll,
-                      emphasized: true,
-                      tvMode: tvMode,
-                    ),
+                    if (!idle)
+                      _SuggestionActionRow(
+                        key: const ValueKey('search-suggestion-search-all'),
+                        icon: Icons.manage_search_rounded,
+                        title: 'Tìm kiếm “$query”',
+                        highlighted: highlightedIndex == searchAllIndex,
+                        onHover: (value) {
+                          if (value) onHighlightChanged(searchAllIndex);
+                        },
+                        onTap: onSearchAll,
+                        emphasized: true,
+                        tvMode: tvMode,
+                      ),
                     if (songs.isNotEmpty) ...[
                       Padding(
                         padding: EdgeInsets.fromLTRB(

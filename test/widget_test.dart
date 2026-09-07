@@ -502,6 +502,88 @@ void main() {
   });
 
   testWidgets(
+    'empty search focus mirrors Zing suggestions with local-first history',
+    (tester) async {
+      tester.view.physicalSize = const Size(768, 1024);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = PlaybackService(
+        playbackAudioPlayer: FakePlaybackAudioPlayer(),
+        libraryRepository: MemoryLibraryRepository(),
+        systemMediaBridge: NoopSystemMediaBridge(),
+      );
+      await controller.initialize();
+      controller.recordSearch('Sơn Tùng M-TP');
+      addTearDown(controller.dispose);
+      final submittedQueries = <String>[];
+
+      await tester.pumpWidget(
+        MusicPlayerScope(
+          controller: controller,
+          child: MaterialApp(
+            theme: ThemeData.dark(useMaterial3: true),
+            home: ZingChartScreen(
+              loadSongs: () async => songs,
+              initialTab: 1,
+              searchCatalog: (query) async {
+                submittedQueries.add(query);
+                return CatalogSearchResult.empty(query);
+              },
+              loadDiscoveryCategories: () async => const DiscoveryCategories(
+                updatedAt: null,
+                items: [
+                  DiscoveryCategory(id: '-1', name: 'Cho bạn'),
+                  DiscoveryCategory(id: '21', name: 'Trending'),
+                ],
+              ),
+              loadDiscoveryHome: () async => const DiscoveryHome.empty(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final field = find.byKey(const ValueKey('chart-search-field'));
+      await tester.tap(field);
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('search-suggestion-dropdown')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('idle-search-suggestions-title')),
+        findsOneWidget,
+      );
+      expect(find.text('ĐỀ XUẤT CHO BẠN'), findsOneWidget);
+      expect(find.text('Sơn Tùng M-TP'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('search-suggestion-dropdown')),
+          matching: find.text('Trending'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('search-suggestion-search-all')),
+        findsNothing,
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(submittedQueries, ['Sơn Tùng M-TP']);
+      expect(
+        find.byKey(const ValueKey('search-suggestion-dropdown')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'renders Zing-style search suggestions and applies a keyword on mobile',
     (tester) async {
       tester.view.physicalSize = const Size(360, 844);
@@ -2884,6 +2966,8 @@ void main() {
         '',
       );
       await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
       expect(find.byKey(const ValueKey('discovery-home')), findsOneWidget);
       expect(find.text('Top 100'), findsWidgets);
       expect(find.text('Chill'), findsOneWidget);
@@ -4972,6 +5056,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('chart-search-field')));
       await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
       await tester.ensureVisible(
         find.byKey(const ValueKey('open-new-releases')),
       );
@@ -5188,6 +5274,8 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.pump();
         expect(FocusManager.instance.primaryFocus, isNotNull);
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pump();
         await tester.tap(find.byKey(const ValueKey('release-tab-albums')));
         await tester.pumpAndSettle();
         expect(find.text('Album Mới Trên Mọi Thiết Bị'), findsOneWidget);

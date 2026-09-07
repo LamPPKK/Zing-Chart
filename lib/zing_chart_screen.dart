@@ -1958,6 +1958,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     if (_catalogBrowseView == _CatalogBrowseView.hubs && _selectedHub == null) {
       return;
     }
+    _searchFocusNode.unfocus();
+    _hideSearchSuggestionOverlay();
     _recordNavigationOrigin();
     _hubRequestId++;
     _weeklyRequestId++;
@@ -1976,6 +1978,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
         _selectedHub == null) {
       return;
     }
+    _searchFocusNode.unfocus();
+    _hideSearchSuggestionOverlay();
     _recordNavigationOrigin();
     _hubRequestId++;
     _weeklyRequestId++;
@@ -1993,6 +1997,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     ReleaseRegion initialRegion = ReleaseRegion.all,
     ReleaseContentType initialContentType = ReleaseContentType.songs,
   }) {
+    _searchFocusNode.unfocus();
+    _hideSearchSuggestionOverlay();
     _recordNavigationOrigin();
     _hubRequestId++;
     _weeklyRequestId++;
@@ -2024,6 +2030,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
 
   void _openWeeklyChartRegion(WeeklyChartRegion region) {
     final needsLoad = _weeklyChart.isEmpty || _weeklyChart.region != region;
+    _searchFocusNode.unfocus();
+    _hideSearchSuggestionOverlay();
     _recordNavigationOrigin();
     _hubRequestId++;
     _weeklyRequestId++;
@@ -2135,8 +2143,8 @@ class _ZingChartScreenState extends State<ZingChartScreen>
       return;
     }
     final query = _searchController.text.trim().replaceAll(RegExp(r'\s+'), ' ');
-    if (query.isEmpty) return;
     _showSearchSuggestionOverlay();
+    if (query.isEmpty) return;
     if (_searchSuggestionSnapshot?.query.toLowerCase() != query.toLowerCase()) {
       _scheduleSearchSuggestions(query);
     }
@@ -2168,7 +2176,6 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     final normalized = query.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (normalized.isEmpty) {
       _searchSuggestionRequestId++;
-      _hideSearchSuggestionOverlay();
       if (mounted) {
         setState(() {
           _searchSuggestionSnapshot = null;
@@ -2177,6 +2184,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
           _highlightedSearchSuggestion = -1;
         });
       }
+      if (_searchFocusNode.hasFocus) _showSearchSuggestionOverlay();
       return;
     }
     final requestId = ++_searchSuggestionRequestId;
@@ -2208,8 +2216,47 @@ class _ZingChartScreenState extends State<ZingChartScreen>
     }
   }
 
+  List<String> get _idleSearchKeywords {
+    final suggestions = <String>[];
+
+    void add(String value) {
+      final normalized = value.trim().replaceAll(RegExp(r'\s+'), ' ');
+      if (normalized.isEmpty ||
+          suggestions.any(
+            (item) => item.toLowerCase() == normalized.toLowerCase(),
+          )) {
+        return;
+      }
+      suggestions.add(normalized);
+    }
+
+    for (final query in _playerController.recentSearches) {
+      add(query);
+      if (suggestions.length == 6) return suggestions;
+    }
+    for (final category in _discoveryCategories.items) {
+      if (category.id == '-1' || category.name == 'Cho bạn') continue;
+      add(category.name);
+      if (suggestions.length == 6) return suggestions;
+    }
+    for (final fallback in const [
+      '#zingchart',
+      'BXH Nhạc Mới',
+      'Top 100',
+      'Chill',
+      'Tập luyện',
+      'Nhạc Việt',
+    ]) {
+      add(fallback);
+      if (suggestions.length == 6) break;
+    }
+    return suggestions;
+  }
+
   int get _searchSuggestionOptionCount {
-    if (_searchController.text.trim().isEmpty) return 0;
+    if (_searchController.text.trim().isEmpty) {
+      return _idleSearchKeywords.length;
+    }
     final snapshot = _searchSuggestionSnapshot;
     return (snapshot?.keywords.length ?? 0) + 1 + (snapshot?.songs.length ?? 0);
   }
@@ -2249,6 +2296,14 @@ class _ZingChartScreenState extends State<ZingChartScreen>
   }
 
   void _activateHighlightedSearchSuggestion() {
+    if (_searchController.text.trim().isEmpty) {
+      final index = _highlightedSearchSuggestion;
+      final keywords = _idleSearchKeywords;
+      if (index >= 0 && index < keywords.length) {
+        _applySearchSuggestion(keywords[index]);
+      }
+      return;
+    }
     final snapshot = _searchSuggestionSnapshot;
     final keywordCount = snapshot?.keywords.length ?? 0;
     final index = _highlightedSearchSuggestion;
@@ -7896,6 +7951,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
               width: width,
               child: SearchSuggestionDropdown(
                 query: query,
+                idleKeywords: _idleSearchKeywords,
                 snapshot: _searchSuggestionSnapshot,
                 loading: _isLoadingSearchSuggestions,
                 loadingSongId: _loadingSearchSuggestionSongId,
@@ -7929,9 +7985,7 @@ class _ZingChartScreenState extends State<ZingChartScreen>
               onTapAlwaysCalled: true,
               onTap: () {
                 _enterDiscovery();
-                if (_searchController.text.trim().isNotEmpty) {
-                  _showSearchSuggestionOverlay();
-                }
+                _showSearchSuggestionOverlay();
               },
               onChanged: _onSearchChanged,
               onSubmitted: (query) => unawaited(_submitSearch(query)),
