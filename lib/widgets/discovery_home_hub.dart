@@ -354,6 +354,17 @@ class DiscoveryHomeHub extends StatelessWidget {
                           ),
                           SizedBox(height: tvMode ? 28 : 22),
                         ],
+                        if (home.banners.isNotEmpty) ...[
+                          _BannerRail(
+                            key: ValueKey(
+                              'discovery-banner-category-${home.categoryId}',
+                            ),
+                            banners: home.banners,
+                            tvMode: tvMode,
+                            onCollectionTap: onCollectionTap,
+                          ),
+                          SizedBox(height: tvMode ? 38 : 30),
+                        ],
                         if (home.quickPlay.isNotEmpty) ...[
                           _DiscoveryQuickPlayRail(
                             key: ValueKey(
@@ -365,17 +376,6 @@ class DiscoveryHomeHub extends StatelessWidget {
                             onCollectionTap: onCollectionTap,
                           ),
                           SizedBox(height: tvMode ? 32 : 24),
-                        ],
-                        if (home.banners.isNotEmpty) ...[
-                          _BannerRail(
-                            key: ValueKey(
-                              'discovery-banner-category-${home.categoryId}',
-                            ),
-                            banners: home.banners,
-                            tvMode: tvMode,
-                            onCollectionTap: onCollectionTap,
-                          ),
-                          SizedBox(height: tvMode ? 38 : 30),
                         ],
                         if (home.videos.isNotEmpty) ...[
                           DiscoveryVideoShelf(
@@ -4470,16 +4470,27 @@ class _BannerRailState extends State<_BannerRail> {
     builder: (context, constraints) {
       final wide = constraints.maxWidth >= 520;
       final gap = widget.tvMode ? 18.0 : 14.0;
-      final height = widget.tvMode
-          ? (constraints.maxWidth / 7).clamp(160.0, 210.0)
-          : wide
-          ? (constraints.maxWidth / 10).clamp(92.0, 132.0)
-          : ((constraints.maxWidth * 0.92) / 3.6).clamp(96.0, 132.0);
-      final cardWidth = widget.banners.length == 1
-          ? constraints.maxWidth
-          : wide
-          ? constraints.maxWidth
-          : (constraints.maxWidth * 0.92).clamp(280.0, 560.0);
+      // Zing's discovery hero is a multi-card rail on larger screens. Keep
+      // one full-width card for narrow layouts so the next card can peek in,
+      // while giving desktop and TV enough cards to scan at a glance.
+      final columns = widget.banners.length == 1
+          ? 1
+          : !wide
+          ? 1
+          : widget.tvMode
+          ? (constraints.maxWidth >= 1400 ? 3 : 2)
+          : (constraints.maxWidth >= 1100 ? 3 : 2);
+      final cardWidth = !wide
+          ? (constraints.maxWidth * 0.92).clamp(280.0, 560.0)
+          : ((constraints.maxWidth - gap * (columns - 1)) / columns).clamp(
+              280.0,
+              620.0,
+            );
+      final height = !wide
+          ? (cardWidth / 3.6).clamp(96.0, 132.0)
+          : widget.tvMode
+          ? (cardWidth / 2.85).clamp(160.0, 250.0)
+          : (cardWidth / 3.2).clamp(112.0, 190.0);
       final showNavigation = wide && widget.banners.length > 1;
       final scrollAmount = cardWidth + gap;
       _pageExtent = scrollAmount;
