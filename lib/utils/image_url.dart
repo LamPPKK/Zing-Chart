@@ -6,7 +6,7 @@ String normalizeImageUrl(String value) {
   final trimmed = value.trim();
   if (trimmed.isEmpty) return '';
   if (trimmed.startsWith('//')) return 'https:$trimmed';
-  if (trimmed.startsWith('http://')) {
+  if (trimmed.toLowerCase().startsWith('http://')) {
     return 'https://${trimmed.substring('http://'.length)}';
   }
   return trimmed;
