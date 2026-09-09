@@ -1529,6 +1529,8 @@ class _ArtistVideoCardState extends State<_ArtistVideoCard> {
                             else
                               Image.network(
                                 normalizeImageUrl(video.thumbnail),
+                                webHtmlElementStrategy:
+                                    WebHtmlElementStrategy.prefer,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => const ColoredBox(
                                   color: Color(0xFF292A2E),

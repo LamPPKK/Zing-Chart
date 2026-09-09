@@ -979,6 +979,7 @@ class _NetworkArtwork extends StatelessWidget {
             .clamp(320, 1600);
     return Image.network(
       normalizedUrl,
+      webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
       fit: BoxFit.cover,
       cacheWidth: cacheWidth,
       filterQuality: FilterQuality.medium,

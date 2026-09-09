@@ -217,6 +217,8 @@ class _LatestReleaseCardState extends State<_LatestReleaseCard> {
                             ? const _ReleaseArtworkFallback()
                             : Image.network(
                                 normalizeImageUrl(collection.thumbnail),
+                                webHtmlElementStrategy:
+                                    WebHtmlElementStrategy.prefer,
                                 fit: BoxFit.cover,
                                 cacheWidth:
                                     (156 *

@@ -31,6 +31,7 @@ class AlbumArt extends StatelessWidget {
                 ? const _AlbumPlaceholder()
                 : Image.network(
                     normalizedImageUrl,
+                    webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
                     // Keep a frame during a rendition refresh, but never show
                     // the previous track's cover under a new semantic label.
                     key: ValueKey(semanticLabel),

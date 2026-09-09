@@ -447,6 +447,7 @@ class _ArtistAboutArtwork extends StatelessWidget {
               else
                 Image.network(
                   imageUrl,
+                  webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
                   key: ValueKey((detail.artist.id, imageUrl)),
                   fit: BoxFit.cover,
                   cacheWidth: (size * ratio).round(),
@@ -454,6 +455,7 @@ class _ArtistAboutArtwork extends StatelessWidget {
                       ? _ArtistArtworkFallback(name: detail.artist.name)
                       : Image.network(
                           fallbackUrl,
+                          webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
                           key: ValueKey((detail.artist.id, fallbackUrl)),
                           fit: BoxFit.cover,
                           cacheWidth: (size * ratio).round(),

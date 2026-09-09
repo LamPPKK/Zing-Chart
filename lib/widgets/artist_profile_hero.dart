@@ -90,6 +90,7 @@ class ArtistProfileHero extends StatelessWidget {
                 opacity: 0.12,
                 child: Image.network(
                   normalizeImageUrl(detail!.cover),
+                  webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
                   fit: BoxFit.cover,
                   cacheWidth:
                       (MediaQuery.sizeOf(context).width *

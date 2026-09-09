@@ -46,6 +46,7 @@ class ArtworkBackdrop extends StatelessWidget {
                         scale: 1.14,
                         child: Image.network(
                           normalizedImageUrl,
+                          webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
                           fit: BoxFit.cover,
                           cacheWidth: cacheWidth,
                           filterQuality: FilterQuality.low,
